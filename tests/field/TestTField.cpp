@@ -1,7 +1,7 @@
 #include "catch.hpp"
 #include "TField.h"
 
-TEST_CASE("Unittesting the TField.", "[unit][TField][field][Field]"){
+TEST_CASE("Unittesting the TField.", "[unit][TField][field]"){
   SECTION("Test int case."){
   };
 };

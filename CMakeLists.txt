@@ -17,12 +17,12 @@ include(hyperFoxMacros)
 #External dependencies.
 include(hyperFoxExternalDependencies)
 
+#Define dependencies
+include(hyperFoxDependencies)
+
 #Add subdirectories for libraries.
 add_subdirectory (src)
 add_subdirectory(tests)
-
-#Define dependencies
-include(hyperFoxDependencies)
 
 #Add subdirectory for executables.
 add_subdirectory(bin)

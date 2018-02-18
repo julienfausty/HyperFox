@@ -3,6 +3,8 @@
 
 #include "Mesh.h"
 
+namespace hfox{
+
 /*!
  * \brief an object for performing calculations on fields.
  *
@@ -17,5 +19,7 @@ class Operator{
   protected:
     const Mesh * pmesh;
 }
+
+} //hfox
 
 #endif

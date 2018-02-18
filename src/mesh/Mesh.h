@@ -4,6 +4,8 @@
 #include <vector>
 #include "Polytope.h"
 
+namespace hfox{
+
 /*!
  * \brief The interface class for a mesh.
  *
@@ -49,7 +51,7 @@ class Mesh{
      * @param i index of the point of which one wishes to get the connectivity 
      * information. 
      */
-    virtual std::vector<int> getPointConnectivity(int i)=0 const;
+    virtual std::vector<int> getPointConnectivity(int i) const =0;
     // Helper functions
     virtual int getNumberPoints() const =0;
     virtual int getNumberUnits() const =0;
@@ -69,5 +71,7 @@ class Mesh{
      */
     int dimension;
 };
+
+} //hfox
 
 #endif

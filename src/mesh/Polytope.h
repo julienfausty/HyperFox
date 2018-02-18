@@ -1,6 +1,12 @@
 #ifndef POLYTOPE_H
 #define POLYTOPE_H
 
+#include <vector>
+#include <iostream>
+#include "ErrorHandle.h"
+
+namespace hfox{
+
 /*!
  * \brief an element of volume of a space delimited by facets.
  *
@@ -12,25 +18,26 @@
 class Polytope{
   public:
     // Destructor
-    virtual ~Polytope();
+    virtual ~Polytope(){};
     // Setters
     /*!
      * \brief sets the points list.
      */
-    void setPoints(std::vector< std::vector<double> > & points_candiate)=0;
+    virtual void setPoints(std::vector< std::vector<double> > & 
+        points_candiate);
     /*!
      * \brief sets the faces list.
      */
-    void setFaces(std::vector< std::vector<int> > & faces_candidate)=0;
+    virtual void setFaces(std::vector< std::vector<int> > & faces_candidate);
     // Getters
     /*!
      * \brief gets the points list.
      */
-    std::vector< std::vector<double> > * getPoints() const =0;
+    virtual const std::vector< std::vector<double> > * getPoints() const;
     /*!
      * \brief gets the faces list.
      */
-    std::vector< std::vector<int> > * getFaces() const =0;
+    virtual const std::vector< std::vector<int> > * getFaces() const;
     /*!
      * \brief gets the number of points.
      */
@@ -39,32 +46,36 @@ class Polytope{
      * \brief gets the number of points.
      */
     virtual int getNumberFaces() const;
+    /*!
+     * \brief get the dimension of the polytope.
+     */
+    virtual int getDimension() const;
     // Calculators
     /*!
      * \brief calculate the volume enclosed by the polytope.
      * @return the volume of the polytope.
      */
-    double calcVolume() const =0;
+    virtual double calcVolume() const =0;
     /*!
      * \brief calculate a list of the surfaces of the faces of the polytope.
      * @return a list of the surfaces of the faces of the polytope.
      */
-    std::vector<double> calcSurfaces() const =0;
+    virtual std::vector<double> calcSurfaces() const =0;
     /*!
      * \brief calculate a list of the edge lengths of the faces of the polytope.
      * @return a list of the edge lengths of the faces of the polytope.
      */
-    std::vector< std::vector<double> > calcEdgeLengths() const =0;
+    virtual std::vector< std::vector<double> > calcEdgeLengths() const =0;
     /*!
      * \brief calculate the total surface of the faces of the polytope.
      * @return the total surface of the faces of the polytope.
      */
-    double calcSurface() const =0;
+    virtual double calcSurface() const =0;
     /*!
      * \brief calculate the total edge length of the polytope.
      * @return the total edge length of the polytope.
      */
-    double calcEdgeLength() const =0;
+    virtual double calcEdgeLength() const =0;
   protected:
     /*!
      * The list of points making the polytope.
@@ -80,5 +91,7 @@ class Polytope{
      */
     int dimension;
 };
+
+} //hfox
 
 #endif

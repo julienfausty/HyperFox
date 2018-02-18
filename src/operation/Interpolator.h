@@ -1,6 +1,8 @@
 #ifndef INTERPOLATOR_H
 #define INTERPOLATOR_H
 
+namespace hfox{
+
 /*!
  * \brief class for interpolating inside of polytopes.
  *
@@ -10,5 +12,7 @@
 
 class Interpolator{
 };
+
+} //hfox
 
 #endif

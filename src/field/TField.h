@@ -2,16 +2,17 @@
 #define TFIELD_H
 
 #include <vector>
-#include "Field.h"
 #include "Mesh.h"
 #include "Interpolator.h"
+
+namespace hfox{
 
 /*!
  * \brief class that allows access to the values of a field on a mesh.
  */
 
 template <class T>
-class TField : public Field{
+class TField {
   public:
     //Constructors
     /*!
@@ -66,5 +67,7 @@ class TField : public Field{
      */
     Mesh * pmesh;
 };
+
+} //hfox
 
 #endif

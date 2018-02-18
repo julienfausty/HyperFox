@@ -5,3 +5,7 @@ file(GLOB
   )
 
 add_library(mesh SHARED ${files})
+
+target_include_directories(mesh PUBLIC ${hyperFoxIncludes})
+
+target_link_libraries(mesh io)
