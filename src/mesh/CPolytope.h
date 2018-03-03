@@ -2,10 +2,14 @@
 #define CPOLYTOPE_H
 
 #include <vector>
-#include "ConvexHull.h"
+#include <iostream>
 #include "Polytope.h"
+#include "ErrorHandle.h"
 
 namespace hfox{
+
+// Forward declaration.
+class ConvexHull;
 
 /*!
  * \brief a convex element of volume of a space delimited by facets.
@@ -18,10 +22,10 @@ namespace hfox{
 class CPolytope : public Polytope{
   public:
     CPolytope();
-    CPolytope(std::vector< std::vector<double> > & points);
-    // Destructor
-    virtual ~CPolytope();
+    CPolytope(std::vector< std::vector<double> > & points_cand);
     // Setters
+    virtual void setPoints(std::vector< std::vector<double> > & 
+        points_candidate){Polytope::setPoints(points_candidate);};
     /*!
      * \brief should never be called for CPolytopes but calculated.
      */
@@ -34,14 +38,15 @@ class CPolytope : public Polytope{
     /*!
      * \brief calculate the convex hull of the polytope in faces. 
      */
-    virtual double calcConvexHull() const;
+    virtual void calcConvexHull();
     /*!
-     * \brief calculate the signed distance from face (+ inside, - outside)
+     * \brief calculate the signed distance from face (- inside, + outside)
      * @param index_face the index of the considered face in the faces list.
      * @param point the point under consideration.
      * @return the distance from the point to the face.
      */
-    virtual double calcDistFace(int index_face, std::vector<double> & point);
+    virtual double calcDistFace(int index_face, 
+        std::vector<double> & point) const;
     /*!
      * \brief calculate the volume enclosed by the polytope.
      * @return the volume of the polytope.

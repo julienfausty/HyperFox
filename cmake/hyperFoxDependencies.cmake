@@ -1,8 +1,10 @@
 SUBDIRLIST(hyperFoxSrcNames "${CMAKE_SOURCE_DIR}/src")
 
 foreach(name ${hyperFoxSrcNames})
-  set(hyperFoxLibs ${hyperFoxLibs} ${name})
-  set(hyperFoxIncludes ${hyperFoxIncludes} "${CMAKE_SOURCE_DIR}/src/${name}")
+  if(NOT "${name}" STREQUAL "globals")
+    set(hyperFoxLibs ${hyperFoxLibs} ${name})
+  endif()
+    set(hyperFoxIncludes ${hyperFoxIncludes} "${CMAKE_SOURCE_DIR}/src/${name}")
 endforeach()
 
 SUBDIRLIST(hyperFoxTestNames "${CMAKE_SOURCE_DIR}/tests")

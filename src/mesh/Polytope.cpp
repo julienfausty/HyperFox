@@ -4,13 +4,8 @@ namespace hfox{
 
 void Polytope::setPoints(std::vector< std::vector<double> > & points_candidate){
   ErrorHandle eh("Polytope", "setPoints");
-  try{
-    eh.checkPointList(points_candidate);
-  }catch(ErrorHandle & e){
-    std::cout << e.what() << std::endl;
-    exit(0);
-  }
-  this->dimension = (points[0]).size();
+  eh.checkPointList(points_candidate);
+  this->dimension = (points_candidate[0]).size();
   this->points = points_candidate;
 };
 
