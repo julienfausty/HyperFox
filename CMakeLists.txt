@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 3.4)
 
 #Declaration of the project.
 
-project(HyperFox)
+project(HyperFox LANGUAGES CXX VERSION 0.0.1)
 
 #Project configuration.
+
+set (CMAKE_CXX_STANDARD 17)
 
 #Variables
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)

@@ -1,7 +1,8 @@
-#include "catch.hpp"
+#include <catch2/catch.hpp>
 #include <string>
 #include <exception>
 #include <vector>
+#include <iostream>
 #include "ErrorHandle.h"
 
 using namespace hfox;

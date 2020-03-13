@@ -2,6 +2,7 @@
 #define ERRORHANDLE_H
 
 #include <exception>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -21,24 +22,24 @@ class ErrorHandle: public std::exception{
      * \brief empty constructor.
      */
     ErrorHandle() : err_msg("something went wrong.\n"), userclass("SomeClass"), 
-    userfunction("someFunction"){};
+    userfunction("someFunction"){createErrorMsg();};
     /*!
      * \brief personalized constructor.
      */
     ErrorHandle(std::string msg_cand) : err_msg(msg_cand), 
-      userclass("SomeClass"), userfunction("someFunction"){};
+      userclass("SomeClass"), userfunction("someFunction"){createErrorMsg();};
     /*!
      * \brief constructor where the user specifies all.
      */
     ErrorHandle(std::string userclass_cand, std::string userfunction_cand, 
       std::string msg_cand) : err_msg(msg_cand), userclass(userclass_cand), 
-      userfunction(userfunction_cand){};
+      userfunction(userfunction_cand){createErrorMsg();};
     /*!
      * \brief constructor where the user specifies only the class and function.
      */
     ErrorHandle(std::string userclass_cand, std::string userfunction_cand) : 
       err_msg("something went wrong.\n"), userclass(userclass_cand), 
-      userfunction(userfunction_cand){};
+      userfunction(userfunction_cand){createErrorMsg();};
     //Destructor
     virtual ~ErrorHandle(){};
     /*!
@@ -57,9 +58,14 @@ class ErrorHandle: public std::exception{
     void checkIndexList(int max_index, const std::vector< std::vector<int> > & 
         faces);
   protected:
+    /*!
+     * \brief creates full error message.
+     */
+    void createErrorMsg();
     std::string err_msg;
     std::string userclass;
     std::string userfunction;
+    std::string full_msg;
 };
 
 } //hfox

@@ -1,6 +1,3 @@
-add_library(Catch INTERFACE)
-target_include_directories(Catch INTERFACE $ENV{CATCH_DIR}/single_include)
+find_package(Catch2 REQUIRED)
 
-add_library(eigen INTERFACE)
-target_include_directories(eigen INTERFACE 
-  $ENV{EIGEN_DIR}/include/eigen3)
+find_package(Eigen3 REQUIRED)

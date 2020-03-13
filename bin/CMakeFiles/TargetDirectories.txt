@@ -1,8 +1,0 @@
-/Users/julienfausty/workspace/personnalStuff/HyperFox/bin/bin/CMakeFiles/hyperFox.dir
-/Users/julienfausty/workspace/personnalStuff/HyperFox/bin/src/resolution/CMakeFiles/resolution.dir
-/Users/julienfausty/workspace/personnalStuff/HyperFox/bin/src/field/CMakeFiles/field.dir
-/Users/julienfausty/workspace/personnalStuff/HyperFox/bin/src/io/CMakeFiles/io.dir
-/Users/julienfausty/workspace/personnalStuff/HyperFox/bin/src/mesh/CMakeFiles/mesh.dir
-/Users/julienfausty/workspace/personnalStuff/HyperFox/bin/src/assembly/CMakeFiles/assembly.dir
-/Users/julienfausty/workspace/personnalStuff/HyperFox/bin/bin/CMakeFiles/tests_hyperFox.dir
-/Users/julienfausty/workspace/personnalStuff/HyperFox/bin/src/operation/CMakeFiles/operation.dir
