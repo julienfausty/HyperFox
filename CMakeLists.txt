@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.4)
 
 #Declaration of the project.
 
-project(HyperFox LANGUAGES CXX VERSION 0.0.1)
+project(HyperFox LANGUAGES CXX C VERSION 0.0.1)
 
 #Project configuration.
 
@@ -19,6 +19,9 @@ include(hyperFoxMacros)
 #External dependencies.
 include(hyperFoxExternalDependencies)
 
+set (CMAKE_C_COMPILER "${MPI_C_COMPILER}")
+set (CMAKE_CXX_COMPILER "${MPI_CXX_COMPILER}")
+
 #Define dependencies
 include(hyperFoxDependencies)
 
@@ -27,4 +30,4 @@ add_subdirectory (src)
 add_subdirectory(tests)
 
 #Add subdirectory for executables.
-add_subdirectory(bin)
+add_subdirectory(apps)
