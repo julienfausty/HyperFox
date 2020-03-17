@@ -5,3 +5,5 @@ file(GLOB
   )
 
 add_library(io SHARED ${files})
+
+target_link_libraries(io Boost::filesystem)

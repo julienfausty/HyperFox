@@ -1,7 +1,7 @@
 #ifndef OPERATOR_H
 #define OPERATOR_H
 
-#include "Mesh.h"
+#include "TField.h"
 
 namespace hfox{
 
@@ -17,7 +17,6 @@ class Operator{
     // Destructor
     virtual ~Operator();
   protected:
-    const Mesh * pmesh;
 }
 
 } //hfox

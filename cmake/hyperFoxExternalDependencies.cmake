@@ -20,6 +20,12 @@ find_package(PETSc COMPONENTS CXX)
 
 include_directories(${PETSC_INCLUDES})
 
+find_package(Boost REQUIRED COMPONENTS filesystem)
+
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
 find_package(Eigen3 REQUIRED)
 
 find_package(HDF5 REQUIRED)

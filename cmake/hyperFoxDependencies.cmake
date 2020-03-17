@@ -7,11 +7,11 @@ foreach(name ${hyperFoxSrcNames})
     set(hyperFoxIncludes ${hyperFoxIncludes} "${CMAKE_SOURCE_DIR}/src/${name}")
 endforeach()
 
-SUBDIRLIST(hyperFoxTestNames "${CMAKE_SOURCE_DIR}/tests")
+SUBDIRLIST(hyperFoxTestNames "${CMAKE_SOURCE_DIR}/tests/unittests")
 
 foreach(name ${hyperFoxTestNames})
   file(GLOB
     tempTestSrcFiles
-    "${CMAKE_SOURCE_DIR}/tests/${name}/*.cpp")
+    "${CMAKE_SOURCE_DIR}/tests/unittests/${name}/*.cpp")
   set(testSrcFiles ${testSrcFiles} ${tempTestSrcFiles})
 endforeach()

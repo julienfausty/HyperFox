@@ -2,6 +2,7 @@
 #define MESH_H
 
 #include <vector>
+#include <array>
 #include "Io.h"
 
 namespace hfox{
@@ -10,8 +11,7 @@ namespace hfox{
  * \brief The Mesh class.
  *
  * Any version of variable discretization must be a mesh object (space or 
- * time). This class is represents that discretization. The d 
- * variable is the dimension of the discretization.
+ * time). This class is represents that discretization. 
  */
 
 class Mesh{
@@ -20,11 +20,6 @@ class Mesh{
     /*! \brief An empty constructor for the mesh.
      */
     Mesh(){ ; };
-    /*! \brief A constructor for the mesh that takes an Input/Output object as an entry.
-     *
-     * @param io an input/output object.
-     */
-    Mesh(Io io);
     /*! \brief A constructor for the mesh with points and connectivity.
      *
      * @param point_candidate
@@ -42,37 +37,58 @@ class Mesh{
      * @param point_candidate a reference to a vector of coordinates of dimension
      * d.
      */
-    virtual void setPoints(std::vector< std::vector<double> > &
+    void setPoints(std::vector< std::vector<double> > &
         points_candidate);
     /*! \brief A method for setting the connectivity of the mesh.
      *
      * @param connectivity_candidate a reference to a vector of vectors holding the 
      * indexes of the points in the points vector.
      */
-    virtual void setConnectivity(std::vector< std::vector<int> > &
+    void setConnectivity(std::vector< std::vector<int> > &
         connectivity_candidate);
-    /*! \brief A method for geting all the nodes of the mesh.
+    /*! \brief A method for geting a const pointer to the nodes of the mesh.
      */
-    virtual const std::vector< std::vector<double> > * getPoints() const;
-    /*! \brief A method for geting the connectivity of the mesh.
+    const std::vector< std::vector<double> > * getPoints() const;
+    /*! \brief A method for geting a const pointer to the connectivity of the mesh.
      */
-    virtual const std::vector< std::vector<int> > * getConnectivity() const;
+    const std::vector< std::vector<int> > * getConnectivity() const;
     /*! \brief A method for accessing a specific node of the mesh.
      *
      * @param i index of the point one wishes to acquire. 
      */
-    virtual const std::vector<double> * getPoint(int i) const;
-    /*! \brief A method for accessing the connectivity of a node.
+    const std::vector<double> * getPoint(int i) const;
+    /*! \brief A method for accessing an individual cell.
      *
-     * @param i index of the point of which one wishes to get the connectivity 
+     * @param i index of the cell of which one wishes to get the connectivity 
      * information. 
      */
-    virtual const std::vector<int> * getPointConnectivity(int i) const;
+    const std::vector<int> * getCell(int i) const;
     // Helper functions
-    virtual int getNumberPoints() const;
-    virtual int getNumberUnits() const;
-    virtual int getDimension() const;
+    /*! \brief get the number of nodes of the mesh
+     */
+    int getNumberPoints() const;
+    /*! \brief get the number of cells of the mesh
+     */
+    int getNumberCells() const;
+    /*! \brief get the dimension of the space the mesh is discretizing.
+     */
+    int getDimension() const;
+    /*! \brief A method for geting a const pointer to the faces of the mesh.
+     *
+     *  Warning: if the faces of the mesh have not been computed, this method
+     *  will compute them!
+     */
+    const std::vector< std::array<int, 4> > * getFaces();
+    /*! \brief A method for geting a const pointer to a face of the mesh.
+     *
+     *  Warning: if the faces of the mesh have not been computed, this method
+     *  will compute them!
+     */
+    const std::array<int, 4> * getFace(int i);
   protected:
+    /*! \brief get the dimension of the space the mesh is discretizing.
+     */
+    void computeFaces();
     /*!
      * The vector of coordinates describing the nodes of the mesh.
      */
@@ -83,9 +99,18 @@ class Mesh{
      */
     std::vector< std::vector<int> > connectivity;
     /*!
+     * The vector of arrays of indexes of cells describing the faces. The structure is
+     * [ el1 faceofel1 el2 faceofel2 ]
+     */
+    std::vector< std::array<int, 4> > faces;
+    /*!
      * The dimension of the space.
      */
     int dimension;
+    /*!
+     * A boolean indicating if the faces of the mesh have been computed.
+     */
+    bool facesExist;
 }; //Mesh
 
 } //hfox
