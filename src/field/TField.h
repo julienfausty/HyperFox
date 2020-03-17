@@ -2,6 +2,7 @@
 #define TFIELD_H
 
 #include <vector>
+#include "Field.h"
 #include "Mesh.h"
 #include "Interpolator.h"
 
@@ -12,7 +13,7 @@ namespace hfox{
  */
 
 template <class T>
-class TField {
+class TField : public Field {
   public:
     //Constructors
     /*!
@@ -25,10 +26,6 @@ class TField {
     TField(Mesh * pmesh, std::vector<T> & values_candidate);
     //Destructor
     virtual ~TField();
-    /*!
-     * \brief gets a pointer to the Mesh of the field.
-     */
-    Mesh * getMesh() const;
     /*!
      * \brief gets a const pointer to the entire field.
      */
@@ -50,9 +47,11 @@ class TField {
      */
     virtual void setValue(int i, const T value_candidate);
     /*!
-     * \brief returns the length of the values vector.
+     * \brief allocates the memory necessary for a field of certain length.
+     *
+     * @param length integer with size of field
      */
-    virtual int getLength() const;
+    virtual int allocate(int length) const;
   protected:
     /*!
      * \brief function used by the constructors.
@@ -62,10 +61,6 @@ class TField {
      * \brief storage of the field.
      */
     std::vector<T> values;
-    /*!
-     * \brief pointer to the mesh the field is defined on.
-     */
-    Mesh * pmesh;
 };
 
 } //hfox

@@ -34,7 +34,7 @@ class Io{
      *
      * @param filename the name of the file on wishes to write t.
      */
-    std::string getExtension(std::string filename);
+    static std::string getExtension(std::string filename);
 
 }; //Io
 

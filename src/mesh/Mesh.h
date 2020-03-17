@@ -4,6 +4,7 @@
 #include <vector>
 #include <array>
 #include "Io.h"
+#include "ReferenceElement.h"
 
 namespace hfox{
 
@@ -19,19 +20,27 @@ class Mesh{
     //Constructors
     /*! \brief An empty constructor for the mesh.
      */
-    Mesh(){ ; };
+    Mesh();
     /*! \brief A constructor for the mesh with points and connectivity.
      *
      * @param point_candidate
      * @param connectivity_candidate a pointer to a vector of vectors holding the 
      * indexes of the points in the points vector.
      */
-    Mesh(std::vector< std::vector< double > > &  ppoint_candidate,
+    Mesh(std::vector< std::vector< double > > &  point_candidate,
         std::vector< std::vector< int > > & connectivity_candidate);
     //Destructors
     /*! \brief The destructor for the mesh.
      */
     ~Mesh();
+    /*!
+     * \brief A method for setting the reference element.
+     *
+     * @param dim the dimension of the space
+     * @param order the order of the polynomial interpolation
+     * @param geom the geometry of the elements
+     */
+    void setReferenceElement(int dim, int order, elementGeometry geom);
     /*! \brief A method for setting the points of the mesh.
      *
      * @param point_candidate a reference to a vector of coordinates of dimension
@@ -99,10 +108,23 @@ class Mesh{
      */
     std::vector< std::vector<int> > connectivity;
     /*!
-     * The vector of arrays of indexes of cells describing the faces. The structure is
+     * \brief the reference element of the mesh
+     */
+    ReferenceElement refElement;
+    /*!
+     * The vector of integers identifying the points on the boundary
+     */
+    std::vector<int> boundaryPoints;
+    /*!
+     * The vector of arrays of indexes of cells describing the inner faces. The structure is
      * [ el1 faceofel1 el2 faceofel2 ]
      */
-    std::vector< std::array<int, 4> > faces;
+    std::vector< std::array<int, 4> > innerFaces;
+    /*!
+     * The vector of arrays of indexes of cells describing the outer faces. The structure is
+     * [ el1 faceofel1 ]
+     */
+    std::vector< std::array<int, 2> > outerFaces;
     /*!
      * The dimension of the space.
      */
