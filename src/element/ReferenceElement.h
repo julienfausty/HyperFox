@@ -3,13 +3,10 @@
 
 #include <vector>
 #include <string>
+#include "ElementGeometry.h"
+#include "Curbature.h"
 
 namespace hfox{
-
-enum elementGeometry{
-  simplex,
-  orthotope
-};
 
 /*!
  * \brief The main reference element class
@@ -100,21 +97,9 @@ class ReferenceElement{
      */
     void determineNumNodes();
     /*!
-     * \brief method for determining the number of integration points
-     */
-    void determineNumIPs();
-    /*!
      * \brief method for determining the coordinates of the nodes
      */
     void determineNodes();
-    /*!
-     * \brief method for determining the coordinates of the IPs
-     */
-    void determineIPs();
-    /*!
-     * \brief method for determining the weights of the IPs
-     */
-    void determineWeightsIPs();
     /*!
      * \brief method for determining the number of faces
      */
@@ -156,13 +141,13 @@ class ReferenceElement{
      */
     int nNodes;
     /*!
-     * \brief the number of integration points
-     */
-    int nIPs;
-    /*!
      * \brief the number of faces
      */
     int nFaces;
+    /*!
+     * \brief the curbature object for the element
+     */
+    Cubature cubatureRule;
     /*!
      * \brief the nodal coordinates
      */
@@ -175,14 +160,6 @@ class ReferenceElement{
      * \brief the indexes of the inner nodes
      */
     std::vector<int> innerNodes;
-    /*!
-     * \brief coordinates of the integration points
-     */
-    std::vector< std::vector<double> > ipCoords;
-    /*!
-     * \brief weights of the integration points
-     */
-    std::vector<double> ipWeights;
     /*!
      * \brief values of shape functions at IPs (outer vector is shape funcs and inner is IPs).
      */

@@ -2,7 +2,6 @@
 #include <vector>
 #include <cmath>
 #include "ReferenceElement.h"
-#include "ErrorHandle.h"
 
 int Factorial(int n)
 {
@@ -46,10 +45,10 @@ TEST_CASE("Unittesting the ReferenceElement.", "[unit][ReferenceElement][element
       int index = dimMax*i + j;
       rfSimplexes[index] = new ReferenceElement(i, j, simplexStr);
       rfOrthotopes[index] = new ReferenceElement(i, j, orthopolytopeStr);
-      if((j != 0) and (i != 0)){
+      if(i != 0){
         numNodesSimplex[index] = 1;
-        for(int k = 1; k == j; k++){
-          numNodesSimplex[index] *= Factorial(i + k - 1)/Factorial(k);
+        for(int k = 0; k == j; k++){
+          numNodesSimplex[index] *= Factorial(i + k - 1)/(Factorial(k)*Factorial(j-k));
         }
         numNodesOrthotopes[index] = std::pow((j + 1),i);
       } else{
