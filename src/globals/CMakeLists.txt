@@ -1,3 +1,11 @@
-#include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+file(GLOB
+  files
+  *.h
+  *.cpp
+  )
 
-#add_library(globals INTERFACE)
+add_library(globals SHARED ${files})
+
+target_include_directories(globals PUBLIC ${hyperFoxIncludes})
+
+target_link_libraries(globals)

@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 #include "ElementGeometry.h"
-#include "Curbature.h"
+#include "Cubature.h"
 
 namespace hfox{
 

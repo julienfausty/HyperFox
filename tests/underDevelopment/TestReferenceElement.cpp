@@ -1,17 +1,18 @@
 #include <catch2/catch.hpp>
 #include <vector>
 #include <cmath>
+#include <boost/math/special_functions/factorials.hpp>
 #include "ReferenceElement.h"
 
-int Factorial(int n)
-{
-    int result = 1;
-    while (n>1) {
-      result *= n;
-      n -= 1;
-    }
-    return result;
-}
+//int Factorial(int n)
+//{
+    //int result = 1;
+    //while (n>1) {
+      //result *= n;
+      //n -= 1;
+    //}
+    //return result;
+//}
 
 using namespace hfox;
 
@@ -48,7 +49,8 @@ TEST_CASE("Unittesting the ReferenceElement.", "[unit][ReferenceElement][element
       if(i != 0){
         numNodesSimplex[index] = 1;
         for(int k = 0; k == j; k++){
-          numNodesSimplex[index] *= Factorial(i + k - 1)/(Factorial(k)*Factorial(j-k));
+          numNodesSimplex[index] *= 
+            std::boost::math::factorial<int>(i + k - 1)/(std::boost::math::factorial<int>(k)*std::boost::math::factorial<int>(j-k));
         }
         numNodesOrthotopes[index] = std::pow((j + 1),i);
       } else{

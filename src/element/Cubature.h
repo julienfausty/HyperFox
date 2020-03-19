@@ -3,7 +3,11 @@
 
 #include <string>
 #include <vector>
+#include <map>
+#include <tuple>
+#include <cmath>
 #include "ElementGeometry.h"
+#include "ErrorHandle.h"
 
 namespace hfox{
 
@@ -54,17 +58,9 @@ class Cubature{
     const std::vector<double> * getIPWeights() const;
   protected:
     /*!
-     * \brief method for determining the number of integration points
+     * \brief method for determining which rule to import
      */
-    void determineNumIPs();
-    /*!
-     * \brief method for determining the coordinates of the IPs
-     */
-    void determineIPs();
-    /*!
-     * \brief method for determining the weights of the IPs
-     */
-    void determineWeightsIPs();
+    void determineRule();
     /*!
      * \brief the space dimension of the element
      */
@@ -89,6 +85,37 @@ class Cubature{
      * \brief weights of the integration points
      */
     std::vector<double> ipWeights;
+    /*!
+     * \brief a class bool that follows if the cubature rules have been initialized
+     */
+    static bool rulesExist;
+    /*!
+     * \brief a static method that initializes all the static variables
+     */
+    static void initializeDatabase();
+    /*!
+     * \brief the maximal implemented dimension
+     */
+    static int maxDim;
+    /*!
+     * \brief the maximal implemented orders for all dimensions
+     */
+    static std::map<int, int> maxOrderMap;
+    /*!
+     * \brief the database with all the cubature rules.
+     *
+     * structure: key: (dim, polynomial Order, elementGeometry)
+     *            value: nIPs
+     */
+    static std::map<std::tuple<int, int, elementGeometry>, int> nIPMap;
+    /*!
+     * \brief the database with all the cubature rules.
+     *
+     * structure: key: (dim, nIPs, elementGeometry)
+     *            value: (IPcoords, IPweights)
+     */
+    static std::map<std::tuple<int, int, elementGeometry>,
+      std::tuple<std::vector< std::vector<double> >, std::vector<double> > > rulesDatabase;
 }; //Cubature
 
 }//hfox

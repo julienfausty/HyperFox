@@ -7,7 +7,7 @@
 
 using namespace hfox;
 
-TEST_CASE("Tests for ErrorHandle class.", "[ErrorHandle][io][checkers][unit]"){
+TEST_CASE("Tests for ErrorHandle class.", "[ErrorHandle][globals][checkers][unit]"){
   std::string err_msg("Test error message.");
   std::string err_func("testErrFunc");
   std::string err_class("TestErrClass");
