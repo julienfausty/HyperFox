@@ -6,6 +6,7 @@
 #include <map>
 #include <tuple>
 #include <cmath>
+#include <iostream>
 #include "ElementGeometry.h"
 #include "ErrorHandle.h"
 

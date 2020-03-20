@@ -55,6 +55,14 @@ class ReferenceElement{
      */
     const std::vector< std::vector<double> > * getNodes() const;
     /*!
+     * \brief get a const pointer to the positions of the face nodes by face in the nodes list
+     */
+    const std::vector< std::vector<int> > * getFaceNodes() const;
+    /*!
+     * \brief get a const pointer to the positions of the inner nodes in the nodes list
+     */
+    const std::vector< std::vector<int> > * getInnerNodes() const;
+    /*!
      * \brief get a const pointer to the IP coordinates
      */
     const std::vector< std::vector<double> > * getIPCoords() const;
@@ -63,15 +71,15 @@ class ReferenceElement{
      */
     const std::vector<double> * getIPWeights() const;
     /*!
-     * \brief get a const pointer to the IP shape function values
+     * \brief get a const pointer to the IP shape function values (inner vector are the shape funcs and outer vector is IPs)
      */
     const std::vector< std::vector<double> > * getIPShapeFunctions() const;
     /*!
-     * \brief get a const pointer to the IP derivative shape function values
+     * \brief get a const pointer to the IP derivative shape function values (inner vectors are the shape funcs and outer vector is IPs)
      */
     const std::vector< std::vector< std::vector<double> > > * getIPDerivShapeFunctions() const;
     /*!
-     * \brief get a const pointer to the nodal derivative shape function values
+     * \brief get a const pointer to the nodal derivative shape function values (inner vectors are the shape funcs and outer vector are nodes)
      */
     const std::vector< std::vector< std::vector<double> > > * getDerivShapeFunctions() const;
     /*!
@@ -83,14 +91,14 @@ class ReferenceElement{
      *
      * @param point reference to a vector of coordinates in reference space.
      */
-    std::vector<double> interpolate(std::vector<double> & point) const;
+    std::vector<double> interpolate(const std::vector<double> & point) const;
     /*!
      * \brief a method for interpolating derivatives of shape functions at a given point
      *
      * @param point reference to a vector of coordinates in reference space.
      * @param degree degree of derivative
      */
-    std::vector<double> interpolateDeriv(std::vector<double> & point, int degree) const;
+    std::vector< std::vector<double> > interpolateDeriv(const std::vector<double> & point, int degree) const;
   protected:
     /*!
      * \brief method for determining the number of nodes

@@ -79,8 +79,9 @@ namespace hfox{
     std::vector<double> * tempPvec;
     int index;
 
+
     //dimension 0
-    for(int j = 0; j == (maxOrderMap[0]+1); j++){
+    for(int j = 0; j < (maxOrderMap[0]+1); j++){
       nIPMap[cubDataKey(0, j, simplex)] = 0;
       nIPMap[cubDataKey(0, j, orthotope)] = 0;
     }
@@ -88,9 +89,10 @@ namespace hfox{
         std::vector<double>() );
     rulesDatabase[cubDataKey(0, 0, orthotope)] = cubDataVal(std::vector< std::vector<double> >(),
         std::vector<double>() );
+
     //all order 0
     std::vector<double> volumeSimplex = {0.0, 2.0, 2.0, 4.0/3.0};
-    for(int i = 1; i == (maxDim + 1); i++){
+    for(int i = 1; i < (maxDim + 1); i++){
       std::vector<double> pointO(i, 0.0);
       std::vector<double> weightO(1, std::pow(2,i));
       nIPMap[cubDataKey(i, 0, orthotope)] = 1;
@@ -100,10 +102,11 @@ namespace hfox{
       nIPMap[cubDataKey(i, 0, simplex)] = 1;
       rulesDatabase[cubDataKey(i, 1, simplex)] = cubDataVal(std::vector< std::vector<double> >(1, pointS), weightS);
     }
+
     //dimension 1
     tempDim = 1;
     //analytical solution for nIPs needed for polynomial order
-    for(int j = 1; j == (maxOrderMap[tempDim] + 1); j++){
+    for(int j = 1; j < (maxOrderMap[tempDim] + 1); j++){
       nIPMap[cubDataKey(1, j, orthotope)] = std::ceil((j+1.0)/2.0);
       nIPMap[cubDataKey(1, j, simplex)] = std::ceil((j+1.0)/2.0);
     }
@@ -115,6 +118,7 @@ namespace hfox{
     tempWeights[0] = 2.0;
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //nIP 2
     tempNumIPs = 2;
     tempCoords.resize(tempNumIPs);
@@ -124,6 +128,7 @@ namespace hfox{
     tempWeights[0] = 1.0; tempWeights[1] = 1.0;
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //nIP 3
     tempNumIPs = 3;
     tempCoords.resize(tempNumIPs);
@@ -134,6 +139,7 @@ namespace hfox{
     tempWeights[0] = 8.0/9.0; tempWeights[1] = 5.0/9.0; tempWeights[2] = 5.0/9.0;
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //nIP 4
     tempNumIPs = 4;
     tempCoords.resize(tempNumIPs);
@@ -143,9 +149,10 @@ namespace hfox{
     tempCoords[2] = std::vector<double>(1, std::sqrt(3.0/7.0 + (2.0/7.0)*std::sqrt(6.0/5.0)));
     tempCoords[3] = std::vector<double>(1, -std::sqrt(3.0/7.0 + (2.0/7.0)*std::sqrt(6.0/5.0)));
     tempWeights[0] = (18.0 + std::sqrt(30.0))/36.0; tempWeights[1] = tempWeights[0];
-    tempWeights[2] = (18.0 - std::sqrt(30.0))/36.0; tempWeights[3] = tempWeights[1];
+    tempWeights[2] = (18.0 - std::sqrt(30.0))/36.0; tempWeights[3] = tempWeights[2];
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //nIP 5
     tempNumIPs = 5;
     tempCoords.resize(tempNumIPs);
@@ -160,21 +167,23 @@ namespace hfox{
     tempWeights[3] = (322.0 - 13.0*std::sqrt(70.0))/900.0; tempWeights[4] = tempWeights[3];
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //nIP 6
     tempNumIPs = 6;
     tempCoords.resize(tempNumIPs);
     tempWeights.resize(tempNumIPs);
-    tempCoords[0] = std::vector<double>(1, 0.6612093864662645);
-    tempCoords[1] = std::vector<double>(1, -0.6612093864662645);
-    tempCoords[2] = std::vector<double>(1, -0.2386191860831969);
-    tempCoords[3] = std::vector<double>(1, 0.2386191860831969);
-    tempCoords[4] = std::vector<double>(1, -0.9324695142031521);
-    tempCoords[5] = std::vector<double>(1, 0.9324695142031521);
-    tempWeights[0] = 0.3607615730481386; tempWeights[1] = tempWeights[0];
-    tempWeights[2] = 0.4679139345726910; tempWeights[3] = tempWeights[2];
-    tempWeights[4] = 0.1713244923791704; tempWeights[5] = tempWeights[4];
+    tempCoords[0] = std::vector<double>(1, 0.661209386466264513661);
+    tempCoords[1] = std::vector<double>(1, -0.661209386466264513661);
+    tempCoords[2] = std::vector<double>(1, -0.2386191860831969086305);
+    tempCoords[3] = std::vector<double>(1, 0.2386191860831969086305);
+    tempCoords[4] = std::vector<double>(1, -0.9324695142031520278123);
+    tempCoords[5] = std::vector<double>(1, 0.9324695142031520278123);
+    tempWeights[0] = 0.3607615730481386075698; tempWeights[1] = tempWeights[0];
+    tempWeights[2] = 0.4679139345726910473899; tempWeights[3] = tempWeights[2];
+    tempWeights[4] = 0.1713244923791703450403; tempWeights[5] = tempWeights[4];
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //nIP 7
     tempNumIPs = 7;
     tempCoords.resize(tempNumIPs);
@@ -192,6 +201,7 @@ namespace hfox{
     tempWeights[5] = 0.1294849661688697; tempWeights[6] = tempWeights[5];
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //nIP 8
     tempNumIPs = 8;
     tempCoords.resize(tempNumIPs);
@@ -210,6 +220,7 @@ namespace hfox{
     tempWeights[6] = 0.1012285362903763; tempWeights[7] = tempWeights[6];
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //nIP 9
     tempNumIPs = 9;
     tempCoords.resize(tempNumIPs);
@@ -230,6 +241,7 @@ namespace hfox{
     tempWeights[7] = 0.2606106964029354; tempWeights[8] = tempWeights[7];
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //nIP 10
     tempNumIPs = 10;
     tempCoords.resize(tempNumIPs);
@@ -251,6 +263,7 @@ namespace hfox{
     tempWeights[8] = 0.0666713443086881; tempWeights[9] = tempWeights[8];
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //nIP 11
     tempNumIPs = 11;
     tempCoords.resize(tempNumIPs);
@@ -274,6 +287,7 @@ namespace hfox{
     tempWeights[9] = 0.0556685671161737; tempWeights[10] = tempWeights[9];
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     // dimension 2
     tempDim = 2;
     // order 1
@@ -282,7 +296,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 1, simplex)] = 1;
     // nIP 1
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -292,13 +306,14 @@ namespace hfox{
     tempCoords[0][0] = -1.0/3.0; tempCoords[0][1] = -1.0/3.0;
     tempWeights[0] = 2.0;
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+
     //order 2 simplex
     tempNumIPs = 3;
     nIPMap[cubDataKey(2, 2, simplex)] = tempNumIPs;
     // nIP 3
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
-      tempCoords[i].resize(tempDim);
+    for(int i = 0; i < tempNumIPs; i++){
+      (tempCoords[i]).resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
     tempCoords[0][0] = -2.0/3.0; tempCoords[0][1] = 1.0/3.0;
@@ -306,13 +321,14 @@ namespace hfox{
     tempCoords[2][0] = -2.0/3.0; tempCoords[2][1] = -2.0/3.0;
     tempWeights[0] = 2.0/3.0; tempWeights[1] = tempWeights[0]; tempWeights[2] = tempWeights[0];
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+
     //order 2 and 3 orthotope
     tempNumIPs = 4;
     nIPMap[cubDataKey(2, 2, orthotope)] = tempNumIPs;
     nIPMap[cubDataKey(2, 3, orthotope)] = tempNumIPs;
     // nIP 4
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -323,13 +339,14 @@ namespace hfox{
     tempWeights[0] = 1.0; tempWeights[1] = tempWeights[0]; 
     tempWeights[2] = tempWeights[0]; tempWeights[3] = tempWeights[0];
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+
     //order 3 and 4 simplex
     tempNumIPs = 6;
     nIPMap[cubDataKey(2, 3, simplex)] = tempNumIPs;
     nIPMap[cubDataKey(2, 4, simplex)] = tempNumIPs;
     // nIP 6
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -341,8 +358,8 @@ namespace hfox{
  0.63369514596091702616171414639119396858,  -0.81684757298045851308085707319559698429,   0.21990348731064373527665264980042105793,
 -0.81684757298045851308085707319559698429,  -0.81684757298045851308085707319559698429,   0.21990348731064373527665264980042105793});
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -351,13 +368,14 @@ namespace hfox{
     }
     delete tempPvec;
     rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+
     //order 4 and 5 orthotope
     tempNumIPs = 8;
     nIPMap[cubDataKey(2, 4, orthotope)] = tempNumIPs;
     nIPMap[cubDataKey(2, 5, orthotope)] = tempNumIPs;
     // nIP 8
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -372,8 +390,8 @@ namespace hfox{
  -0.8819171036881968635005385845464201419,   -0.8819171036881968635005385845464201419,    0.1836734693877551020408163265306122449}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -387,7 +405,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 5, simplex)] = tempNumIPs;
     // nIP 7
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -401,8 +419,8 @@ namespace hfox{
 -0.059715871789769820459117580973104798968,  -0.059715871789769820459117580973104798968,    0.26478830557701236147529877566630399935}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -417,7 +435,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 7, orthotope)] = tempNumIPs;
     // nIP 12
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -436,8 +454,8 @@ namespace hfox{
  -0.3805544332083156563791063590863941355,   -0.3805544332083156563791063590863941355,   0.52059291666739445713991943204673116603}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -451,7 +469,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 6, simplex)] = tempNumIPs;
     // nIP 12
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -470,8 +488,8 @@ namespace hfox{
  -0.89370990031036610529350065673720370601,   -0.37929509793243118916678453208689569359,    0.16570215123674715038710691284088490796}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -485,7 +503,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 7, simplex)] = tempNumIPs;
     // nIP 15
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -507,8 +525,8 @@ namespace hfox{
  -0.90592671069480953331718004928623004897,   -0.60263337040529682139529859997000987842,    0.11175746580639956167963262884202819059}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -522,7 +540,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 8, simplex)] = tempNumIPs;
     // nIP 16
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -545,8 +563,8 @@ namespace hfox{
  -0.98321044518008478932557233092141110162,   -0.47377434073072377315642842743071282442,    0.05446062834886998852968938014781784832}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -560,7 +578,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 9, simplex)] = tempNumIPs;
     // nIP 19
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -586,8 +604,8 @@ namespace hfox{
  -0.92632317589052743273036480243322979538,   -0.55607402167846860864979494461361785949,   0.086567078754578754578754578754578754579}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -602,7 +620,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 9, orthotope)] = tempNumIPs;
     // nIP 20
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -629,8 +647,8 @@ namespace hfox{
  -0.3448720253644035761712304181246973037,   -0.9186204410567222596554701791427794163,   0.14445222326030678901782819927444760048}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -644,7 +662,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 10, simplex)] = tempNumIPs;
     // nIP 25
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -676,8 +694,8 @@ namespace hfox{
 -0.94326466932012312149912848884373958881,  -0.67259653252563500866077131691974862932,  0.050595515414576768778085581365666435125}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -692,7 +710,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 11, orthotope)] = tempNumIPs;
     // nIP 28
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -727,8 +745,8 @@ namespace hfox{
 -0.93556787148759108135480212161830515337,  -0.34620720004764544118747320724330043979,   0.10162134051961130896131640398557349419}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -742,7 +760,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 11, simplex)] = tempNumIPs;
     // nIP 28
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -777,8 +795,8 @@ namespace hfox{
   -0.90797899966914008822008044741026548976,    -0.42083774872458830658701490525476608254,    0.080664953281001105168489835817596259842}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -792,7 +810,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 12, simplex)] = tempNumIPs;
     // nIP 33
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -832,8 +850,8 @@ namespace hfox{
   0.70267558502048008323600722086411689719,   -0.95723501948765882081169097035888157506,   0.030167355153022877171701180925533825614}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -848,7 +866,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 13, orthotope)] = tempNumIPs;
     // nIP 37
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -892,8 +910,8 @@ namespace hfox{
 -0.86442760926706191157507267741750728791,  -0.33353988116478310285167199804895857823,   0.11357512636435423536938725920919955133}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -907,7 +925,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 13, simplex)] = tempNumIPs;
     // nIP 37
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -951,8 +969,8 @@ namespace hfox{
 -0.98974722179523526288134119331774178805,   -0.4549683644531406676398990712918263092,  0.019181362007086525445190180332221782772}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -966,7 +984,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 14, simplex)] = tempNumIPs;
     // nIP 42
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1015,8 +1033,8 @@ namespace hfox{
  -0.99746333813425594982550719780901461465,   -0.76205100460608630920363607614018903735,   0.010020457677001343539720186164978232925}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -1031,7 +1049,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 15, orthotope)] = tempNumIPs;
     // nIP 48
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1086,8 +1104,8 @@ namespace hfox{
  -0.95574251980951170852387507604700262081,   -0.26484415587231617710014274826830856062,   0.055845482492312018840681162505812880996}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -1101,7 +1119,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 15, simplex)] = tempNumIPs;
     // nIP 49
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1157,8 +1175,8 @@ namespace hfox{
  -0.32209877704944562157081399065909603587,   -0.80840655270478280733288987807441653919,   0.062630952569938568823485827212302985766}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -1172,7 +1190,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 16, simplex)] = tempNumIPs;
     // nIP 55
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1234,8 +1252,8 @@ namespace hfox{
       -0.988127299966355460185036064778683968,      -0.62511643503243582471782458783544540958,      0.010782374233697622806764075031711751212}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -1250,7 +1268,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 17, orthotope)] = tempNumIPs;
     // nIP 60
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1317,8 +1335,8 @@ namespace hfox{
  -0.30280748178886139816768835788736238796,    -0.9870947070447678254568263327892903071,   0.020780996655963043308681250790566264232}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -1332,7 +1350,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 17, simplex)] = tempNumIPs;
     // nIP 60
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1399,8 +1417,8 @@ namespace hfox{
  -0.68498904414626018994477816895259857135,   -0.40156211504605935826451863042788609622,   0.052343251870673974514245787611602525856}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -1414,7 +1432,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 18, simplex)] = tempNumIPs;
     // nIP 67
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1488,8 +1506,8 @@ namespace hfox{
  -0.75882460967215071364642989357871249414,   -0.33301294110023848597095814857314183865,   0.050964350623648878943912767860515151418}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -1504,7 +1522,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 19, orthotope)] = tempNumIPs;
     // nIP 72
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1583,8 +1601,8 @@ namespace hfox{
  -0.98844653068397375168746156789890756035,   -0.80167158471859684259236358940451923912,  0.0098894009347434843812884009858441317495}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -1598,7 +1616,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 19, simplex)] = tempNumIPs;
     // nIP 73
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1678,8 +1696,8 @@ namespace hfox{
  -0.87982744935538660401520750808428413826,   -0.98044794839822368929736854207175396203,  0.0066544027257187765179463625108825701742}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -1693,7 +1711,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 20, simplex)] = tempNumIPs;
     // nIP 79
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1779,8 +1797,8 @@ namespace hfox{
  -0.97852557428797782533895087798420844581,   -0.43883717715266953032502693891187358648,   0.014312800953830741459725346431171736663}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
@@ -1795,7 +1813,7 @@ namespace hfox{
     nIPMap[cubDataKey(2, 21, orthotope)] = tempNumIPs;
     // nIP 85
     tempCoords.resize(tempNumIPs);
-    for(int i = 0; i == tempNumIPs; i++){
+    for(int i = 0; i < tempNumIPs; i++){
       tempCoords[i].resize(tempDim);
     }
     tempWeights.resize(tempNumIPs);
@@ -1887,8 +1905,821 @@ namespace hfox{
  -0.98401714848959892866013755872564589893,  -0.091469600922291296668443828573471880948,   0.010512304158251076525756742074316914114}
 );
     index = 0;
-    for(int j = 0; j == tempNumIPs; j++){
-      for(int i = 0; i == tempDim; i++){
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+    //dimension 3
+    tempDim = 3;
+    //order 1 orthotope
+    tempNumIPs = 1;
+    nIPMap[cubDataKey(tempDim, 1, orthotope)] = tempNumIPs;
+    // nIP 1
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {0,  0,  0,  8}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+    //order 1 simplex
+    tempNumIPs = 1;
+    nIPMap[cubDataKey(tempDim, 1, simplex)] = tempNumIPs;
+    // nIP 1
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.5,                                     -0.5,                                     -0.5,  1.3333333333333333333333333333333333333}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+    //order 2 simplex
+    tempNumIPs = 4;
+    nIPMap[cubDataKey(tempDim, 2, simplex)] = tempNumIPs;
+    // nIP 4
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.72360679774997896964091736687312762354,  -0.72360679774997896964091736687312762354,   0.17082039324993690892275210061938287063,   0.33333333333333333333333333333333333333,
+-0.72360679774997896964091736687312762354,   0.17082039324993690892275210061938287063,  -0.72360679774997896964091736687312762354,   0.33333333333333333333333333333333333333,
+ 0.17082039324993690892275210061938287063,  -0.72360679774997896964091736687312762354,  -0.72360679774997896964091736687312762354,   0.33333333333333333333333333333333333333,
+-0.72360679774997896964091736687312762354,  -0.72360679774997896964091736687312762354,  -0.72360679774997896964091736687312762354,   0.33333333333333333333333333333333333333}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+    //order 2 and 3 orthotope
+    tempNumIPs = 6;
+    nIPMap[cubDataKey(tempDim, 2, orthotope)] = tempNumIPs;
+    nIPMap[cubDataKey(tempDim, 3, orthotope)] = tempNumIPs;
+    // nIP 6
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-1,                                        0,                                        0,  1.3333333333333333333333333333333333333,
+                                      0,                                        0,                                        1,  1.3333333333333333333333333333333333333,
+                                      0,                                        1,                                        0,  1.3333333333333333333333333333333333333,
+                                      0,                                        0,                                       -1,  1.3333333333333333333333333333333333333,
+                                      1,                                        0,                                        0,  1.3333333333333333333333333333333333333,
+                                      0,                                       -1,                                        0,  1.3333333333333333333333333333333333333}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+    //order 3 simplex
+    tempNumIPs = 8;
+    nIPMap[cubDataKey(tempDim, 3, simplex)] = tempNumIPs;
+    // nIP 8
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.34367339496723662642072827083693243093,  -0.34367339496723662642072827083693243093,   -0.9689798150982901207378151874892027072,   0.18162379004944980942342872025562069427,
+-0.34367339496723662642072827083693243093,   -0.9689798150982901207378151874892027072,  -0.34367339496723662642072827083693243093,   0.18162379004944980942342872025562069427,
+ -0.9689798150982901207378151874892027072,  -0.34367339496723662642072827083693243093,  -0.34367339496723662642072827083693243093,   0.18162379004944980942342872025562069427,
+-0.34367339496723662642072827083693243093,  -0.34367339496723662642072827083693243093,  -0.34367339496723662642072827083693243093,   0.18162379004944980942342872025562069427,
+-0.78390550020314279176487322158837338344,  -0.78390550020314279176487322158837338344,   0.35171650060942837529461966476512015033,   0.15170954328388352390990461307771263906,
+-0.78390550020314279176487322158837338344,   0.35171650060942837529461966476512015033,  -0.78390550020314279176487322158837338344,   0.15170954328388352390990461307771263906,
+ 0.35171650060942837529461966476512015033,  -0.78390550020314279176487322158837338344,  -0.78390550020314279176487322158837338344,   0.15170954328388352390990461307771263906,
+-0.78390550020314279176487322158837338344,  -0.78390550020314279176487322158837338344,  -0.78390550020314279176487322158837338344,   0.15170954328388352390990461307771263906}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+    //order 4 and 5 orthotope
+    tempNumIPs = 14;
+    nIPMap[cubDataKey(tempDim, 4, orthotope)] = tempNumIPs;
+    nIPMap[cubDataKey(tempDim, 5, orthotope)] = tempNumIPs;
+    // nIP 14
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.79582242575422146326454882047613584616,                                          0,                                          0,   0.88642659279778393351800554016620498615,
+                                        0,                                          0,   0.79582242575422146326454882047613584616,   0.88642659279778393351800554016620498615,
+                                        0,   0.79582242575422146326454882047613584616,                                          0,   0.88642659279778393351800554016620498615,
+                                        0,                                          0,  -0.79582242575422146326454882047613584616,   0.88642659279778393351800554016620498615,
+ 0.79582242575422146326454882047613584616,                                          0,                                          0,   0.88642659279778393351800554016620498615,
+                                        0,  -0.79582242575422146326454882047613584616,                                          0,   0.88642659279778393351800554016620498615,
+ 0.75878691063932814626903427811226742764,  -0.75878691063932814626903427811226742764,  -0.75878691063932814626903427811226742764,   0.33518005540166204986149584487534626039,
+-0.75878691063932814626903427811226742764,   0.75878691063932814626903427811226742764,   0.75878691063932814626903427811226742764,   0.33518005540166204986149584487534626039,
+-0.75878691063932814626903427811226742764,   0.75878691063932814626903427811226742764,  -0.75878691063932814626903427811226742764,   0.33518005540166204986149584487534626039,
+-0.75878691063932814626903427811226742764,  -0.75878691063932814626903427811226742764,  -0.75878691063932814626903427811226742764,   0.33518005540166204986149584487534626039,
+-0.75878691063932814626903427811226742764,  -0.75878691063932814626903427811226742764,   0.75878691063932814626903427811226742764,   0.33518005540166204986149584487534626039,
+ 0.75878691063932814626903427811226742764,   0.75878691063932814626903427811226742764,  -0.75878691063932814626903427811226742764,   0.33518005540166204986149584487534626039,
+ 0.75878691063932814626903427811226742764,   0.75878691063932814626903427811226742764,   0.75878691063932814626903427811226742764,   0.33518005540166204986149584487534626039,
+ 0.75878691063932814626903427811226742764,  -0.75878691063932814626903427811226742764,   0.75878691063932814626903427811226742764,   0.33518005540166204986149584487534626039}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+    //order 4 and 5 simplex
+    tempNumIPs = 14;
+    nIPMap[cubDataKey(tempDim, 4, simplex)] = tempNumIPs;
+    nIPMap[cubDataKey(tempDim, 5, simplex)] = tempNumIPs;
+    // nIP 14
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.37822816147339878040530853247308433401,   -0.37822816147339878040530853247308433401,   -0.86531551557980365878407440258074699796,    0.15025056762402113439891420311104844508,
+ -0.37822816147339878040530853247308433401,   -0.86531551557980365878407440258074699796,   -0.37822816147339878040530853247308433401,    0.15025056762402113439891420311104844508,
+ -0.86531551557980365878407440258074699796,   -0.37822816147339878040530853247308433401,   -0.37822816147339878040530853247308433401,    0.15025056762402113439891420311104844508,
+ -0.37822816147339878040530853247308433401,   -0.37822816147339878040530853247308433401,   -0.37822816147339878040530853247308433401,    0.15025056762402113439891420311104844508,
+ -0.81452949937821754719535217252593878951,   -0.81452949937821754719535217252593878951,    0.44358849813465264158605651757781636853,   0.097990724155149266058280273981770004697,
+ -0.81452949937821754719535217252593878951,    0.44358849813465264158605651757781636853,   -0.81452949937821754719535217252593878951,   0.097990724155149266058280273981770004697,
+  0.44358849813465264158605651757781636853,   -0.81452949937821754719535217252593878951,   -0.81452949937821754719535217252593878951,   0.097990724155149266058280273981770004697,
+ -0.81452949937821754719535217252593878951,   -0.81452949937821754719535217252593878951,   -0.81452949937821754719535217252593878951,   0.097990724155149266058280273981770004697,
+ -0.90899259174870070101623894744132112187,  -0.091007408251299298983761052558678878131,  -0.091007408251299298983761052558678878131,    0.05672802770277528858409257082700992237,
+-0.091007408251299298983761052558678878131,   -0.90899259174870070101623894744132112187,  -0.091007408251299298983761052558678878131,    0.05672802770277528858409257082700992237,
+ -0.90899259174870070101623894744132112187,   -0.90899259174870070101623894744132112187,  -0.091007408251299298983761052558678878131,    0.05672802770277528858409257082700992237,
+ -0.90899259174870070101623894744132112187,  -0.091007408251299298983761052558678878131,   -0.90899259174870070101623894744132112187,    0.05672802770277528858409257082700992237,
+-0.091007408251299298983761052558678878131,   -0.90899259174870070101623894744132112187,   -0.90899259174870070101623894744132112187,    0.05672802770277528858409257082700992237,
+-0.091007408251299298983761052558678878131,  -0.091007408251299298983761052558678878131,   -0.90899259174870070101623894744132112187,    0.05672802770277528858409257082700992237}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+    //order 6 simplex
+    tempNumIPs = 24;
+    nIPMap[cubDataKey(tempDim, 6, simplex)] = tempNumIPs;
+    // nIP 24
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.91865208293077729376884110208717988144,  -0.91865208293077729376884110208717988144,   0.75595624879233188130652330626153964433,  0.013436281407094190597350983261249151023,
+-0.91865208293077729376884110208717988144,   0.75595624879233188130652330626153964433,  -0.91865208293077729376884110208717988144,  0.013436281407094190597350983261249151023,
+ 0.75595624879233188130652330626153964433,  -0.91865208293077729376884110208717988144,  -0.91865208293077729376884110208717988144,  0.013436281407094190597350983261249151023,
+-0.91865208293077729376884110208717988144,  -0.91865208293077729376884110208717988144,  -0.91865208293077729376884110208717988144,  0.013436281407094190597350983261249151023,
+-0.35532421971544897931201105847501574951,  -0.35532421971544897931201105847501574951,  -0.93402734085365306206396682457495275146,  0.073809575391539629460204370471634688549,
+-0.35532421971544897931201105847501574951,  -0.93402734085365306206396682457495275146,  -0.35532421971544897931201105847501574951,  0.073809575391539629460204370471634688549,
+-0.93402734085365306206396682457495275146,  -0.35532421971544897931201105847501574951,  -0.35532421971544897931201105847501574951,  0.073809575391539629460204370471634688549,
+-0.35532421971544897931201105847501574951,  -0.35532421971544897931201105847501574951,  -0.35532421971544897931201105847501574951,  0.073809575391539629460204370471634688549,
+ -0.5707942574816959414223215612274300172,   -0.5707942574816959414223215612274300172,  -0.28761722755491217573303531631770994839,  0.053230333677556656132920836743306636618,
+ -0.5707942574816959414223215612274300172,  -0.28761722755491217573303531631770994839,   -0.5707942574816959414223215612274300172,  0.053230333677556656132920836743306636618,
+-0.28761722755491217573303531631770994839,   -0.5707942574816959414223215612274300172,   -0.5707942574816959414223215612274300172,  0.053230333677556656132920836743306636618,
+ -0.5707942574816959414223215612274300172,   -0.5707942574816959414223215612274300172,   -0.5707942574816959414223215612274300172,  0.053230333677556656132920836743306636618,
+ 0.20601132958329828273486227812187937257,  -0.87267799624996494940152894478854603924,  -0.46065533708336838393180438854478729409,  0.064285714285714285714285714285714285714,
+ 0.20601132958329828273486227812187937257,  -0.87267799624996494940152894478854603924,  -0.87267799624996494940152894478854603924,  0.064285714285714285714285714285714285714,
+-0.87267799624996494940152894478854603924,  -0.87267799624996494940152894478854603924,   0.20601132958329828273486227812187937257,  0.064285714285714285714285714285714285714,
+-0.46065533708336838393180438854478729409,   0.20601132958329828273486227812187937257,  -0.87267799624996494940152894478854603924,  0.064285714285714285714285714285714285714,
+-0.87267799624996494940152894478854603924,  -0.46065533708336838393180438854478729409,   0.20601132958329828273486227812187937257,  0.064285714285714285714285714285714285714,
+-0.87267799624996494940152894478854603924,   0.20601132958329828273486227812187937257,  -0.87267799624996494940152894478854603924,  0.064285714285714285714285714285714285714,
+-0.46065533708336838393180438854478729409,  -0.87267799624996494940152894478854603924,   0.20601132958329828273486227812187937257,  0.064285714285714285714285714285714285714,
+-0.87267799624996494940152894478854603924,  -0.46065533708336838393180438854478729409,  -0.87267799624996494940152894478854603924,  0.064285714285714285714285714285714285714,
+-0.87267799624996494940152894478854603924,  -0.87267799624996494940152894478854603924,  -0.46065533708336838393180438854478729409,  0.064285714285714285714285714285714285714,
+-0.87267799624996494940152894478854603924,   0.20601132958329828273486227812187937257,  -0.46065533708336838393180438854478729409,  0.064285714285714285714285714285714285714,
+-0.46065533708336838393180438854478729409,  -0.87267799624996494940152894478854603924,  -0.87267799624996494940152894478854603924,  0.064285714285714285714285714285714285714,
+ 0.20601132958329828273486227812187937257,  -0.46065533708336838393180438854478729409,  -0.87267799624996494940152894478854603924,  0.064285714285714285714285714285714285714}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+    // order 6 and 7 orthotope
+    tempNumIPs = 34;
+    nIPMap[cubDataKey(tempDim, 6, orthotope)] = tempNumIPs;
+    nIPMap[cubDataKey(tempDim, 7, orthotope)] = tempNumIPs;
+    // nIP 34
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.98808616118867654860459729594655654482,                                          0,                                          0,   0.20012989098356700695575850638756794678,
+                                        0,                                          0,   0.98808616118867654860459729594655654482,   0.20012989098356700695575850638756794678,
+                                        0,   0.98808616118867654860459729594655654482,                                          0,   0.20012989098356700695575850638756794678,
+                                        0,                                          0,  -0.98808616118867654860459729594655654482,   0.20012989098356700695575850638756794678,
+ 0.98808616118867654860459729594655654482,                                          0,                                          0,   0.20012989098356700695575850638756794678,
+                                        0,  -0.98808616118867654860459729594655654482,                                          0,   0.20012989098356700695575850638756794678,
+ 0.40795516735831936633080916251520586856,  -0.40795516735831936633080916251520586856,  -0.40795516735831936633080916251520586856,   0.45715385606985274296912190785204854361,
+-0.40795516735831936633080916251520586856,   0.40795516735831936633080916251520586856,   0.40795516735831936633080916251520586856,   0.45715385606985274296912190785204854361,
+-0.40795516735831936633080916251520586856,   0.40795516735831936633080916251520586856,  -0.40795516735831936633080916251520586856,   0.45715385606985274296912190785204854361,
+-0.40795516735831936633080916251520586856,  -0.40795516735831936633080916251520586856,  -0.40795516735831936633080916251520586856,   0.45715385606985274296912190785204854361,
+-0.40795516735831936633080916251520586856,  -0.40795516735831936633080916251520586856,   0.40795516735831936633080916251520586856,   0.45715385606985274296912190785204854361,
+ 0.40795516735831936633080916251520586856,   0.40795516735831936633080916251520586856,  -0.40795516735831936633080916251520586856,   0.45715385606985274296912190785204854361,
+ 0.40795516735831936633080916251520586856,   0.40795516735831936633080916251520586856,   0.40795516735831936633080916251520586856,   0.45715385606985274296912190785204854361,
+ 0.40795516735831936633080916251520586856,  -0.40795516735831936633080916251520586856,   0.40795516735831936633080916251520586856,   0.45715385606985274296912190785204854361,
+ 0.78110282100411850665136814715928740203,  -0.78110282100411850665136814715928740203,  -0.78110282100411850665136814715928740203,   0.15379614006595869408326783499527494637,
+-0.78110282100411850665136814715928740203,   0.78110282100411850665136814715928740203,   0.78110282100411850665136814715928740203,   0.15379614006595869408326783499527494637,
+-0.78110282100411850665136814715928740203,   0.78110282100411850665136814715928740203,  -0.78110282100411850665136814715928740203,   0.15379614006595869408326783499527494637,
+-0.78110282100411850665136814715928740203,  -0.78110282100411850665136814715928740203,  -0.78110282100411850665136814715928740203,   0.15379614006595869408326783499527494637,
+-0.78110282100411850665136814715928740203,  -0.78110282100411850665136814715928740203,   0.78110282100411850665136814715928740203,   0.15379614006595869408326783499527494637,
+ 0.78110282100411850665136814715928740203,   0.78110282100411850665136814715928740203,  -0.78110282100411850665136814715928740203,   0.15379614006595869408326783499527494637,
+ 0.78110282100411850665136814715928740203,   0.78110282100411850665136814715928740203,   0.78110282100411850665136814715928740203,   0.15379614006595869408326783499527494637,
+ 0.78110282100411850665136814715928740203,  -0.78110282100411850665136814715928740203,   0.78110282100411850665136814715928740203,   0.15379614006595869408326783499527494637,
+-0.84805227568403872779622085759407839383,  -0.84805227568403872779622085759407839383,                                          0,   0.15930172375100887182052758490800036662,
+ 0.84805227568403872779622085759407839383,                                          0,  -0.84805227568403872779622085759407839383,   0.15930172375100887182052758490800036662,
+                                        0,   0.84805227568403872779622085759407839383,  -0.84805227568403872779622085759407839383,   0.15930172375100887182052758490800036662,
+ 0.84805227568403872779622085759407839383,   0.84805227568403872779622085759407839383,                                          0,   0.15930172375100887182052758490800036662,
+ 0.84805227568403872779622085759407839383,                                          0,   0.84805227568403872779622085759407839383,   0.15930172375100887182052758490800036662,
+                                        0,  -0.84805227568403872779622085759407839383,   0.84805227568403872779622085759407839383,   0.15930172375100887182052758490800036662,
+                                        0,  -0.84805227568403872779622085759407839383,  -0.84805227568403872779622085759407839383,   0.15930172375100887182052758490800036662,
+-0.84805227568403872779622085759407839383,                                          0,   0.84805227568403872779622085759407839383,   0.15930172375100887182052758490800036662,
+-0.84805227568403872779622085759407839383,   0.84805227568403872779622085759407839383,                                          0,   0.15930172375100887182052758490800036662,
+ 0.84805227568403872779622085759407839383,  -0.84805227568403872779622085759407839383,                                          0,   0.15930172375100887182052758490800036662,
+                                        0,   0.84805227568403872779622085759407839383,   0.84805227568403872779622085759407839383,   0.15930172375100887182052758490800036662,
+-0.84805227568403872779622085759407839383,                                          0,  -0.84805227568403872779622085759407839383,   0.15930172375100887182052758490800036662}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+    //order 7 simplex
+    tempNumIPs = 35;
+    nIPMap[cubDataKey(tempDim, 7, simplex)] = tempNumIPs;
+    // nIP 35
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.5,                                       -0.5,                                       -0.5,   0.12731371928550779848077124815630184245,
+-0.36859770044359440115314000081337702315,  -0.36859770044359440115314000081337702315,  -0.89420689866921679654057999755986893056,   0.05643944161328937210171489439806231665,
+-0.36859770044359440115314000081337702315,  -0.89420689866921679654057999755986893056,  -0.36859770044359440115314000081337702315,   0.05643944161328937210171489439806231665,
+-0.89420689866921679654057999755986893056,  -0.36859770044359440115314000081337702315,  -0.36859770044359440115314000081337702315,   0.05643944161328937210171489439806231665,
+-0.36859770044359440115314000081337702315,  -0.36859770044359440115314000081337702315,  -0.36859770044359440115314000081337702315,   0.05643944161328937210171489439806231665,
+-0.89902035480320726247389235402687506805,  -0.10097964519679273752610764597312493195,  -0.10097964519679273752610764597312493195,   0.04252923711047677324569976544392327613,
+-0.10097964519679273752610764597312493195,  -0.89902035480320726247389235402687506805,  -0.10097964519679273752610764597312493195,   0.04252923711047677324569976544392327613,
+-0.89902035480320726247389235402687506805,  -0.89902035480320726247389235402687506805,  -0.10097964519679273752610764597312493195,   0.04252923711047677324569976544392327613,
+-0.89902035480320726247389235402687506805,  -0.10097964519679273752610764597312493195,  -0.89902035480320726247389235402687506805,   0.04252923711047677324569976544392327613,
+-0.10097964519679273752610764597312493195,  -0.89902035480320726247389235402687506805,  -0.89902035480320726247389235402687506805,   0.04252923711047677324569976544392327613,
+-0.10097964519679273752610764597312493195,  -0.10097964519679273752610764597312493195,  -0.89902035480320726247389235402687506805,   0.04252923711047677324569976544392327613,
+ 0.15034327517400004696648315404461503933,  -0.62233233794799790452713779229082848999,  -0.90567859927800423791220756946295805935,  0.049609507637779495159487414921974827082,
+ 0.15034327517400004696648315404461503933,  -0.62233233794799790452713779229082848999,  -0.62233233794799790452713779229082848999,  0.049609507637779495159487414921974827082,
+-0.62233233794799790452713779229082848999,  -0.62233233794799790452713779229082848999,   0.15034327517400004696648315404461503933,  0.049609507637779495159487414921974827082,
+-0.90567859927800423791220756946295805935,   0.15034327517400004696648315404461503933,  -0.62233233794799790452713779229082848999,  0.049609507637779495159487414921974827082,
+-0.62233233794799790452713779229082848999,  -0.90567859927800423791220756946295805935,   0.15034327517400004696648315404461503933,  0.049609507637779495159487414921974827082,
+-0.62233233794799790452713779229082848999,   0.15034327517400004696648315404461503933,  -0.62233233794799790452713779229082848999,  0.049609507637779495159487414921974827082,
+-0.90567859927800423791220756946295805935,  -0.62233233794799790452713779229082848999,   0.15034327517400004696648315404461503933,  0.049609507637779495159487414921974827082,
+-0.62233233794799790452713779229082848999,  -0.90567859927800423791220756946295805935,  -0.62233233794799790452713779229082848999,  0.049609507637779495159487414921974827082,
+-0.62233233794799790452713779229082848999,  -0.62233233794799790452713779229082848999,  -0.90567859927800423791220756946295805935,  0.049609507637779495159487414921974827082,
+-0.62233233794799790452713779229082848999,   0.15034327517400004696648315404461503933,  -0.90567859927800423791220756946295805935,  0.049609507637779495159487414921974827082,
+-0.90567859927800423791220756946295805935,  -0.62233233794799790452713779229082848999,  -0.62233233794799790452713779229082848999,  0.049609507637779495159487414921974827082,
+ 0.15034327517400004696648315404461503933,  -0.90567859927800423791220756946295805935,  -0.62233233794799790452713779229082848999,  0.049609507637779495159487414921974827082,
+ 0.62166048219709712223621075969646478759,  -0.95746905491703350802232779700036011785,  -0.70672237236303010619155516569574455189,  0.010814361106537788754804577988128720209,
+ 0.62166048219709712223621075969646478759,  -0.95746905491703350802232779700036011785,  -0.95746905491703350802232779700036011785,  0.010814361106537788754804577988128720209,
+-0.95746905491703350802232779700036011785,  -0.95746905491703350802232779700036011785,   0.62166048219709712223621075969646478759,  0.010814361106537788754804577988128720209,
+-0.70672237236303010619155516569574455189,   0.62166048219709712223621075969646478759,  -0.95746905491703350802232779700036011785,  0.010814361106537788754804577988128720209,
+-0.95746905491703350802232779700036011785,  -0.70672237236303010619155516569574455189,   0.62166048219709712223621075969646478759,  0.010814361106537788754804577988128720209,
+-0.95746905491703350802232779700036011785,   0.62166048219709712223621075969646478759,  -0.95746905491703350802232779700036011785,  0.010814361106537788754804577988128720209,
+-0.70672237236303010619155516569574455189,  -0.95746905491703350802232779700036011785,   0.62166048219709712223621075969646478759,  0.010814361106537788754804577988128720209,
+-0.95746905491703350802232779700036011785,  -0.70672237236303010619155516569574455189,  -0.95746905491703350802232779700036011785,  0.010814361106537788754804577988128720209,
+-0.95746905491703350802232779700036011785,  -0.95746905491703350802232779700036011785,  -0.70672237236303010619155516569574455189,  0.010814361106537788754804577988128720209,
+-0.95746905491703350802232779700036011785,   0.62166048219709712223621075969646478759,  -0.70672237236303010619155516569574455189,  0.010814361106537788754804577988128720209,
+-0.70672237236303010619155516569574455189,  -0.95746905491703350802232779700036011785,  -0.95746905491703350802232779700036011785,  0.010814361106537788754804577988128720209,
+ 0.62166048219709712223621075969646478759,  -0.70672237236303010619155516569574455189,  -0.95746905491703350802232779700036011785,  0.010814361106537788754804577988128720209}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+    //order 8 simplex
+    tempNumIPs = 46;
+    nIPMap[cubDataKey(tempDim, 8, simplex)] = tempNumIPs;
+    // nIP 46
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.78409455007557830303561343854585276851,   -0.78409455007557830303561343854585276851,    0.35228365022673490910684031563755830553,   0.035235534544545108539097313565645827902,
+ -0.78409455007557830303561343854585276851,    0.35228365022673490910684031563755830553,   -0.78409455007557830303561343854585276851,   0.035235534544545108539097313565645827902,
+  0.35228365022673490910684031563755830553,   -0.78409455007557830303561343854585276851,   -0.78409455007557830303561343854585276851,   0.035235534544545108539097313565645827902,
+ -0.78409455007557830303561343854585276851,   -0.78409455007557830303561343854585276851,   -0.78409455007557830303561343854585276851,   0.035235534544545108539097313565645827902,
+   -0.629781024434826859446183999496503797,     -0.629781024434826859446183999496503797,     -0.110656926695519421661448001510488609,   0.069375663418318043619861410028472677606,
+   -0.629781024434826859446183999496503797,     -0.110656926695519421661448001510488609,     -0.629781024434826859446183999496503797,   0.069375663418318043619861410028472677606,
+   -0.110656926695519421661448001510488609,     -0.629781024434826859446183999496503797,     -0.629781024434826859446183999496503797,   0.069375663418318043619861410028472677606,
+   -0.629781024434826859446183999496503797,     -0.629781024434826859446183999496503797,     -0.629781024434826859446183999496503797,   0.069375663418318043619861410028472677606,
+ -0.91536691263046543675183591431855057189,   -0.91536691263046543675183591431855057189,    0.74610073789139631025550774295565171568,   0.010033674871386933040967405110292766211,
+ -0.91536691263046543675183591431855057189,    0.74610073789139631025550774295565171568,   -0.91536691263046543675183591431855057189,   0.010033674871386933040967405110292766211,
+  0.74610073789139631025550774295565171568,   -0.91536691263046543675183591431855057189,   -0.91536691263046543675183591431855057189,   0.010033674871386933040967405110292766211,
+ -0.91536691263046543675183591431855057189,   -0.91536691263046543675183591431855057189,   -0.91536691263046543675183591431855057189,   0.010033674871386933040967405110292766211,
+ -0.37163658175192200927334245312373662702,   -0.37163658175192200927334245312373662702,   -0.88509025474423397217997264062879011895,   0.055685043809246530275971813171748834223,
+ -0.37163658175192200927334245312373662702,   -0.88509025474423397217997264062879011895,   -0.37163658175192200927334245312373662702,   0.055685043809246530275971813171748834223,
+ -0.88509025474423397217997264062879011895,   -0.37163658175192200927334245312373662702,   -0.37163658175192200927334245312373662702,   0.055685043809246530275971813171748834223,
+ -0.37163658175192200927334245312373662702,   -0.37163658175192200927334245312373662702,   -0.37163658175192200927334245312373662702,   0.055685043809246530275971813171748834223,
+ -0.12881734283233958954373367640680593526,   -0.87118265716766041045626632359319406474,   -0.87118265716766041045626632359319406474,   0.048374573681745097334959362864457783412,
+ -0.87118265716766041045626632359319406474,   -0.12881734283233958954373367640680593526,   -0.87118265716766041045626632359319406474,   0.048374573681745097334959362864457783412,
+ -0.12881734283233958954373367640680593526,   -0.12881734283233958954373367640680593526,   -0.87118265716766041045626632359319406474,   0.048374573681745097334959362864457783412,
+ -0.12881734283233958954373367640680593526,   -0.87118265716766041045626632359319406474,   -0.12881734283233958954373367640680593526,   0.048374573681745097334959362864457783412,
+ -0.87118265716766041045626632359319406474,   -0.12881734283233958954373367640680593526,   -0.12881734283233958954373367640680593526,   0.048374573681745097334959362864457783412,
+ -0.87118265716766041045626632359319406474,   -0.87118265716766041045626632359319406474,   -0.12881734283233958954373367640680593526,   0.048374573681745097334959362864457783412,
+  0.43492812685261664658005711425116290088,   -0.95713213974573885031100182115353118963,   -0.52066384736113894595805347194410052161,  0.0095425371877925775336250150191510735196,
+  0.43492812685261664658005711425116290088,   -0.95713213974573885031100182115353118963,   -0.95713213974573885031100182115353118963,  0.0095425371877925775336250150191510735196,
+ -0.95713213974573885031100182115353118963,   -0.95713213974573885031100182115353118963,    0.43492812685261664658005711425116290088,  0.0095425371877925775336250150191510735196,
+ -0.52066384736113894595805347194410052161,    0.43492812685261664658005711425116290088,   -0.95713213974573885031100182115353118963,  0.0095425371877925775336250150191510735196,
+ -0.95713213974573885031100182115353118963,   -0.52066384736113894595805347194410052161,    0.43492812685261664658005711425116290088,  0.0095425371877925775336250150191510735196,
+ -0.95713213974573885031100182115353118963,    0.43492812685261664658005711425116290088,   -0.95713213974573885031100182115353118963,  0.0095425371877925775336250150191510735196,
+ -0.52066384736113894595805347194410052161,   -0.95713213974573885031100182115353118963,    0.43492812685261664658005711425116290088,  0.0095425371877925775336250150191510735196,
+ -0.95713213974573885031100182115353118963,   -0.52066384736113894595805347194410052161,   -0.95713213974573885031100182115353118963,  0.0095425371877925775336250150191510735196,
+ -0.95713213974573885031100182115353118963,   -0.95713213974573885031100182115353118963,   -0.52066384736113894595805347194410052161,  0.0095425371877925775336250150191510735196,
+ -0.95713213974573885031100182115353118963,    0.43492812685261664658005711425116290088,   -0.52066384736113894595805347194410052161,  0.0095425371877925775336250150191510735196,
+ -0.52066384736113894595805347194410052161,   -0.95713213974573885031100182115353118963,   -0.95713213974573885031100182115353118963,  0.0095425371877925775336250150191510735196,
+  0.43492812685261664658005711425116290088,   -0.52066384736113894595805347194410052161,   -0.95713213974573885031100182115353118963,  0.0095425371877925775336250150191510735196,
+  0.16759475660428881185333950841466005283,   -0.59172133224794175913941940243963088242,   -0.98415209210840529357450070353539828799,   0.020604648201280446418040434034344443905,
+  0.16759475660428881185333950841466005283,   -0.59172133224794175913941940243963088242,   -0.59172133224794175913941940243963088242,   0.020604648201280446418040434034344443905,
+ -0.59172133224794175913941940243963088242,   -0.59172133224794175913941940243963088242,    0.16759475660428881185333950841466005283,   0.020604648201280446418040434034344443905,
+ -0.98415209210840529357450070353539828799,    0.16759475660428881185333950841466005283,   -0.59172133224794175913941940243963088242,   0.020604648201280446418040434034344443905,
+ -0.59172133224794175913941940243963088242,   -0.98415209210840529357450070353539828799,    0.16759475660428881185333950841466005283,   0.020604648201280446418040434034344443905,
+ -0.59172133224794175913941940243963088242,    0.16759475660428881185333950841466005283,   -0.59172133224794175913941940243963088242,   0.020604648201280446418040434034344443905,
+ -0.98415209210840529357450070353539828799,   -0.59172133224794175913941940243963088242,    0.16759475660428881185333950841466005283,   0.020604648201280446418040434034344443905,
+ -0.59172133224794175913941940243963088242,   -0.98415209210840529357450070353539828799,   -0.59172133224794175913941940243963088242,   0.020604648201280446418040434034344443905,
+ -0.59172133224794175913941940243963088242,   -0.59172133224794175913941940243963088242,   -0.98415209210840529357450070353539828799,   0.020604648201280446418040434034344443905,
+ -0.59172133224794175913941940243963088242,    0.16759475660428881185333950841466005283,   -0.98415209210840529357450070353539828799,   0.020604648201280446418040434034344443905,
+ -0.98415209210840529357450070353539828799,   -0.59172133224794175913941940243963088242,   -0.59172133224794175913941940243963088242,   0.020604648201280446418040434034344443905,
+  0.16759475660428881185333950841466005283,   -0.98415209210840529357450070353539828799,   -0.59172133224794175913941940243963088242,   0.020604648201280446418040434034344443905}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+    // order 8 and 9 orthotope
+    tempNumIPs = 58;
+    nIPMap[cubDataKey(tempDim, 8, orthotope)] = tempNumIPs;
+    nIPMap[cubDataKey(tempDim, 9, orthotope)] = tempNumIPs;
+    // nIP 58
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.61368146959170899383488488974055688452,                                          0,                                          0,   0.43327499574965454300983079319432200813,
+                                        0,                                          0,   0.61368146959170899383488488974055688452,   0.43327499574965454300983079319432200813,
+                                        0,   0.61368146959170899383488488974055688452,                                          0,   0.43327499574965454300983079319432200813,
+                                        0,                                          0,  -0.61368146959170899383488488974055688452,   0.43327499574965454300983079319432200813,
+ 0.61368146959170899383488488974055688452,                                          0,                                          0,   0.43327499574965454300983079319432200813,
+                                        0,  -0.61368146959170899383488488974055688452,                                          0,   0.43327499574965454300983079319432200813,
+ 0.87009978466197591761506380886392483306,  -0.87009978466197591761506380886392483306,  -0.87009978466197591761506380886392483306,  0.050148795299349029867451487724661687604,
+-0.87009978466197591761506380886392483306,   0.87009978466197591761506380886392483306,   0.87009978466197591761506380886392483306,  0.050148795299349029867451487724661687604,
+-0.87009978466197591761506380886392483306,   0.87009978466197591761506380886392483306,  -0.87009978466197591761506380886392483306,  0.050148795299349029867451487724661687604,
+-0.87009978466197591761506380886392483306,  -0.87009978466197591761506380886392483306,  -0.87009978466197591761506380886392483306,  0.050148795299349029867451487724661687604,
+-0.87009978466197591761506380886392483306,  -0.87009978466197591761506380886392483306,   0.87009978466197591761506380886392483306,  0.050148795299349029867451487724661687604,
+ 0.87009978466197591761506380886392483306,   0.87009978466197591761506380886392483306,  -0.87009978466197591761506380886392483306,  0.050148795299349029867451487724661687604,
+ 0.87009978466197591761506380886392483306,   0.87009978466197591761506380886392483306,   0.87009978466197591761506380886392483306,  0.050148795299349029867451487724661687604,
+ 0.87009978466197591761506380886392483306,  -0.87009978466197591761506380886392483306,   0.87009978466197591761506380886392483306,  0.050148795299349029867451487724661687604,
+ 0.56411080702003005426661899866307283066,  -0.56411080702003005426661899866307283066,  -0.56411080702003005426661899866307283066,   0.19885983814402350032086871858560920797,
+-0.56411080702003005426661899866307283066,   0.56411080702003005426661899866307283066,   0.56411080702003005426661899866307283066,   0.19885983814402350032086871858560920797,
+-0.56411080702003005426661899866307283066,   0.56411080702003005426661899866307283066,  -0.56411080702003005426661899866307283066,   0.19885983814402350032086871858560920797,
+-0.56411080702003005426661899866307283066,  -0.56411080702003005426661899866307283066,  -0.56411080702003005426661899866307283066,   0.19885983814402350032086871858560920797,
+-0.56411080702003005426661899866307283066,  -0.56411080702003005426661899866307283066,   0.56411080702003005426661899866307283066,   0.19885983814402350032086871858560920797,
+ 0.56411080702003005426661899866307283066,   0.56411080702003005426661899866307283066,  -0.56411080702003005426661899866307283066,   0.19885983814402350032086871858560920797,
+ 0.56411080702003005426661899866307283066,   0.56411080702003005426661899866307283066,   0.56411080702003005426661899866307283066,   0.19885983814402350032086871858560920797,
+ 0.56411080702003005426661899866307283066,  -0.56411080702003005426661899866307283066,   0.56411080702003005426661899866307283066,   0.19885983814402350032086871858560920797,
+-0.87768712325767828648677575899433236264,  -0.87768712325767828648677575899433236264,                                          0,  0.091789806136177642171244588919646331302,
+ 0.87768712325767828648677575899433236264,                                          0,  -0.87768712325767828648677575899433236264,  0.091789806136177642171244588919646331302,
+                                        0,   0.87768712325767828648677575899433236264,  -0.87768712325767828648677575899433236264,  0.091789806136177642171244588919646331302,
+ 0.87768712325767828648677575899433236264,   0.87768712325767828648677575899433236264,                                          0,  0.091789806136177642171244588919646331302,
+ 0.87768712325767828648677575899433236264,                                          0,   0.87768712325767828648677575899433236264,  0.091789806136177642171244588919646331302,
+                                        0,  -0.87768712325767828648677575899433236264,   0.87768712325767828648677575899433236264,  0.091789806136177642171244588919646331302,
+                                        0,  -0.87768712325767828648677575899433236264,  -0.87768712325767828648677575899433236264,  0.091789806136177642171244588919646331302,
+-0.87768712325767828648677575899433236264,                                          0,   0.87768712325767828648677575899433236264,  0.091789806136177642171244588919646331302,
+-0.87768712325767828648677575899433236264,   0.87768712325767828648677575899433236264,                                          0,  0.091789806136177642171244588919646331302,
+ 0.87768712325767828648677575899433236264,  -0.87768712325767828648677575899433236264,                                          0,  0.091789806136177642171244588919646331302,
+                                        0,   0.87768712325767828648677575899433236264,   0.87768712325767828648677575899433236264,  0.091789806136177642171244588919646331302,
+-0.87768712325767828648677575899433236264,                                          0,  -0.87768712325767828648677575899433236264,  0.091789806136177642171244588919646331302,
+ 0.43226790263086216441602486151694383909,   0.93853042186467174532897686960307879508,  -0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+-0.43226790263086216441602486151694383909,  -0.93853042186467174532897686960307879508,   0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+-0.43226790263086216441602486151694383909,   0.93853042186467174532897686960307879508,  -0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+-0.93853042186467174532897686960307879508,  -0.43226790263086216441602486151694383909,   0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+-0.43226790263086216441602486151694383909,  -0.43226790263086216441602486151694383909,   0.93853042186467174532897686960307879508,   0.09611680351337336643247993847150603379,
+ 0.93853042186467174532897686960307879508,   0.43226790263086216441602486151694383909,  -0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+ 0.43226790263086216441602486151694383909,  -0.93853042186467174532897686960307879508,  -0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+ 0.43226790263086216441602486151694383909,  -0.93853042186467174532897686960307879508,   0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+-0.43226790263086216441602486151694383909,  -0.93853042186467174532897686960307879508,  -0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+ 0.43226790263086216441602486151694383909,   0.43226790263086216441602486151694383909,  -0.93853042186467174532897686960307879508,   0.09611680351337336643247993847150603379,
+-0.93853042186467174532897686960307879508,   0.43226790263086216441602486151694383909,  -0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+-0.43226790263086216441602486151694383909,   0.43226790263086216441602486151694383909,  -0.93853042186467174532897686960307879508,   0.09611680351337336643247993847150603379,
+-0.43226790263086216441602486151694383909,   0.43226790263086216441602486151694383909,   0.93853042186467174532897686960307879508,   0.09611680351337336643247993847150603379,
+-0.43226790263086216441602486151694383909,  -0.43226790263086216441602486151694383909,  -0.93853042186467174532897686960307879508,   0.09611680351337336643247993847150603379,
+ 0.43226790263086216441602486151694383909,  -0.43226790263086216441602486151694383909,   0.93853042186467174532897686960307879508,   0.09611680351337336643247993847150603379,
+ 0.93853042186467174532897686960307879508,  -0.43226790263086216441602486151694383909,  -0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+ 0.43226790263086216441602486151694383909,   0.93853042186467174532897686960307879508,   0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+ 0.93853042186467174532897686960307879508,   0.43226790263086216441602486151694383909,   0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+ 0.93853042186467174532897686960307879508,  -0.43226790263086216441602486151694383909,   0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+-0.93853042186467174532897686960307879508,   0.43226790263086216441602486151694383909,   0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+ 0.43226790263086216441602486151694383909,   0.43226790263086216441602486151694383909,   0.93853042186467174532897686960307879508,   0.09611680351337336643247993847150603379,
+-0.43226790263086216441602486151694383909,   0.93853042186467174532897686960307879508,   0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379,
+ 0.43226790263086216441602486151694383909,  -0.43226790263086216441602486151694383909,  -0.93853042186467174532897686960307879508,   0.09611680351337336643247993847150603379,
+-0.93853042186467174532897686960307879508,  -0.43226790263086216441602486151694383909,  -0.43226790263086216441602486151694383909,   0.09611680351337336643247993847150603379}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, orthotope)] = cubDataVal(tempCoords, tempWeights);
+    //order 9 simplex
+    tempNumIPs = 59;
+    nIPMap[cubDataKey(tempDim, 9, simplex)] = tempNumIPs;
+    // nIP 59
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.5,                                         -0.5,                                         -0.5,     0.07734739854997367644741906257553729918,
+  -0.99999999876036601109069831529161985423,    -0.99999999876036601109069831529161985423,      0.9999999962810980332720949458748595627,  8.5759042345675186085903030258742437834e-05,
+  -0.99999999876036601109069831529161985423,      0.9999999962810980332720949458748595627,    -0.99999999876036601109069831529161985423,  8.5759042345675186085903030258742437834e-05,
+    0.9999999962810980332720949458748595627,    -0.99999999876036601109069831529161985423,    -0.99999999876036601109069831529161985423,  8.5759042345675186085903030258742437834e-05,
+  -0.99999999876036601109069831529161985423,    -0.99999999876036601109069831529161985423,    -0.99999999876036601109069831529161985423,  8.5759042345675186085903030258742437834e-05,
+  -0.67845092920947681169601712222921603853,    -0.67845092920947681169601712222921603853,    0.035352787628430435088051366687648115583,    0.030897784616567277310532826869162311937,
+  -0.67845092920947681169601712222921603853,    0.035352787628430435088051366687648115583,    -0.67845092920947681169601712222921603853,    0.030897784616567277310532826869162311937,
+  0.035352787628430435088051366687648115583,    -0.67845092920947681169601712222921603853,    -0.67845092920947681169601712222921603853,    0.030897784616567277310532826869162311937,
+  -0.67845092920947681169601712222921603853,    -0.67845092920947681169601712222921603853,    -0.67845092920947681169601712222921603853,    0.030897784616567277310532826869162311937,
+  -0.35544695635715805159186380319222134027,    -0.35544695635715805159186380319222134027,    -0.93365913092852584522440859042333597919,    0.039417216447239047523644877985518239107,
+  -0.35544695635715805159186380319222134027,    -0.93365913092852584522440859042333597919,    -0.35544695635715805159186380319222134027,    0.039417216447239047523644877985518239107,
+  -0.93365913092852584522440859042333597919,    -0.35544695635715805159186380319222134027,    -0.35544695635715805159186380319222134027,    0.039417216447239047523644877985518239107,
+  -0.35544695635715805159186380319222134027,    -0.35544695635715805159186380319222134027,    -0.35544695635715805159186380319222134027,    0.039417216447239047523644877985518239107,
+  -0.90978216330917283407807385501200614331,    -0.90978216330917283407807385501200614331,     0.72934648992751850223422156503601842994,    0.010751973306154910354337519688619045729,
+  -0.90978216330917283407807385501200614331,     0.72934648992751850223422156503601842994,    -0.90978216330917283407807385501200614331,    0.010751973306154910354337519688619045729,
+   0.72934648992751850223422156503601842994,    -0.90978216330917283407807385501200614331,    -0.90978216330917283407807385501200614331,    0.010751973306154910354337519688619045729,
+  -0.90978216330917283407807385501200614331,    -0.90978216330917283407807385501200614331,    -0.90978216330917283407807385501200614331,    0.010751973306154910354337519688619045729,
+  -0.77540690799124790934402070093968875729,    -0.22459309200875209065597929906031124271,    -0.22459309200875209065597929906031124271,     0.05084544013826995406889748131136091475,
+  -0.22459309200875209065597929906031124271,    -0.77540690799124790934402070093968875729,    -0.22459309200875209065597929906031124271,     0.05084544013826995406889748131136091475,
+  -0.77540690799124790934402070093968875729,    -0.77540690799124790934402070093968875729,    -0.22459309200875209065597929906031124271,     0.05084544013826995406889748131136091475,
+  -0.77540690799124790934402070093968875729,    -0.22459309200875209065597929906031124271,    -0.77540690799124790934402070093968875729,     0.05084544013826995406889748131136091475,
+  -0.22459309200875209065597929906031124271,    -0.77540690799124790934402070093968875729,    -0.77540690799124790934402070093968875729,     0.05084544013826995406889748131136091475,
+  -0.22459309200875209065597929906031124271,    -0.22459309200875209065597929906031124271,    -0.77540690799124790934402070093968875729,     0.05084544013826995406889748131136091475,
+    -0.994890841533917338064711949103255315,   -0.082257102495081453456435781598997046246,    -0.84059495347591975502241648769875059251,    0.011179229597731402927583520512290878612,
+    -0.994890841533917338064711949103255315,   -0.082257102495081453456435781598997046246,   -0.082257102495081453456435781598997046246,    0.011179229597731402927583520512290878612,
+ -0.082257102495081453456435781598997046246,   -0.082257102495081453456435781598997046246,      -0.994890841533917338064711949103255315,    0.011179229597731402927583520512290878612,
+  -0.84059495347591975502241648769875059251,      -0.994890841533917338064711949103255315,   -0.082257102495081453456435781598997046246,    0.011179229597731402927583520512290878612,
+ -0.082257102495081453456435781598997046246,    -0.84059495347591975502241648769875059251,      -0.994890841533917338064711949103255315,    0.011179229597731402927583520512290878612,
+ -0.082257102495081453456435781598997046246,      -0.994890841533917338064711949103255315,   -0.082257102495081453456435781598997046246,    0.011179229597731402927583520512290878612,
+  -0.84059495347591975502241648769875059251,   -0.082257102495081453456435781598997046246,      -0.994890841533917338064711949103255315,    0.011179229597731402927583520512290878612,
+ -0.082257102495081453456435781598997046246,    -0.84059495347591975502241648769875059251,   -0.082257102495081453456435781598997046246,    0.011179229597731402927583520512290878612,
+ -0.082257102495081453456435781598997046246,   -0.082257102495081453456435781598997046246,    -0.84059495347591975502241648769875059251,    0.011179229597731402927583520512290878612,
+ -0.082257102495081453456435781598997046246,      -0.994890841533917338064711949103255315,    -0.84059495347591975502241648769875059251,    0.011179229597731402927583520512290878612,
+  -0.84059495347591975502241648769875059251,   -0.082257102495081453456435781598997046246,   -0.082257102495081453456435781598997046246,    0.011179229597731402927583520512290878612,
+    -0.994890841533917338064711949103255315,    -0.84059495347591975502241648769875059251,   -0.082257102495081453456435781598997046246,    0.011179229597731402927583520512290878612,
+   0.43670065288414901811354448912928750012,    -0.93244825862932284418902737202159413719,    -0.57180413562550332973548974508609922574,    0.013646079136993770600501763121325612648,
+   0.43670065288414901811354448912928750012,    -0.93244825862932284418902737202159413719,    -0.93244825862932284418902737202159413719,    0.013646079136993770600501763121325612648,
+  -0.93244825862932284418902737202159413719,    -0.93244825862932284418902737202159413719,     0.43670065288414901811354448912928750012,    0.013646079136993770600501763121325612648,
+  -0.57180413562550332973548974508609922574,     0.43670065288414901811354448912928750012,    -0.93244825862932284418902737202159413719,    0.013646079136993770600501763121325612648,
+  -0.93244825862932284418902737202159413719,    -0.57180413562550332973548974508609922574,     0.43670065288414901811354448912928750012,    0.013646079136993770600501763121325612648,
+  -0.93244825862932284418902737202159413719,     0.43670065288414901811354448912928750012,    -0.93244825862932284418902737202159413719,    0.013646079136993770600501763121325612648,
+  -0.57180413562550332973548974508609922574,    -0.93244825862932284418902737202159413719,     0.43670065288414901811354448912928750012,    0.013646079136993770600501763121325612648,
+  -0.93244825862932284418902737202159413719,    -0.57180413562550332973548974508609922574,    -0.93244825862932284418902737202159413719,    0.013646079136993770600501763121325612648,
+  -0.93244825862932284418902737202159413719,    -0.93244825862932284418902737202159413719,    -0.57180413562550332973548974508609922574,    0.013646079136993770600501763121325612648,
+  -0.93244825862932284418902737202159413719,     0.43670065288414901811354448912928750012,    -0.57180413562550332973548974508609922574,    0.013646079136993770600501763121325612648,
+  -0.57180413562550332973548974508609922574,    -0.93244825862932284418902737202159413719,    -0.93244825862932284418902737202159413719,    0.013646079136993770600501763121325612648,
+   0.43670065288414901811354448912928750012,    -0.57180413562550332973548974508609922574,    -0.93244825862932284418902737202159413719,    0.013646079136993770600501763121325612648,
+  -0.93116817884364945982158957577713628669,    -0.63271726038014422042206258028726154683,     0.19660269960393790066571473635165938035,    0.027366554623984184053091789082666607808,
+  -0.93116817884364945982158957577713628669,    -0.63271726038014422042206258028726154683,    -0.63271726038014422042206258028726154683,    0.027366554623984184053091789082666607808,
+  -0.63271726038014422042206258028726154683,    -0.63271726038014422042206258028726154683,    -0.93116817884364945982158957577713628669,    0.027366554623984184053091789082666607808,
+   0.19660269960393790066571473635165938035,    -0.93116817884364945982158957577713628669,    -0.63271726038014422042206258028726154683,    0.027366554623984184053091789082666607808,
+  -0.63271726038014422042206258028726154683,     0.19660269960393790066571473635165938035,    -0.93116817884364945982158957577713628669,    0.027366554623984184053091789082666607808,
+  -0.63271726038014422042206258028726154683,    -0.93116817884364945982158957577713628669,    -0.63271726038014422042206258028726154683,    0.027366554623984184053091789082666607808,
+   0.19660269960393790066571473635165938035,    -0.63271726038014422042206258028726154683,    -0.93116817884364945982158957577713628669,    0.027366554623984184053091789082666607808,
+  -0.63271726038014422042206258028726154683,     0.19660269960393790066571473635165938035,    -0.63271726038014422042206258028726154683,    0.027366554623984184053091789082666607808,
+  -0.63271726038014422042206258028726154683,    -0.63271726038014422042206258028726154683,     0.19660269960393790066571473635165938035,    0.027366554623984184053091789082666607808,
+  -0.63271726038014422042206258028726154683,    -0.93116817884364945982158957577713628669,     0.19660269960393790066571473635165938035,    0.027366554623984184053091789082666607808,
+   0.19660269960393790066571473635165938035,    -0.63271726038014422042206258028726154683,    -0.63271726038014422042206258028726154683,    0.027366554623984184053091789082666607808,
+  -0.93116817884364945982158957577713628669,     0.19660269960393790066571473635165938035,    -0.63271726038014422042206258028726154683,    0.027366554623984184053091789082666607808}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+    //order 10 simplex
+    tempNumIPs = 81;
+    nIPMap[cubDataKey(tempDim, 10, simplex)] = tempNumIPs;
+    // nIP 81
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.5,                                         -0.5,                                         -0.5,    0.063199698074694317846318428237401466134,
+   -0.3754998626096227045403833626263450896,     -0.3754998626096227045403833626263450896,    -0.87350041217113188637884991212096473119,    0.035916079989691599737018881339842778615,
+   -0.3754998626096227045403833626263450896,    -0.87350041217113188637884991212096473119,     -0.3754998626096227045403833626263450896,    0.035916079989691599737018881339842778615,
+  -0.87350041217113188637884991212096473119,     -0.3754998626096227045403833626263450896,     -0.3754998626096227045403833626263450896,    0.035916079989691599737018881339842778615,
+   -0.3754998626096227045403833626263450896,     -0.3754998626096227045403833626263450896,     -0.3754998626096227045403833626263450896,    0.035916079989691599737018881339842778615,
+  -0.77138069228530769882525760469269910942,    -0.77138069228530769882525760469269910942,     0.31414207685592309647577281407809732827,    0.013158879622391177646076980573564101693,
+  -0.77138069228530769882525760469269910942,     0.31414207685592309647577281407809732827,    -0.77138069228530769882525760469269910942,    0.013158879622391177646076980573564101693,
+   0.31414207685592309647577281407809732827,    -0.77138069228530769882525760469269910942,    -0.77138069228530769882525760469269910942,    0.013158879622391177646076980573564101693,
+  -0.77138069228530769882525760469269910942,    -0.77138069228530769882525760469269910942,    -0.77138069228530769882525760469269910942,    0.013158879622391177646076980573564101693,
+  -0.66902794876077789679101975111094717095,    -0.17913852156206901142420431149697662502,    -0.97269500811508408036057162589509957901,    0.015191841626926975498161246507619114195,
+  -0.66902794876077789679101975111094717095,    -0.17913852156206901142420431149697662502,    -0.17913852156206901142420431149697662502,    0.015191841626926975498161246507619114195,
+  -0.17913852156206901142420431149697662502,    -0.17913852156206901142420431149697662502,    -0.66902794876077789679101975111094717095,    0.015191841626926975498161246507619114195,
+  -0.97269500811508408036057162589509957901,    -0.66902794876077789679101975111094717095,    -0.17913852156206901142420431149697662502,    0.015191841626926975498161246507619114195,
+  -0.17913852156206901142420431149697662502,    -0.97269500811508408036057162589509957901,    -0.66902794876077789679101975111094717095,    0.015191841626926975498161246507619114195,
+  -0.17913852156206901142420431149697662502,    -0.66902794876077789679101975111094717095,    -0.17913852156206901142420431149697662502,    0.015191841626926975498161246507619114195,
+  -0.97269500811508408036057162589509957901,    -0.17913852156206901142420431149697662502,    -0.66902794876077789679101975111094717095,    0.015191841626926975498161246507619114195,
+  -0.17913852156206901142420431149697662502,    -0.97269500811508408036057162589509957901,    -0.17913852156206901142420431149697662502,    0.015191841626926975498161246507619114195,
+  -0.17913852156206901142420431149697662502,    -0.17913852156206901142420431149697662502,    -0.97269500811508408036057162589509957901,    0.015191841626926975498161246507619114195,
+  -0.17913852156206901142420431149697662502,    -0.66902794876077789679101975111094717095,    -0.97269500811508408036057162589509957901,    0.015191841626926975498161246507619114195,
+  -0.97269500811508408036057162589509957901,    -0.17913852156206901142420431149697662502,    -0.17913852156206901142420431149697662502,    0.015191841626926975498161246507619114195,
+  -0.66902794876077789679101975111094717095,    -0.97269500811508408036057162589509957901,    -0.17913852156206901142420431149697662502,    0.015191841626926975498161246507619114195,
+    0.8859775346904097323952611738365015259,    -0.98772398235041850430481257350316929785,     -0.9105295699895727237856360268301629302,  0.00048259245911900483231983784641134908616,
+    0.8859775346904097323952611738365015259,    -0.98772398235041850430481257350316929785,    -0.98772398235041850430481257350316929785,  0.00048259245911900483231983784641134908616,
+  -0.98772398235041850430481257350316929785,    -0.98772398235041850430481257350316929785,      0.8859775346904097323952611738365015259,  0.00048259245911900483231983784641134908616,
+   -0.9105295699895727237856360268301629302,      0.8859775346904097323952611738365015259,    -0.98772398235041850430481257350316929785,  0.00048259245911900483231983784641134908616,
+  -0.98772398235041850430481257350316929785,     -0.9105295699895727237856360268301629302,      0.8859775346904097323952611738365015259,  0.00048259245911900483231983784641134908616,
+  -0.98772398235041850430481257350316929785,      0.8859775346904097323952611738365015259,    -0.98772398235041850430481257350316929785,  0.00048259245911900483231983784641134908616,
+   -0.9105295699895727237856360268301629302,    -0.98772398235041850430481257350316929785,      0.8859775346904097323952611738365015259,  0.00048259245911900483231983784641134908616,
+  -0.98772398235041850430481257350316929785,     -0.9105295699895727237856360268301629302,    -0.98772398235041850430481257350316929785,  0.00048259245911900483231983784641134908616,
+  -0.98772398235041850430481257350316929785,    -0.98772398235041850430481257350316929785,     -0.9105295699895727237856360268301629302,  0.00048259245911900483231983784641134908616,
+  -0.98772398235041850430481257350316929785,      0.8859775346904097323952611738365015259,     -0.9105295699895727237856360268301629302,  0.00048259245911900483231983784641134908616,
+   -0.9105295699895727237856360268301629302,    -0.98772398235041850430481257350316929785,    -0.98772398235041850430481257350316929785,  0.00048259245911900483231983784641134908616,
+    0.8859775346904097323952611738365015259,     -0.9105295699895727237856360268301629302,    -0.98772398235041850430481257350316929785,  0.00048259245911900483231983784641134908616,
+ -0.045619240191439298911787183406185558751,    -0.75789963770882114801220999680989894474,    -0.43858148439091840506379282297401655176,    0.034319642640608095038714683012872940214,
+ -0.045619240191439298911787183406185558751,    -0.75789963770882114801220999680989894474,    -0.75789963770882114801220999680989894474,    0.034319642640608095038714683012872940214,
+  -0.75789963770882114801220999680989894474,    -0.75789963770882114801220999680989894474,   -0.045619240191439298911787183406185558751,    0.034319642640608095038714683012872940214,
+  -0.43858148439091840506379282297401655176,   -0.045619240191439298911787183406185558751,    -0.75789963770882114801220999680989894474,    0.034319642640608095038714683012872940214,
+  -0.75789963770882114801220999680989894474,    -0.43858148439091840506379282297401655176,   -0.045619240191439298911787183406185558751,    0.034319642640608095038714683012872940214,
+  -0.75789963770882114801220999680989894474,   -0.045619240191439298911787183406185558751,    -0.75789963770882114801220999680989894474,    0.034319642640608095038714683012872940214,
+  -0.43858148439091840506379282297401655176,    -0.75789963770882114801220999680989894474,   -0.045619240191439298911787183406185558751,    0.034319642640608095038714683012872940214,
+  -0.75789963770882114801220999680989894474,    -0.43858148439091840506379282297401655176,    -0.75789963770882114801220999680989894474,    0.034319642640608095038714683012872940214,
+  -0.75789963770882114801220999680989894474,    -0.75789963770882114801220999680989894474,    -0.43858148439091840506379282297401655176,    0.034319642640608095038714683012872940214,
+  -0.75789963770882114801220999680989894474,   -0.045619240191439298911787183406185558751,    -0.43858148439091840506379282297401655176,    0.034319642640608095038714683012872940214,
+  -0.43858148439091840506379282297401655176,    -0.75789963770882114801220999680989894474,    -0.75789963770882114801220999680989894474,    0.034319642640608095038714683012872940214,
+ -0.045619240191439298911787183406185558751,    -0.43858148439091840506379282297401655176,    -0.75789963770882114801220999680989894474,    0.034319642640608095038714683012872940214,
+   0.18851253896001405132314006877136059652,    -0.93444106356711465845055795933535161918,    -0.31963041182578473442202415010065735815,    0.013514495573007723718021960153355702928,
+   0.18851253896001405132314006877136059652,    -0.93444106356711465845055795933535161918,    -0.93444106356711465845055795933535161918,    0.013514495573007723718021960153355702928,
+  -0.93444106356711465845055795933535161918,    -0.93444106356711465845055795933535161918,     0.18851253896001405132314006877136059652,    0.013514495573007723718021960153355702928,
+  -0.31963041182578473442202415010065735815,     0.18851253896001405132314006877136059652,    -0.93444106356711465845055795933535161918,    0.013514495573007723718021960153355702928,
+  -0.93444106356711465845055795933535161918,    -0.31963041182578473442202415010065735815,     0.18851253896001405132314006877136059652,    0.013514495573007723718021960153355702928,
+  -0.93444106356711465845055795933535161918,     0.18851253896001405132314006877136059652,    -0.93444106356711465845055795933535161918,    0.013514495573007723718021960153355702928,
+  -0.31963041182578473442202415010065735815,    -0.93444106356711465845055795933535161918,     0.18851253896001405132314006877136059652,    0.013514495573007723718021960153355702928,
+  -0.93444106356711465845055795933535161918,    -0.31963041182578473442202415010065735815,    -0.93444106356711465845055795933535161918,    0.013514495573007723718021960153355702928,
+  -0.93444106356711465845055795933535161918,    -0.93444106356711465845055795933535161918,    -0.31963041182578473442202415010065735815,    0.013514495573007723718021960153355702928,
+  -0.93444106356711465845055795933535161918,     0.18851253896001405132314006877136059652,    -0.31963041182578473442202415010065735815,    0.013514495573007723718021960153355702928,
+  -0.31963041182578473442202415010065735815,    -0.93444106356711465845055795933535161918,    -0.93444106356711465845055795933535161918,    0.013514495573007723718021960153355702928,
+   0.18851253896001405132314006877136059652,    -0.31963041182578473442202415010065735815,    -0.93444106356711465845055795933535161918,    0.013514495573007723718021960153355702928,
+   0.60235456931668878246228336815716196359,    -0.93502943687035390432897012004314760659,    -0.73229569557598097380434312807086675041,   0.0087681963693812055566076536006009347954,
+   0.60235456931668878246228336815716196359,    -0.93502943687035390432897012004314760659,    -0.93502943687035390432897012004314760659,   0.0087681963693812055566076536006009347954,
+  -0.93502943687035390432897012004314760659,    -0.93502943687035390432897012004314760659,     0.60235456931668878246228336815716196359,   0.0087681963693812055566076536006009347954,
+  -0.73229569557598097380434312807086675041,     0.60235456931668878246228336815716196359,    -0.93502943687035390432897012004314760659,   0.0087681963693812055566076536006009347954,
+  -0.93502943687035390432897012004314760659,    -0.73229569557598097380434312807086675041,     0.60235456931668878246228336815716196359,   0.0087681963693812055566076536006009347954,
+  -0.93502943687035390432897012004314760659,     0.60235456931668878246228336815716196359,    -0.93502943687035390432897012004314760659,   0.0087681963693812055566076536006009347954,
+  -0.73229569557598097380434312807086675041,    -0.93502943687035390432897012004314760659,     0.60235456931668878246228336815716196359,   0.0087681963693812055566076536006009347954,
+  -0.93502943687035390432897012004314760659,    -0.73229569557598097380434312807086675041,    -0.93502943687035390432897012004314760659,   0.0087681963693812055566076536006009347954,
+  -0.93502943687035390432897012004314760659,    -0.93502943687035390432897012004314760659,    -0.73229569557598097380434312807086675041,   0.0087681963693812055566076536006009347954,
+  -0.93502943687035390432897012004314760659,     0.60235456931668878246228336815716196359,    -0.73229569557598097380434312807086675041,   0.0087681963693812055566076536006009347954,
+  -0.73229569557598097380434312807086675041,    -0.93502943687035390432897012004314760659,    -0.93502943687035390432897012004314760659,   0.0087681963693812055566076536006009347954,
+   0.60235456931668878246228336815716196359,    -0.73229569557598097380434312807086675041,    -0.93502943687035390432897012004314760659,   0.0087681963693812055566076536006009347954,
+    0.2561436909507320213865521444358193313,    -0.65004131563212195143010154694337920556,    -0.95606105968648811852634905054906092018,    0.017209381065149320852393906999331987612,
+    0.2561436909507320213865521444358193313,    -0.65004131563212195143010154694337920556,    -0.65004131563212195143010154694337920556,    0.017209381065149320852393906999331987612,
+  -0.65004131563212195143010154694337920556,    -0.65004131563212195143010154694337920556,      0.2561436909507320213865521444358193313,    0.017209381065149320852393906999331987612,
+  -0.95606105968648811852634905054906092018,      0.2561436909507320213865521444358193313,    -0.65004131563212195143010154694337920556,    0.017209381065149320852393906999331987612,
+  -0.65004131563212195143010154694337920556,    -0.95606105968648811852634905054906092018,      0.2561436909507320213865521444358193313,    0.017209381065149320852393906999331987612,
+  -0.65004131563212195143010154694337920556,      0.2561436909507320213865521444358193313,    -0.65004131563212195143010154694337920556,    0.017209381065149320852393906999331987612,
+  -0.95606105968648811852634905054906092018,    -0.65004131563212195143010154694337920556,      0.2561436909507320213865521444358193313,    0.017209381065149320852393906999331987612,
+  -0.65004131563212195143010154694337920556,    -0.95606105968648811852634905054906092018,    -0.65004131563212195143010154694337920556,    0.017209381065149320852393906999331987612,
+  -0.65004131563212195143010154694337920556,    -0.65004131563212195143010154694337920556,    -0.95606105968648811852634905054906092018,    0.017209381065149320852393906999331987612,
+  -0.65004131563212195143010154694337920556,      0.2561436909507320213865521444358193313,    -0.95606105968648811852634905054906092018,    0.017209381065149320852393906999331987612,
+  -0.95606105968648811852634905054906092018,    -0.65004131563212195143010154694337920556,    -0.65004131563212195143010154694337920556,    0.017209381065149320852393906999331987612,
+    0.2561436909507320213865521444358193313,    -0.95606105968648811852634905054906092018,    -0.65004131563212195143010154694337920556,    0.017209381065149320852393906999331987612}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
+        tempCoords[j][i] = (*tempPvec)[index];
+        index += 1;
+      }
+      tempWeights[j] = (*tempPvec)[index];
+      index += 1;
+    }
+    delete tempPvec;
+    rulesDatabase[cubDataKey(tempDim, tempNumIPs, simplex)] = cubDataVal(tempCoords, tempWeights);
+    // order 10 and 11 orthotope
+    tempNumIPs = 90;
+    nIPMap[cubDataKey(tempDim, 10, orthotope)] = tempNumIPs;
+    nIPMap[cubDataKey(tempDim, 11, orthotope)] = tempNumIPs;
+    // nIP 90
+    tempCoords.resize(tempNumIPs);
+    for(int i = 0; i < tempNumIPs; i++){
+      tempCoords[i].resize(tempDim);
+    }
+    tempWeights.resize(tempNumIPs);
+    tempPvec = new std::vector<double>(
+        {-0.81261433409962649639237559737974432611,                                          0,                                          0,    0.2024770736128001905853371309670196589,
+0,                                          0,   0.81261433409962649639237559737974432611,    0.2024770736128001905853371309670196589,
+0,   0.81261433409962649639237559737974432611,                                          0,    0.2024770736128001905853371309670196589,
+0,                                          0,  -0.81261433409962649639237559737974432611,    0.2024770736128001905853371309670196589,
+0.81261433409962649639237559737974432611    ,                                      0,                                          0,    0.2024770736128001905853371309670196589,
+0,  -0.81261433409962649639237559737974432611,                                          0,    0.2024770736128001905853371309670196589,
+0.60167526419826270163441300578531749659,  -0.60167526419826270163441300578531749659,  -0.60167526419826270163441300578531749659,   0.11753834795645628038993180401068212711,
+-0.60167526419826270163441300578531749659,   0.60167526419826270163441300578531749659,   0.60167526419826270163441300578531749659,   0.11753834795645628038993180401068212711,
+-0.60167526419826270163441300578531749659,   0.60167526419826270163441300578531749659,  -0.60167526419826270163441300578531749659,   0.11753834795645628038993180401068212711,
+-0.60167526419826270163441300578531749659,  -0.60167526419826270163441300578531749659,  -0.60167526419826270163441300578531749659,   0.11753834795645628038993180401068212711,
+-0.60167526419826270163441300578531749659,  -0.60167526419826270163441300578531749659,   0.60167526419826270163441300578531749659,   0.11753834795645628038993180401068212711,
+0.60167526419826270163441300578531749659,   0.60167526419826270163441300578531749659,  -0.60167526419826270163441300578531749659,   0.11753834795645628038993180401068212711,
+0.60167526419826270163441300578531749659,   0.60167526419826270163441300578531749659,   0.60167526419826270163441300578531749659,   0.11753834795645628038993180401068212711,
+0.60167526419826270163441300578531749659,  -0.60167526419826270163441300578531749659,   0.60167526419826270163441300578531749659,   0.11753834795645628038993180401068212711,
+0.85545576101775998467509147069034657598,  -0.85545576101775998467509147069034657598,  -0.85545576101775998467509147069034657598,  0.044643912078829241641001154282130043664,
+-0.85545576101775998467509147069034657598,   0.85545576101775998467509147069034657598,   0.85545576101775998467509147069034657598,  0.044643912078829241641001154282130043664,
+-0.85545576101775998467509147069034657598,   0.85545576101775998467509147069034657598,  -0.85545576101775998467509147069034657598,  0.044643912078829241641001154282130043664,
+-0.85545576101775998467509147069034657598,  -0.85545576101775998467509147069034657598,  -0.85545576101775998467509147069034657598,  0.044643912078829241641001154282130043664,
+-0.85545576101775998467509147069034657598,  -0.85545576101775998467509147069034657598,   0.85545576101775998467509147069034657598,  0.044643912078829241641001154282130043664,
+0.85545576101775998467509147069034657598,   0.85545576101775998467509147069034657598,  -0.85545576101775998467509147069034657598,  0.044643912078829241641001154282130043664,
+0.85545576101775998467509147069034657598,   0.85545576101775998467509147069034657598,   0.85545576101775998467509147069034657598,  0.044643912078829241641001154282130043664,
+0.85545576101775998467509147069034657598,  -0.85545576101775998467509147069034657598,   0.85545576101775998467509147069034657598,  0.044643912078829241641001154282130043664,
+0.31339340451605472104577323055795129941,  -0.31339340451605472104577323055795129941,  -0.31339340451605472104577323055795129941,   0.21599204525496912931346666638444131361,
+-0.31339340451605472104577323055795129941,   0.31339340451605472104577323055795129941,   0.31339340451605472104577323055795129941,   0.21599204525496912931346666638444131361,
+-0.31339340451605472104577323055795129941,   0.31339340451605472104577323055795129941,  -0.31339340451605472104577323055795129941,   0.21599204525496912931346666638444131361,
+-0.31339340451605472104577323055795129941,  -0.31339340451605472104577323055795129941,  -0.31339340451605472104577323055795129941,   0.21599204525496912931346666638444131361,
+-0.31339340451605472104577323055795129941,  -0.31339340451605472104577323055795129941,   0.31339340451605472104577323055795129941,   0.21599204525496912931346666638444131361,
+0.31339340451605472104577323055795129941,   0.31339340451605472104577323055795129941,  -0.31339340451605472104577323055795129941,   0.21599204525496912931346666638444131361,
+0.31339340451605472104577323055795129941,   0.31339340451605472104577323055795129941,   0.31339340451605472104577323055795129941,   0.21599204525496912931346666638444131361,
+0.31339340451605472104577323055795129941,  -0.31339340451605472104577323055795129941,   0.31339340451605472104577323055795129941,   0.21599204525496912931346666638444131361,
+-0.73466828699700801734638476986754918792,  -0.73466828699700801734638476986754918792,                                          0,   0.14519934586011569829250580079425982305,
+0.73466828699700801734638476986754918792,                                          0,  -0.73466828699700801734638476986754918792,   0.14519934586011569829250580079425982305,
+0,   0.73466828699700801734638476986754918792,  -0.73466828699700801734638476986754918792,   0.14519934586011569829250580079425982305,
+0.73466828699700801734638476986754918792,   0.73466828699700801734638476986754918792,                                          0,   0.14519934586011569829250580079425982305,
+0.73466828699700801734638476986754918792,                                          0,   0.73466828699700801734638476986754918792,   0.14519934586011569829250580079425982305,
+0,  -0.73466828699700801734638476986754918792,   0.73466828699700801734638476986754918792,   0.14519934586011569829250580079425982305,
+0,  -0.73466828699700801734638476986754918792,  -0.73466828699700801734638476986754918792,   0.14519934586011569829250580079425982305,
+-0.73466828699700801734638476986754918792,                                          0,   0.73466828699700801734638476986754918792,   0.14519934586011569829250580079425982305,
+-0.73466828699700801734638476986754918792,   0.73466828699700801734638476986754918792,                                          0,   0.14519934586011569829250580079425982305,
+0.73466828699700801734638476986754918792,  -0.73466828699700801734638476986754918792,                                          0,   0.14519934586011569829250580079425982305,
+0,   0.73466828699700801734638476986754918792,   0.73466828699700801734638476986754918792,   0.14519934586011569829250580079425982305,
+-0.73466828699700801734638476986754918792,                                          0,  -0.73466828699700801734638476986754918792,   0.14519934586011569829250580079425982305,
+0.45079993511450943037788434573026952398,   0.96509966551271026293028182312534456821,  -0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+-0.45079993511450943037788434573026952398,  -0.96509966551271026293028182312534456821,   0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+-0.45079993511450943037788434573026952398,   0.96509966551271026293028182312534456821,  -0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+-0.96509966551271026293028182312534456821,  -0.45079993511450943037788434573026952398,   0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+-0.45079993511450943037788434573026952398,  -0.45079993511450943037788434573026952398,   0.96509966551271026293028182312534456821,  0.061441994097835335202750044633046200824,
+0.96509966551271026293028182312534456821,   0.45079993511450943037788434573026952398,  -0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+0.45079993511450943037788434573026952398,  -0.96509966551271026293028182312534456821,  -0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+0.45079993511450943037788434573026952398,  -0.96509966551271026293028182312534456821,   0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+-0.45079993511450943037788434573026952398,  -0.96509966551271026293028182312534456821,  -0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+0.45079993511450943037788434573026952398,   0.45079993511450943037788434573026952398,  -0.96509966551271026293028182312534456821,  0.061441994097835335202750044633046200824,
+-0.96509966551271026293028182312534456821,   0.45079993511450943037788434573026952398,  -0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+-0.45079993511450943037788434573026952398,   0.45079993511450943037788434573026952398,  -0.96509966551271026293028182312534456821,  0.061441994097835335202750044633046200824,
+-0.45079993511450943037788434573026952398,   0.45079993511450943037788434573026952398,   0.96509966551271026293028182312534456821,  0.061441994097835335202750044633046200824,
+-0.45079993511450943037788434573026952398,  -0.45079993511450943037788434573026952398,  -0.96509966551271026293028182312534456821,  0.061441994097835335202750044633046200824,
+0.45079993511450943037788434573026952398,  -0.45079993511450943037788434573026952398,   0.96509966551271026293028182312534456821,  0.061441994097835335202750044633046200824,
+0.96509966551271026293028182312534456821,  -0.45079993511450943037788434573026952398,  -0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+0.45079993511450943037788434573026952398,   0.96509966551271026293028182312534456821,   0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+0.96509966551271026293028182312534456821,   0.45079993511450943037788434573026952398,   0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+0.96509966551271026293028182312534456821,  -0.45079993511450943037788434573026952398,   0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+-0.96509966551271026293028182312534456821,   0.45079993511450943037788434573026952398,   0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+0.45079993511450943037788434573026952398,   0.45079993511450943037788434573026952398,   0.96509966551271026293028182312534456821,  0.061441994097835335202750044633046200824,
+-0.45079993511450943037788434573026952398,   0.96509966551271026293028182312534456821,   0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+0.45079993511450943037788434573026952398,  -0.45079993511450943037788434573026952398,  -0.96509966551271026293028182312534456821,  0.061441994097835335202750044633046200824,
+-0.96509966551271026293028182312534456821,  -0.45079993511450943037788434573026952398,  -0.45079993511450943037788434573026952398,  0.061441994097835335202750044633046200824,
+0.94124485721060326391115015763113464139,   0.35390281459663013491031287081289167626,  -0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+-0.94124485721060326391115015763113464139,  -0.35390281459663013491031287081289167626,   0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+-0.94124485721060326391115015763113464139,   0.35390281459663013491031287081289167626,  -0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+-0.35390281459663013491031287081289167626,  -0.94124485721060326391115015763113464139,   0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+-0.94124485721060326391115015763113464139,  -0.94124485721060326391115015763113464139,   0.35390281459663013491031287081289167626,  0.022614296138821884223196230668984478131,
+0.35390281459663013491031287081289167626,   0.94124485721060326391115015763113464139,  -0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+0.94124485721060326391115015763113464139,  -0.35390281459663013491031287081289167626,  -0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+0.94124485721060326391115015763113464139,  -0.35390281459663013491031287081289167626,   0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+-0.94124485721060326391115015763113464139,  -0.35390281459663013491031287081289167626,  -0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+0.94124485721060326391115015763113464139,   0.94124485721060326391115015763113464139,  -0.35390281459663013491031287081289167626,  0.022614296138821884223196230668984478131,
+-0.35390281459663013491031287081289167626,   0.94124485721060326391115015763113464139,  -0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+-0.94124485721060326391115015763113464139,   0.94124485721060326391115015763113464139,  -0.35390281459663013491031287081289167626,  0.022614296138821884223196230668984478131,
+-0.94124485721060326391115015763113464139,   0.94124485721060326391115015763113464139,   0.35390281459663013491031287081289167626,  0.022614296138821884223196230668984478131,
+-0.94124485721060326391115015763113464139,  -0.94124485721060326391115015763113464139,  -0.35390281459663013491031287081289167626,  0.022614296138821884223196230668984478131,
+0.94124485721060326391115015763113464139,  -0.94124485721060326391115015763113464139,   0.35390281459663013491031287081289167626,  0.022614296138821884223196230668984478131,
+0.35390281459663013491031287081289167626,  -0.94124485721060326391115015763113464139,  -0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+0.94124485721060326391115015763113464139,   0.35390281459663013491031287081289167626,   0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+0.35390281459663013491031287081289167626,   0.94124485721060326391115015763113464139,   0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+0.35390281459663013491031287081289167626,  -0.94124485721060326391115015763113464139,   0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+-0.35390281459663013491031287081289167626,   0.94124485721060326391115015763113464139,   0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+0.94124485721060326391115015763113464139,   0.94124485721060326391115015763113464139,   0.35390281459663013491031287081289167626,  0.022614296138821884223196230668984478131,
+-0.94124485721060326391115015763113464139,   0.35390281459663013491031287081289167626,   0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131,
+0.94124485721060326391115015763113464139,  -0.94124485721060326391115015763113464139,  -0.35390281459663013491031287081289167626,  0.022614296138821884223196230668984478131,
+-0.35390281459663013491031287081289167626,  -0.94124485721060326391115015763113464139,  -0.94124485721060326391115015763113464139,  0.022614296138821884223196230668984478131}
+);
+    index = 0;
+    for(int j = 0; j < tempNumIPs; j++){
+      for(int i = 0; i < tempDim; i++){
         tempCoords[j][i] = (*tempPvec)[index];
         index += 1;
       }
