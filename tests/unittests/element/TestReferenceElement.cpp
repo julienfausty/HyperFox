@@ -41,9 +41,9 @@ TEST_CASE("Unittesting the ReferenceElement.", "[unit][ReferenceElement][element
       rfOrthotopes[index] = new ReferenceElement(i, j, orthopolytopeStr);
       if(i != 0){
         numNodesSimplex[index] = 1;
-        for(int k = 0; k == j; k++){
-          numNodesSimplex[index] *= 
-            boost::math::factorial<double>(i + k - 1)/(boost::math::factorial<double>(k)*boost::math::factorial<double>(j-k));
+        for(int k = 1; k < (j + 1); k++){
+          numNodesSimplex[index] += 
+            boost::math::factorial<double>(i + k - 1)/(boost::math::factorial<double>(k)*boost::math::factorial<double>(i-1));
         }
         numNodesOrthotopes[index] = std::pow((j + 1),i);
       } else{

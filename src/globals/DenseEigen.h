@@ -5,7 +5,7 @@
  * A file for putting some cool type defs and including the Eigen/Dense pack.
  */
 
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 
 typedef Eigen::MatrixXd EMatrix;
 typedef Eigen::VectorXd EVector;

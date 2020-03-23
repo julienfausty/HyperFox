@@ -3,8 +3,16 @@
 
 #include <vector>
 #include <string>
+#include <map>
+#include <tuple>
+#include <cmath>
+#include <numeric>
+#include <boost/math/special_functions/factorials.hpp>
+#include <boost/math/special_functions/jacobi.hpp>
 #include "ElementGeometry.h"
 #include "Cubature.h"
+#include "ErrorHandle.h"
+#include "DenseEigen.h"
 
 namespace hfox{
 
@@ -61,7 +69,7 @@ class ReferenceElement{
     /*!
      * \brief get a const pointer to the positions of the inner nodes in the nodes list
      */
-    const std::vector< std::vector<int> > * getInnerNodes() const;
+    const std::vector<int> * getInnerNodes() const;
     /*!
      * \brief get a const pointer to the IP coordinates
      */
@@ -101,6 +109,18 @@ class ReferenceElement{
     std::vector< std::vector<double> > interpolateDeriv(const std::vector<double> & point, int degree) const;
   protected:
     /*!
+     * \brief method for checking and setting element geometry
+     */
+    void setGeometry(std::string geom);
+    /*!
+     * \brief method for checking and setting dimension
+     */
+    void setDim(int dim);
+    /*!
+     * \brief method for checking and setting polynomial interpolaton order
+     */
+    void setOrder(int order);
+    /*!
      * \brief method for determining the number of nodes
      */
     void determineNumNodes();
@@ -108,6 +128,10 @@ class ReferenceElement{
      * \brief method for determining the coordinates of the nodes
      */
     void determineNodes();
+    /*!
+     * \brief method for determining the cubature rule in the element
+     */
+    void determineCubature();
     /*!
      * \brief method for determining the number of faces
      */
@@ -121,6 +145,10 @@ class ReferenceElement{
      */
     void setFaceElement();
     /*!
+     * \brief method for computing the inverse Vandermonde matrix
+     */
+    void computeInverseVandermonde();
+    /*!
      * \brief method for computing the shape functions at the IPs
      */
     void computeIPShapeFunctions();
@@ -132,6 +160,10 @@ class ReferenceElement{
      * \brief method for computing the derivative of shape functions at the nodal coordinates
      */
     void computeDerivShapeFunctions();
+    /*!
+     * \brief a helper function for recursively generating all combinations
+     */
+    std::vector< std::vector<int> > generateCombinationsWithRepetition(std::vector<int> & set, int size) const;
     /*!
      * \brief the space dimension of the element
      */
@@ -153,9 +185,9 @@ class ReferenceElement{
      */
     int nFaces;
     /*!
-     * \brief the curbature object for the element
+     * \brief a pointer to the curbature object for the element
      */
-    Cubature cubatureRule;
+    Cubature * cubatureRule;
     /*!
      * \brief the nodal coordinates
      */
@@ -186,6 +218,32 @@ class ReferenceElement{
      * \brief reference element of a face 
      */
     ReferenceElement * faceElement;
+    /*!
+     * \brief matrix for computing modal basis from nodal basis
+     *
+     * invV_i^j = inv(P_i(x^j)) (inverse Vandermonde matrix)
+     */
+    EMatrix invV;
+    /*!
+     * \brief a function that initializes the database
+     */
+    static void initializeDatabase();
+    /*!
+     * \brief a boolean tracking the completeness of the database
+     */
+    static bool databaseExists;
+    /*!
+     * \brief the maximum allowed spatial dimension
+     */
+    static int maxDim;
+    /*!
+     * \brief the maximum allowed orders (maxOrderMap[(dim, geometry)] = maxOrder)
+     */
+    static std::map< std::tuple<int, elementGeometry>, int> maxOrderMap;
+    /*!
+     * \brief the database of element nodes (nodeDatabase[(dim, numNodes, geometry)] = nodes)
+     */
+    static std::map< std::tuple<int, int, elementGeometry>, std::vector< std::vector<double> > > nodeDatabase;
 
 };//ReferenceElement
 
