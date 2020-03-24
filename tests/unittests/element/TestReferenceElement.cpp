@@ -9,10 +9,10 @@ using namespace hfox;
 
 TEST_CASE("Unittesting the ReferenceElement.", "[unit][ReferenceElement][element]"){
   std::string simplexStr("simplex");
-  std::string orthopolytopeStr("orthopolytope");
+  std::string orthopolytopeStr("orthotope");
   std::string blablaStr("non existant polytope");
   int dimMax = 3;
-  int orderMax = 10;
+  int orderMax = 5;
   // dimension loop
   for(int i = 0; i < (dimMax+1); i++){
     // order loop
@@ -174,7 +174,7 @@ TEST_CASE("Unittesting the ReferenceElement.", "[unit][ReferenceElement][element
             res[k] += std::pow((*nodes)[k][d], j);
           }
         }
-        derivContributions = rfSimplexes[index]->interpolateDeriv(interpPoint, 1);
+        derivContributions = rfSimplexes[index]->interpolateDeriv(interpPoint);
         for(int d = 0; d < i; d++){
           interpDerivVal[d] = 0.0;
           for(int k = 0; k < contributions.size(); k++){
@@ -191,7 +191,7 @@ TEST_CASE("Unittesting the ReferenceElement.", "[unit][ReferenceElement][element
             res[k] += std::pow((*nodes)[k][d], j);
           }
         }
-        derivContributions = rfOrthotopes[index]->interpolateDeriv(interpPoint, 1);
+        derivContributions = rfOrthotopes[index]->interpolateDeriv(interpPoint);
         for(int d = 0; d < i; d++){
           interpDerivVal[d] = 0.0;
           for(int k = 0; k < contributions.size(); k++){

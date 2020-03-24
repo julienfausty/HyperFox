@@ -7,6 +7,7 @@
 #include <tuple>
 #include <cmath>
 #include <numeric>
+#include <algorithm>
 #include <boost/math/special_functions/factorials.hpp>
 #include <boost/math/special_functions/jacobi.hpp>
 #include "ElementGeometry.h"
@@ -95,6 +96,14 @@ class ReferenceElement{
      */
     const ReferenceElement * getFaceElement() const;
     /*!
+     * \brief a function for computing the orthogonal polynomial mode functions at a point
+     */
+    std::vector<double> computeModes(const std::vector<double> & point) const;
+    /*!
+     * \brief a function for computing the derivatives of orthogonal polynomial mode functions at a point
+     */
+    std::vector< std::vector<double> > computeDerivModes(const std::vector<double> & point) const;
+    /*!
      * \brief a method for interpolating shape functions at a given point
      *
      * @param point reference to a vector of coordinates in reference space.
@@ -104,9 +113,8 @@ class ReferenceElement{
      * \brief a method for interpolating derivatives of shape functions at a given point
      *
      * @param point reference to a vector of coordinates in reference space.
-     * @param degree degree of derivative
      */
-    std::vector< std::vector<double> > interpolateDeriv(const std::vector<double> & point, int degree) const;
+    std::vector< std::vector<double> > interpolateDeriv(const std::vector<double> & point) const;
   protected:
     /*!
      * \brief method for checking and setting element geometry
@@ -145,6 +153,10 @@ class ReferenceElement{
      */
     void setFaceElement();
     /*!
+     * \brief method for determining the face nodes (and by extension the inner nodes)
+     */
+    void determineNodeToModeMap();
+    /*!
      * \brief method for computing the inverse Vandermonde matrix
      */
     void computeInverseVandermonde();
@@ -160,10 +172,6 @@ class ReferenceElement{
      * \brief method for computing the derivative of shape functions at the nodal coordinates
      */
     void computeDerivShapeFunctions();
-    /*!
-     * \brief a helper function for recursively generating all combinations
-     */
-    std::vector< std::vector<int> > generateCombinationsWithRepetition(std::vector<int> & set, int size) const;
     /*!
      * \brief the space dimension of the element
      */
@@ -201,6 +209,10 @@ class ReferenceElement{
      */
     std::vector<int> innerNodes;
     /*!
+     * \brief a map from the index of a node to the associated orthogonal mode
+     */
+    std::vector< std::vector<int> > nodeToModeMap;
+    /*!
      * \brief values of shape functions at IPs (outer vector is shape funcs and inner is IPs).
      */
     std::vector< std::vector<double> > ipShapeFunctions;
@@ -228,6 +240,10 @@ class ReferenceElement{
      * \brief a function that initializes the database
      */
     static void initializeDatabase();
+    /*!
+     * \brief a helper function for recursively generating all combinations
+     */
+    static std::vector< std::vector<int> > generateCombinationsWithRepetition(std::vector<int> & set, int size);
     /*!
      * \brief a boolean tracking the completeness of the database
      */

@@ -66,7 +66,7 @@ namespace hfox{
   //Static members
   void Cubature::initializeDatabase(){
     maxDim = 3;
-    Cubature::maxOrderMap[0] = 10;
+    Cubature::maxOrderMap[0] = 20;
     Cubature::maxOrderMap[1] = 20;
     Cubature::maxOrderMap[2] = 20;
     Cubature::maxOrderMap[3] = 10;
