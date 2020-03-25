@@ -16,11 +16,13 @@ namespace hfox{
     determineNumFaces();
     determineFaceNodes();
     setFaceElement();
-    determineNodeToModeMap();
-    computeInverseVandermonde();
-    computeIPShapeFunctions();
-    computeIPDerivShapeFunctions();
-    computeDerivShapeFunctions();
+    if(dimension > 0){
+      determineNodeToModeMap();
+      computeInverseVandermonde();
+      computeIPShapeFunctions();
+      computeIPDerivShapeFunctions();
+      computeDerivShapeFunctions();
+    }
   };//Constructor
 
   void ReferenceElement::setGeometry(std::string geom){
@@ -65,30 +67,34 @@ namespace hfox{
   };//setOrder
 
   void ReferenceElement::determineNumNodes(){
-    switch(geometry){
-      case simplex:
-        {
-          nNodes = 0;
-          double factor = boost::math::factorial<double>(dimension-1);
-          for(int k = 0; k < (order+1); k++){
-            nNodes += 
-              boost::math::factorial<double>(dimension + k - 1)/(boost::math::factorial<double>(k)*factor);
+    if(dimension > 0){
+      switch(geometry){
+        case simplex:
+          {
+            nNodes = 0;
+            double factor = boost::math::factorial<double>(dimension-1);
+            for(int k = 0; k < (order+1); k++){
+              nNodes += 
+                boost::math::factorial<double>(dimension + k - 1)/(boost::math::factorial<double>(k)*factor);
+            }
+            break;
           }
+        case orthotope:
+          nNodes = std::pow((order+1), dimension);
           break;
-        }
-      case orthotope:
-        nNodes = std::pow((order+1), dimension);
-        break;
-      default:
-        ErrorHandle eh("ReferenceElement", "determineNumNodes", 
-            "Something is definitely off here, if you're developping a new reference element,"
-            " you forgot to write how to calculate the number of nodes.");
-        throw(eh);
+        default:
+          ErrorHandle eh("ReferenceElement", "determineNumNodes", 
+              "Something is definitely off here, if you're developping a new reference element,"
+              " you forgot to write how to calculate the number of nodes.");
+          throw(eh);
+      }
+    }else{
+      nNodes = 0;
     }
   };//determineNumNodes
 
   void ReferenceElement::determineNodes(){
-    nodes = nodeDatabase[std::tuple<int, int, elementGeometry>(dimension, nNodes, geometry)];
+    nodes = nodeDatabase[std::tuple<int, int, elementGeometry>(dimension, order, geometry)];
   };//determineNodes
 
   // Watch out here, because the finite element method needs to integrate multiplications of basis functions,
@@ -156,6 +162,44 @@ namespace hfox{
     }
   };//setFaceElement
 
+
+  std::vector<double> ReferenceElement::mapCoordsSimplex(const std::vector<double> & coords) const{
+    std::vector<double> mappedCoords(dimension);
+    switch(dimension){
+      case 1:
+        {
+          mappedCoords = coords;
+          break;
+        }
+      case 2:
+        {
+          if(coords[1] != 1.0){
+            mappedCoords[0] = 2.0*(1.0+coords[0])/(1.0-coords[1]) - 1.0;
+          } else{
+            mappedCoords[0] = -1.0;
+          }
+          mappedCoords[1] = coords[1];
+          break;
+        }
+      case 3:
+        {
+          if((coords[1] + coords[2]) != 0.0){
+            mappedCoords[0] = -2.0*(1.0+coords[0])/(coords[1] + coords[2])-1.0;
+          } else {
+            mappedCoords[0] = -1.0;
+          }
+          if(coords[2] != 1.0){
+            mappedCoords[1] = 2.0*(1.0 + coords[1])/(1.0-coords[2]) - 1.0;
+          } else{
+            mappedCoords[1] = -1.0;
+          }
+          mappedCoords[2] = coords[2];
+          break;
+        }
+    }
+    return mappedCoords;
+  };//mapCoordsSimplex
+
   std::vector<double> ReferenceElement::computeModes(const std::vector<double> & point) const{
     std::vector<double> result(nNodes, 1.0);
     std::vector<int> mode;
@@ -175,27 +219,7 @@ namespace hfox{
         }
       case simplex:
         {
-          std::vector<double> mappedCoords(dimension);
-          switch(dimension){
-            case 1:
-              {
-                mappedCoords = point;
-                break;
-              }
-            case 2:
-              {
-                mappedCoords[0] = 2.0*(1.0+point[0])/(1.0-point[1]) - 1.0;
-                mappedCoords[1] = point[1];
-                break;
-              }
-            case 3:
-              {
-                mappedCoords[0] = -2.0*(1.0+point[0])/(point[1] + point[2])-1.0;
-                mappedCoords[1] = 2.0*(1.0 + point[1])/(1.0-point[2]) - 1.0;
-                mappedCoords[2] = point[2];
-                break;
-              }
-          }
+          std::vector<double> mappedCoords = mapCoordsSimplex(point);
           //mode loop
           for(int j = 0; j < nNodes; j++){
             mode = nodeToModeMap[j];
@@ -228,7 +252,7 @@ namespace hfox{
 
 
   std::vector< std::vector<double> > ReferenceElement::computeDerivModes(const std::vector<double> & point) const{
-    std::vector< std::vector<double> > result(nNodes);
+    std::vector< std::vector<double> > result(nNodes, std::vector<double>(dimension, 1.0));
     std::vector<int> mode;
     using boost::math::jacobi;
     using boost::math::jacobi_derivative;
@@ -242,9 +266,9 @@ namespace hfox{
             for(int k = 0; k < dimension; k++){
               for(int l = 0; l < dimension; l++){
                 if(l != k){
-                  result[i][k] *= jacobi(mode[k], 0.0, 0.0, point[k]); 
+                  result[i][l] *= jacobi(mode[k], 0.0, 0.0, point[k]); 
                 } else{
-                  result[i][k] *= jacobi_derivative(mode[k], 0.0, 0.0, point[k], 1);
+                  result[i][l] *= jacobi_derivative(mode[k], 0.0, 0.0, point[k], 1);
                 }
               }
             }
@@ -253,27 +277,7 @@ namespace hfox{
         }
       case simplex:
         {
-          std::vector<double> mappedCoords(dimension);
-          switch(dimension){
-            case 1:
-              {
-                mappedCoords = point;
-                break;
-              }
-            case 2:
-              {
-                mappedCoords[0] = 2.0*(1.0+point[0])/(1.0-point[1]) - 1.0;
-                mappedCoords[1] = point[1];
-                break;
-              }
-            case 3:
-              {
-                mappedCoords[0] = -2.0*(1.0+point[0])/(point[1] + point[2])-1.0;
-                mappedCoords[1] = 2.0*(1.0 + point[1])/(1.0-point[2]) - 1.0;
-                mappedCoords[2] = point[2];
-                break;
-              }
-          }
+          std::vector<double> mappedCoords = mapCoordsSimplex(point);
           EMatrix Jacobian(dimension, dimension);
           switch(dimension){
             case 1:
@@ -283,25 +287,47 @@ namespace hfox{
               }
             case 2:
               {
-                Jacobian(0, 0) = 2.0/(1.0-point[1]); Jacobian(1, 0) = 0.0;
-                Jacobian(1, 0) = 2.0*(1.0 + point[0])*(point[1]/std::pow(1.0-point[1], 2.0)); Jacobian(1,1) = 1.0;
+                if(point[1] != 1.0){
+                  Jacobian(0, 0) = 2.0/(1.0-point[1]); 
+                  Jacobian(1, 0) = 2.0*(1.0 + point[0])*(1.0/std::pow(1.0-point[1], 2.0));
+                }else{
+                  Jacobian(0, 0) = 2.0;
+                  Jacobian(1, 0) = 0.0;
+                }
+                Jacobian(0, 1) = 0.0;
+                Jacobian(1,1) = 1.0;
                 break;
               }
             case 3:
               {
-                Jacobian(0,0) = -2.0/(point[1]+point[2]); Jacobian(0,1) = 0; Jacobian(0, 2) = 0;
-                Jacobian(1, 0) = 2.0*(1.0+point[0])*(point[1]/std::pow(point[1] + point[2], 2.0));
-                Jacobian(1, 1) = 2.0/(1.0 - point[2]); Jacobian(1,2) = 0.0;
-                Jacobian(2, 0) = 2.0*(1.0+point[0])*(point[2]/std::pow(point[1] + point[2], 2.0));
-                Jacobian(2, 1) = 2.0*(1.0 + point[1])*(point[2]/std::pow(1.0-point[2], 2.0));
+                if((point[1] + point[2]) != 0.0){
+                  Jacobian(0,0) = -2.0/(point[1]+point[2]);
+                  Jacobian(1, 0) = 2.0*(1.0+point[0])*(1.0/std::pow(point[1] + point[2], 2.0));
+                  Jacobian(2, 0) = 2.0*(1.0+point[0])*(1.0/std::pow(point[1] + point[2], 2.0));
+                } else{
+                  Jacobian(0, 0) = 2.0;
+                  Jacobian(1, 0) = 0.0;
+                  Jacobian(2, 0) = 0.0;
+                }
+                if(point[2] != 1.0){
+                  Jacobian(1, 1) = 2.0/(1.0 - point[2]); 
+                  Jacobian(2, 1) = 2.0*(1.0 + point[1])*(1.0/std::pow(1.0-point[2], 2.0));
+                }else{
+                  Jacobian(1, 1) = 2.0;
+                  Jacobian(2, 1) = 0.0;
+                }
+                Jacobian(0, 1) = 0.0;
+                Jacobian(0, 2) = 0.0;
+                Jacobian(1, 2) = 0.0;
                 Jacobian(2, 2) = 1.0;
                 break;
               }
           }
-          EVector gradMode = EVector::Constant(dimension, 1.0);
+          EVector gradMode(dimension);
           //mode loop
           for(int j = 0; j < nNodes; j++){
             mode = nodeToModeMap[j];
+            gradMode = EVector::Constant(dimension, 1.0);
             //dim loop
             for(int k = 0; k < dimension; k++){
               for(int l = 0; l < dimension; l++){
@@ -448,8 +474,10 @@ namespace hfox{
 
   std::vector<double> ReferenceElement::interpolate(const std::vector<double> & point) const{
     std::vector<double> modesAtPoint = computeModes(point);
-    EVector valModes = EVector::Map(modesAtPoint.data(), nNodes);
-    EMatrix lagrangePolys = valModes.transpose() * invV;
+    EVector valModes(nNodes);
+    valModes = EVector::Map(modesAtPoint.data(), nNodes);
+    EMatrix lagrangePolys(1, nNodes);
+    lagrangePolys = valModes.transpose() * invV;
     std::vector<double> result(lagrangePolys.data(), lagrangePolys.data() + nNodes);
     return result;
   };//interpolate
@@ -466,7 +494,7 @@ namespace hfox{
       }
       lagrangePolys = valModes.transpose() * invV;
       for(int i = 0; i < nNodes; i++){
-        result[i][k] = lagrangePolys(1, i);
+        result[i][k] = lagrangePolys(0, i);
       }
     }
     return result;
@@ -488,17 +516,16 @@ namespace hfox{
       }
       return combinations;
     } else if(size > 1){
-      std::vector< std::vector<int> > iCombinations(set.size());
+      std::vector< std::vector<int> > iCombinations = generateCombinationsWithRepetition(set, size-1);
       std::vector<int> newcombination(size);
       for(int i = 0; i < set.size(); i++){
-        iCombinations = generateCombinationsWithRepetition(set, size-1);
         newcombination[0] = set[i];
         for(int j = 0; j < iCombinations.size(); j++){
           for(int k = 0; k < iCombinations[j].size(); k++){
             newcombination[k+1] = iCombinations[j][k];
           }
+          combinations.push_back(newcombination);
         }
-        combinations.push_back(newcombination);
       }
       return combinations;
     } else{
@@ -780,7 +807,7 @@ namespace hfox{
       tempDim = i;
       for(int j = 0; j < (maxOrderMap[maxOrderKey(i, orthotope)] + 1); j++){
         tempOrder = j;
-        tempNNodes = std::pow(tempOrder + 1, tempDim);
+        tempNNodes = std::pow((tempOrder + 1), tempDim);
         tempVal.resize(tempNNodes);
         for(int k = 0; k < tempNNodes; k++){
           tempVal[k].resize(tempDim);
@@ -804,7 +831,7 @@ namespace hfox{
     //simplex dim k (Lobatto grid)
     for(int i = 2; i < (maxDim+1); i++){
       tempDim = i;
-      for(int j = 0; j < (maxOrderMap[maxOrderKey(i, orthotope)] + 1); j++){
+      for(int j = 0; j < (maxOrderMap[maxOrderKey(i, simplex)] + 1); j++){
         tempOrder = j;
         lobattoPts.resize(tempOrder + 1);
         for(int k = 0; k < tempOrder + 1; k++){
@@ -825,12 +852,13 @@ namespace hfox{
         tempNNodes = combinations.size();
         std::map<std::vector<int>, double> coefficients;
         for(int k = 0; k < tempNNodes; k++){
-          coefficients[combinations[k]] = -1.0 + tempDim*lobattoPts[combinations[k][0]];
+          coefficients[combinations[k]] = 2.0 + tempDim*lobattoPts[combinations[k][0]];
           for(int l = 1; l < tempDim; l++){
             coefficients[combinations[k]] -= lobattoPts[combinations[k][l]];
           }
           coefficients[combinations[k]] -= lobattoPts[tempOrder - std::accumulate(combinations[k].begin(), combinations[k].end(), 0)];
-          coefficients[combinations[k]] *= 1.0/(tempDim + 1);
+          coefficients[combinations[k]] *= 1.0/(tempDim + 1.0);
+          coefficients[combinations[k]] -= 1.0;
         }
         tempVal.resize(tempNNodes);
         for(int k = 0; k < tempNNodes; k++){
@@ -851,7 +879,7 @@ namespace hfox{
               }
           }
         }
-        nodeDatabase[dataKey(tempDim, tempOrder, orthotope)] = tempVal;
+        nodeDatabase[dataKey(tempDim, tempOrder, simplex)] = tempVal;
       }
     }
   };//initializeDatabase

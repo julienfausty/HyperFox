@@ -1,6 +1,7 @@
 #ifndef REFERENCEELEMENT_H
 #define REFERENCEELEMENT_H
 
+#include <iostream>
 #include <vector>
 #include <string>
 #include <map>
@@ -173,6 +174,10 @@ class ReferenceElement{
      */
     void computeDerivShapeFunctions();
     /*!
+     * \brief a helper function for coordinate mapping on the simplex
+     */
+    std::vector<double> mapCoordsSimplex(const std::vector<double> & coords) const;
+    /*!
      * \brief the space dimension of the element
      */
     int dimension;
@@ -231,7 +236,7 @@ class ReferenceElement{
      */
     ReferenceElement * faceElement;
     /*!
-     * \brief matrix for computing modal basis from nodal basis
+     * \brief matrix for computing nodal basis from modal basis
      *
      * invV_i^j = inv(P_i(x^j)) (inverse Vandermonde matrix)
      */
