@@ -9,6 +9,7 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
+#include <set>
 #include <boost/math/special_functions/factorials.hpp>
 #include <boost/math/special_functions/jacobi.hpp>
 #include "ElementGeometry.h"
@@ -147,6 +148,18 @@ class ReferenceElement{
     void determineNumFaces();
     /*!
      * \brief method for determining the face nodes (and by extension the inner nodes)
+     *
+     *  The orientation of the faces is a prime factor here.
+     *  As such, the boundary map is the algebraic geometry boundary map (alternating):
+     *  d(element) = sum_i (-1)^i face_i
+     *  dd(element) = sum_i sum_k (-1)^(i+k) edge_{ik}
+     *  with the constraint that dd(element) = 0 so that the ordering of the faces needs to respect
+     *  that a face i attached to another face (i+1) must be attached through an edge that is either 
+     *  even or odd for both faces (i.e the edge 01 can be the edge 11, etc.)
+     *
+     *  The ordering used here is shown in the following figure
+     *
+     * \image latex elementFaceorientations.png "Element face orientations" scale=0.2
      */
     void determineFaceNodes();
     /*!
@@ -265,6 +278,14 @@ class ReferenceElement{
      * \brief the database of element nodes (nodeDatabase[(dim, numNodes, geometry)] = nodes)
      */
     static std::map< std::tuple<int, int, elementGeometry>, std::vector< std::vector<double> > > nodeDatabase;
+    /*!
+     * \brief helper function for sorting nodes
+     */
+    static bool nodeCompare(const std::vector<double> & v, const std::vector<double> & u);
+    /*!
+     * \brief remove duplicates
+     */
+    static std::vector< std::vector<double> > removeDuplicates(const std::vector< std::vector<double> > & v);
 
 };//ReferenceElement
 

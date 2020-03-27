@@ -18,7 +18,7 @@ TEST_CASE("Unittesting the ReferenceElement.", "[unit][ReferenceElement][element
     // order loop
     for(int j = 0; j < (orderMax+1); j++){
       SECTION("Testing Construction (dim = "+std::to_string(i)+", order = "+std::to_string(j)+")"){
-        CHECK_THROWS(ReferenceElement(0, 0, blablaStr));
+        CHECK_THROWS(ReferenceElement(i, j, blablaStr));
         CHECK_NOTHROW(ReferenceElement(i, j, simplexStr));
         if((i < 3) or (j < 3)){
           CHECK_NOTHROW(ReferenceElement(i, j, orthopolytopeStr));
@@ -51,13 +51,13 @@ TEST_CASE("Unittesting the ReferenceElement.", "[unit][ReferenceElement][element
         }
         numNodesOrthotopes[index] = std::pow((j + 1),i);
       } else{
-        numNodesSimplex[index] = 0;
-        numNodesOrthotopes[index] = 0;
+        numNodesSimplex[index] = 1;
+        numNodesOrthotopes[index] = 1;
       }
     }
   }
   std::vector<double> numFacesSimplex = {1, 2, 3, 4};
-  std::vector<double> numFacesOrthotope = {1, 2, 4, 6};
+  std::vector<double> numFacesOrthotope = {0, 2, 4, 6};
   // dimension loop
   for(int i = 0; i < (dimMax + 1); i++){
     // order loop
@@ -86,8 +86,14 @@ TEST_CASE("Unittesting the ReferenceElement.", "[unit][ReferenceElement][element
         }
         if(i != 0){
           CHECK(rfSimplexes[index]->getFaceElement()->getNumNodes() == numNodesSimplex[(orderMax+1)*(i-1) + j]);
+          if(j != 0){
+            CHECK((*(rfSimplexes[index]->getFaceNodes()))[0].size() == numNodesSimplex[(orderMax+1)*(i-1) + j]);
+          }
           if((i < 3) or (j < 3)){
             CHECK(rfOrthotopes[index]->getFaceElement()->getNumNodes() == numNodesOrthotopes[(orderMax+1)*(i-1)+j]);
+            if(j != 0){
+              CHECK((*(rfOrthotopes[index]->getFaceNodes()))[0].size() == numNodesOrthotopes[(orderMax+1)*(i-1) + j]);
+            }
           }
         } else{
           CHECK(rfSimplexes[index]->getFaceElement() == NULL);
