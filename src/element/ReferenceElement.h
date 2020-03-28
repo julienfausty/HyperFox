@@ -279,9 +279,17 @@ class ReferenceElement{
      */
     static std::map< std::tuple<int, int, elementGeometry>, std::vector< std::vector<double> > > nodeDatabase;
     /*!
+     * \brief a map for the orientation of elements and their faces
+     */
+    static std::map< std::tuple<int, elementGeometry>, std::tuple< std::vector< std::vector<double> >, std::vector< std::vector<int> > > > faceOrientationMap;
+    /*!
      * \brief helper function for sorting nodes
      */
     static bool nodeCompare(const std::vector<double> & v, const std::vector<double> & u);
+    /*!
+     * \brief helper function for seeing if nodes are equal
+     */
+    static bool nodeEqual(const std::vector<double> & v, const std::vector<double> & u);
     /*!
      * \brief remove duplicates
      */

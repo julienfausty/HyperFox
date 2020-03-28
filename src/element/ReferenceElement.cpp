@@ -136,29 +136,61 @@ namespace hfox{
   void ReferenceElement::determineFaceNodes(){
     faceNodes.resize(nFaces);
     if((dimension != 0) and (order != 0)){
-      int nNodesFace = faceElement->getNumNodes();
-      int index = 1;
-      for(int i = 0; i < nFaces; i++){
-        faceNodes[i].resize(nNodesFace);
-        for(int j = 1; j < nNodesFace-1; j++){
-          faceNodes[i][j] = index;
-          index += 1;
+      if(dimension == 1){
+        faceNodes[0] = std::vector<int>({0});
+        faceNodes[1] = std::vector<int>({order});
+        innerNodes.resize(order-1);
+        std::iota(innerNodes.begin(), innerNodes.end(), 1);
+      } else {
+        EMatrix inter(dimension-1, dimension-1);
+        std::vector< std::vector<double> > nodesMinus1= std::get<0>(faceOrientationMap[std::tuple<int, elementGeometry>(dimension-1, geometry)]);
+        for(int k = 0; k < dimension-1; k++){
+          for(int l = 0; l < dimension-1; l++){
+            inter(k, l) = nodesMinus1[l+1][k]-nodesMinus1[0][k];
+          }
         }
-        switch(i){
-          case 0:
-            {
-              index += 2;
-              break;
+        EMatrix invInter = inter.inverse();
+        std::vector< std::vector<double> > principalNodes = std::get<0>(faceOrientationMap[std::tuple<int, elementGeometry>(dimension, geometry)]);
+        std::vector< std::vector<int> > faceList = std::get<1>(faceOrientationMap[std::tuple<int, elementGeometry>(dimension, geometry)]);
+        const std::vector< std::vector<double> > * faceElemNodes = faceElement->getNodes();
+        EVector nodeVal(dimension);
+        std::vector<double> tempVal;
+        EVector preNode0 = Eigen::Map<EVector>(nodesMinus1[0].data(), dimension-1);
+        EVector preNode(dimension-1);
+        for(int k = 0; k < faceList.size(); k++){
+          EMatrix T(dimension, dimension-1);
+          EVector v0 = Eigen::Map<EVector>(principalNodes[faceList[k][0]].data(), dimension);
+          for(int l = 0; l < (dimension -1); l++){
+            for(int d = 0; d < dimension; d++){
+              T(d, l) = principalNodes[faceList[k][l+1]][d]-principalNodes[faceList[k][0]][d];
             }
-          case 1:
-            {
-              break;
+          }
+          T *= invInter;
+          std::vector< std::vector<double> >::iterator it;
+          for(int l = 0; l < faceElemNodes->size(); l++){
+            for(int d = 0; d < dimension-1; d++){
+              preNode[d] = (*faceElemNodes)[l][d] - preNode0[d];
             }
-          case 2:
-            {
-              index += 1;
-              break;
+            nodeVal = T*preNode + v0;
+            tempVal = std::vector<double>(nodeVal.data(), nodeVal.data()+dimension);
+            it = std::find_if(nodes.begin(), nodes.end(), [tempVal](std::vector<double> v){return nodeEqual(v, tempVal);});
+            if(it != nodes.end()){
+              int index = std::distance(nodes.begin(), it);
+              faceNodes[k].push_back(index);
+            } else {
+              throw(ErrorHandle("ReferenceElement", "determineFaceNodes", "could not find one of the face nodes."));
             }
+          }
+        }
+        std::vector<int> maxIndexes(nFaces);
+        for (int k = 0; k < nFaces; k++){
+          maxIndexes[k] = *std::max_element(faceNodes[k].begin(), faceNodes[k].end());
+        }
+        int nFaceNodes = (*std::max_element(maxIndexes.begin(), maxIndexes.end())) + 1;
+        int nInnerNodes = nNodes - nFaceNodes;
+        innerNodes.resize(nInnerNodes);
+        for(int i = 0; i < nInnerNodes; i++){
+          innerNodes[nInnerNodes-1-i] = nNodes-1-i;
         }
       }
     }
@@ -849,7 +881,6 @@ namespace hfox{
       nodeDatabase[dataKey(i, 0, orthotope)] = std::vector< std::vector<double> >(1, std::vector<double>(i, 0.0));
     }
     //orthotope dim k
-    std::map<int, std::tuple<NodeList, FaceList> > orthotopeFaceMap;
     NodeList orthoNodes;
     FaceList orthoFaces;
     orthoNodes.resize(2);
@@ -864,7 +895,7 @@ namespace hfox{
     }
     orthoFaces[0][0] = 0;
     orthoFaces[1][0] = 1;
-    orthotopeFaceMap[1] = std::tuple<NodeList, FaceList>(orthoNodes, orthoFaces);
+    faceOrientationMap[std::tuple<int, elementGeometry>(1, orthotope)]= std::tuple<NodeList, FaceList>(orthoNodes, orthoFaces);
     orthoNodes.resize(4);
     orthoNodes[0] = std::vector<double>({-1.0, -1.0});
     orthoNodes[1] = std::vector<double>({1.0, -1.0});
@@ -875,7 +906,7 @@ namespace hfox{
     orthoFaces[1] = std::vector<int>({2, 1});
     orthoFaces[2] = std::vector<int>({2, 3});
     orthoFaces[3] = std::vector<int>({0, 3});
-    orthotopeFaceMap[2] = std::tuple<NodeList, FaceList>(orthoNodes, orthoFaces);
+    faceOrientationMap[std::tuple<int, elementGeometry>(2, orthotope)] = std::tuple<NodeList, FaceList>(orthoNodes, orthoFaces);
     orthoNodes.resize(8);
     orthoNodes[0] = std::vector<double>({-1.0, -1.0, -1.0});
     orthoNodes[1] = std::vector<double>({1.0, -1.0, -1.0});
@@ -892,20 +923,19 @@ namespace hfox{
     orthoFaces[3] =  std::vector<int>({2, 3, 7, 6});
     orthoFaces[4] =  std::vector<int>({0, 3, 7, 4});
     orthoFaces[5] =  std::vector<int>({7, 4, 5, 6});
-    orthotopeFaceMap[3] = std::tuple<NodeList, FaceList>(orthoNodes, orthoFaces);
+    faceOrientationMap[std::tuple<int, elementGeometry>(3, orthotope)] = std::tuple<NodeList, FaceList>(orthoNodes, orthoFaces);
     for(int i = 2; i < (maxDim+1); i++){
       tempDim = i;
       EMatrix inter(tempDim-1, tempDim-1);
-      NodeList nodesMinus1= std::get<0>(orthotopeFaceMap[tempDim-1]);
-      std::vector<int> indexToNodeMap = {1, 3};
+      NodeList nodesMinus1= std::get<0>(faceOrientationMap[std::tuple<int, elementGeometry>(tempDim-1, orthotope)]);
       for(int k = 0; k < tempDim-1; k++){
         for(int l = 0; l < tempDim-1; l++){
-          inter(k, l) = nodesMinus1[indexToNodeMap[l]][k]-nodesMinus1[0][k];
+          inter(k, l) = nodesMinus1[l+1][k]-nodesMinus1[0][k];
         }
       }
       EMatrix invInter = inter.inverse();
-      NodeList principalNodes = std::get<0>(orthotopeFaceMap[tempDim]);
-      FaceList faceList = std::get<1>(orthotopeFaceMap[tempDim]);
+      NodeList principalNodes = std::get<0>(faceOrientationMap[std::tuple<int, elementGeometry>(tempDim, orthotope)]);
+      FaceList faceList = std::get<1>(faceOrientationMap[std::tuple<int, elementGeometry>(tempDim, orthotope)]);
       for(int j = 1; j < (maxOrderMap[maxOrderKey(i, orthotope)] + 1); j++){
         tempVal.resize(0);
         tempOrder = j;
@@ -915,7 +945,7 @@ namespace hfox{
           EVector v0(tempDim);
           for(int l = 0; l < (tempDim -1); l++){
             for(int d = 0; d < tempDim; d++){
-              T(d, l) = principalNodes[faceList[k][indexToNodeMap[l]]][d]-principalNodes[faceList[k][0]][d];
+              T(d, l) = principalNodes[faceList[k][l+1]][d]-principalNodes[faceList[k][0]][d];
               v0[d] = principalNodes[faceList[k][0]][d];
             }
           }
@@ -954,7 +984,6 @@ namespace hfox{
     }
     //simplex dim k (Lobatto grid)
     // dim to nodes and faces
-    std::map<int, std::tuple<NodeList, FaceList> > simplexFaceMap;
     NodeList simNodes;
     FaceList simFaces;
     simNodes.resize(2);
@@ -969,7 +998,7 @@ namespace hfox{
     }
     simFaces[0][0] = 0;
     simFaces[1][0] = 1;
-    simplexFaceMap[1] = std::tuple<NodeList, FaceList>(simNodes, simFaces);
+    faceOrientationMap[std::tuple<int, elementGeometry>(1, simplex)] = std::tuple<NodeList, FaceList>(simNodes, simFaces);
     simNodes.resize(3);
     simNodes[0] = std::vector<double>({-1.0, -1.0});
     simNodes[1] = std::vector<double>({1.0, -1.0});
@@ -978,7 +1007,7 @@ namespace hfox{
     simFaces[0] = std::vector<int>({0, 1});
     simFaces[1] = std::vector<int>({2, 1});
     simFaces[2] = std::vector<int>({2, 0});
-    simplexFaceMap[2] = std::tuple<NodeList, FaceList>(simNodes, simFaces);
+    faceOrientationMap[std::tuple<int, elementGeometry>(2, simplex)] = std::tuple<NodeList, FaceList>(simNodes, simFaces);
     simNodes.resize(4);
     simNodes[0] = std::vector<double>({-1.0, -1.0, -1.0});
     simNodes[1] = std::vector<double>({1.0, -1.0, -1.0});
@@ -989,19 +1018,19 @@ namespace hfox{
     simFaces[1] = std::vector<int>({0, 3, 2});
     simFaces[2] = std::vector<int>({3, 1, 0});
     simFaces[3] = std::vector<int>({3, 1, 2});
-    simplexFaceMap[3] = std::tuple<NodeList, FaceList>(simNodes, simFaces);
+    faceOrientationMap[std::tuple<int, elementGeometry>(3, simplex)] = std::tuple<NodeList, FaceList>(simNodes, simFaces);
     for(int i = 2; i < (maxDim+1); i++){
       tempDim = i;
       EMatrix inter(tempDim-1, tempDim-1);
-      NodeList nodesMinus1= std::get<0>(simplexFaceMap[tempDim-1]);
+      NodeList nodesMinus1= std::get<0>(faceOrientationMap[std::tuple<int, elementGeometry>(tempDim-1, simplex)]);
       for(int k = 0; k < tempDim-1; k++){
         for(int l = 0; l < tempDim-1; l++){
           inter(k, l) = nodesMinus1[l+1][k]-nodesMinus1[0][k];
         }
       }
       EMatrix invInter = inter.inverse();
-      NodeList principalNodes = std::get<0>(simplexFaceMap[tempDim]);
-      FaceList faceList = std::get<1>(simplexFaceMap[tempDim]);
+      NodeList principalNodes = std::get<0>(faceOrientationMap[std::tuple<int, elementGeometry>(tempDim, simplex)]);
+      FaceList faceList = std::get<1>(faceOrientationMap[std::tuple<int, elementGeometry>(tempDim, simplex)]);
       for(int j = 1; j < (maxOrderMap[maxOrderKey(i, simplex)] + 1); j++){
         tempVal.resize(0);
         tempOrder = j;
@@ -1115,10 +1144,24 @@ namespace hfox{
     return res;
   };//nodeCompare
 
+  bool ReferenceElement::nodeEqual(const std::vector<double> & v, const std::vector<double> & u){
+    bool res = 1;
+    int dim = v.size();
+    for(int i = 0; i < dim; i++){
+      if(std::abs(v[i] - u[i]) > 1e-12){
+        res = 0;
+        break;
+      }
+    }
+    return res;
+  };//nodeCompare
+
   //static variables
   bool ReferenceElement::databaseExists = 0;
   int ReferenceElement::maxDim;
   std::map<std::tuple<int, elementGeometry>, int> ReferenceElement::maxOrderMap;
   std::map< std::tuple<int, int, elementGeometry>, std::vector< std::vector<double> > > ReferenceElement::nodeDatabase;
+  std::map< std::tuple<int, elementGeometry>,
+    std::tuple< std::vector< std::vector<double> >, std::vector< std::vector<int> > > > ReferenceElement::faceOrientationMap;
 
 }//hfox
