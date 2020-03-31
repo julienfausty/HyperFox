@@ -2,7 +2,7 @@
 #define SOLVER_H
 
 #include "LinAlgebraInterface.h"
-#include "Model.h"
+#include "FEModel.h"
 
 namespace hfox{
 
@@ -18,7 +18,7 @@ class Solver{
     /*!
      * \brief a method to set the model
      */
-    virtual void setModel(Model * m){model = m;};
+    virtual void setModel(FEModel * m){model = m;};
     /*!
      * \brief a method to set the linear algebra interface
      */
@@ -39,7 +39,7 @@ class Solver{
     /*!
      * \brief the model of the system being simulated
      */
-    Model * model;
+    FEModel * model;
 
 };//Solver
 

@@ -25,18 +25,22 @@ class Field {
     /*!
      * \brief returns the length of the values vector.
      */
-    virtual int getLength() const{return nValues;};
+    int getLength() const{return values.size();};
     /*!
      * \brief allocates the memory necessary for a field of certain length.
      *
      * @param length integer with size of field
      */
-    virtual int allocate(int length) =0;
+    int allocate(int length){values.resize(length);};
+    /*!
+     * \brief get pointer to the value list
+     */
+    std::vector<double> * getValues(){return &values;};
   protected:
     /*!
-     * \brief number of values
+     * \brief list of values of the field
      */
-    int nValues;
+    std::vector<double> values;
     /*!
      * \brief pointer to the mesh the field is defined on.
      */

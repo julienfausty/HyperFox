@@ -3,7 +3,8 @@
 
 #include <vector>
 #include <array>
-#include "Io.h"
+#include <iostream>
+#include <moab/Core.hpp>
 #include "ReferenceElement.h"
 
 namespace hfox{
@@ -27,7 +28,7 @@ class Mesh{
      * @param connectivity_candidate a pointer to a vector of vectors holding the 
      * indexes of the points in the points vector.
      */
-    Mesh(std::vector< std::vector< double > > &  point_candidate,
+    Mesh(int dim, int order, std::string geom, std::vector< std::vector< double > > &  point_candidate,
         std::vector< std::vector< int > > & connectivity_candidate);
     //Destructors
     /*! \brief The destructor for the mesh.
@@ -40,38 +41,43 @@ class Mesh{
      * @param order the order of the polynomial interpolation
      * @param geom the geometry of the elements
      */
-    void setReferenceElement(int dim, int order, elementGeometry geom);
-    /*! \brief A method for setting the points of the mesh.
+    void setReferenceElement(int dim, int order, std::string geom);
+    /*! \brief A method for setting the points and connectivity of the mesh.
      *
      * @param point_candidate a reference to a vector of coordinates of dimension
      * d.
-     */
-    void setPoints(std::vector< std::vector<double> > &
-        points_candidate);
-    /*! \brief A method for setting the connectivity of the mesh.
-     *
      * @param connectivity_candidate a reference to a vector of vectors holding the 
      * indexes of the points in the points vector.
      */
-    void setConnectivity(std::vector< std::vector<int> > &
-        connectivity_candidate);
+    void setMesh(std::vector< std::vector<double> > & points_candidate, 
+        std::vector< std::vector<int> > & connectivity_candidate);
     /*! \brief A method for geting a const pointer to the nodes of the mesh.
+     *
+     * @param points the pointer to the vector to fill with vertices
      */
-    const std::vector< std::vector<double> > * getPoints() const;
+    void getPoints(std::vector< std::vector<double> > * points) const;
     /*! \brief A method for geting a const pointer to the connectivity of the mesh.
+     *
+     * @param connectivity the pointer to the vector to fill with connectivity
      */
-    const std::vector< std::vector<int> > * getConnectivity() const;
+    void getConnectivity(std::vector< std::vector<int> > * connectivity) const;
     /*! \brief A method for accessing a specific node of the mesh.
      *
-     * @param i index of the point one wishes to acquire. 
+     * @param i index of the point one wishes to acquire.
+     * @param point pointer to fill with coordinates
      */
-    const std::vector<double> * getPoint(int i) const;
+    void getPoint(int i, std::vector<double> * point) const;
     /*! \brief A method for accessing an individual cell.
      *
      * @param i index of the cell of which one wishes to get the connectivity 
      * information. 
+     * @param cell pointer to fill with node indexes
      */
-    const std::vector<int> * getCell(int i) const;
+    void getCell(int i, std::vector<int> * cell) const;
+    /*!
+     * \brief get a const pointer to the reference element
+     */
+    const ReferenceElement * getReferenceElement() const;
     // Helper functions
     /*! \brief get the number of nodes of the mesh
      */
@@ -82,57 +88,52 @@ class Mesh{
     /*! \brief get the dimension of the space the mesh is discretizing.
      */
     int getDimension() const;
-    /*! \brief A method for geting a const pointer to the faces of the mesh.
+    /*! \brief A method for geting a const pointer to the inner faces of the mesh.
      *
-     *  Warning: if the faces of the mesh have not been computed, this method
-     *  will compute them!
+     * @param innerFaces pointer to a vector to fill with inner faces
      */
-    const std::vector< std::array<int, 4> > * getFaces();
-    /*! \brief A method for geting a const pointer to a face of the mesh.
+    void getInnerFaces(std::vector< std::array<int, 4> > * innerFaces) const;
+    /*! \brief A method for geting a const pointer to an inner face of the mesh.
      *
-     *  Warning: if the faces of the mesh have not been computed, this method
-     *  will compute them!
+     * @param i index of face
+     * @param innerFace pointer to fill with inner face
      */
-    const std::array<int, 4> * getFace(int i);
+    void getInnerFace(int i, std::array<int, 4> * innerFace) const;
+    /*! \brief A method for geting a const pointer to the outer faces of the mesh.
+     *
+     * @param outerFaces pointer to a vector to fill with outer faces
+     */
+    void getOuterFaces(std::vector< std::array<int, 2> > * outerFaces) const;
+    /*! \brief A method for geting a const pointer to an outer face of the mesh.
+     *
+     *  @param i index to outer face
+     *  @param outerFace a pointer to fill with outer face info
+     */
+    void getOuterFace(int i, std::array<int, 2> * outerFace) const;
   protected:
-    /*! \brief get the dimension of the space the mesh is discretizing.
+    /*! \brief compute and set both the inner and outer faces of the mesh.
      */
     void computeFaces();
     /*!
-     * The vector of coordinates describing the nodes of the mesh.
+     * \brief small method for initializing the mbInterface
      */
-    std::vector< std::vector<double> > points;
+    void initializeMBInterface();
     /*!
-     * The vector of vectors of indexes of points holding the 
-     * connectivity information of the mesh.
+     * \brief small method for determining the moab element type
      */
-    std::vector< std::vector<int> > connectivity;
+    moab::EntityType determineMOABType() const;
+    /*!
+     * \brief the interface to the moab description
+     */
+    moab::Interface * mbInterface;
+    /*!
+     * \brief moab entity handle to the mesh set
+     */
+    moab::EntityHandle meshset;
     /*!
      * \brief the reference element of the mesh
      */
-    ReferenceElement refElement;
-    /*!
-     * The vector of integers identifying the points on the boundary
-     */
-    std::vector<int> boundaryPoints;
-    /*!
-     * The vector of arrays of indexes of cells describing the inner faces. The structure is
-     * [ el1 faceofel1 el2 faceofel2 ]
-     */
-    std::vector< std::array<int, 4> > innerFaces;
-    /*!
-     * The vector of arrays of indexes of cells describing the outer faces. The structure is
-     * [ el1 faceofel1 ]
-     */
-    std::vector< std::array<int, 2> > outerFaces;
-    /*!
-     * The dimension of the space.
-     */
-    int dimension;
-    /*!
-     * A boolean indicating if the faces of the mesh have been computed.
-     */
-    bool facesExist;
+    ReferenceElement * refElement;
 }; //Mesh
 
 } //hfox

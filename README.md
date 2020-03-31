@@ -35,6 +35,8 @@ For now the project has the following dependencies:
 
 - HDF5: for input/output binary file formatting
 
+- MOAB: a c++ library for dealing with meshes and computing mesh entities.
+
 Also, the following library is used for the testing module:
 
 - Catch2: A unittesting library

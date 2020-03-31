@@ -6,6 +6,8 @@ file(GLOB
 
 add_library(mesh SHARED ${files})
 
-target_include_directories(mesh PUBLIC ${hyperFoxIncludes})
+target_include_directories(mesh PUBLIC ${hyperFoxIncludes} ${MOAB_INCLUDE_DIRS})
 
-target_link_libraries(mesh element Eigen3::Eigen)
+link_directories(${MOAB_LIBRARY_DIRS})
+
+target_link_libraries(mesh element Eigen3::Eigen ${MOAB_LIBRARIES})

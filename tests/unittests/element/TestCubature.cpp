@@ -19,7 +19,7 @@ double testPoly2(double x, double y, double z){
 
 using namespace hfox;
 
-TEST_CASE("Unittesting the Cubature class.", "[unit][cubature][element]"){
+TEST_CASE("Unittesting the Cubature class.", "[unit][Cubature][element]"){
   elementGeometry s = simplex;
   elementGeometry o = orthotope;
   int dimMax = 3;
