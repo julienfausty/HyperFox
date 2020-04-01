@@ -2,7 +2,7 @@
 #define MESH_H
 
 #include <vector>
-#include <array>
+#include <algorithm>
 #include <iostream>
 #include <moab/Core.hpp>
 #include "ReferenceElement.h"
@@ -30,6 +30,13 @@ class Mesh{
      */
     Mesh(int dim, int order, std::string geom, std::vector< std::vector< double > > &  point_candidate,
         std::vector< std::vector< int > > & connectivity_candidate);
+    /*! \brief A constructor for the mesh with points and connectivity.
+     *
+     * @param point_candidate
+     * @param connectivity_candidate a pointer to a vector of vectors holding the 
+     * indexes of the points in the points vector.
+     */
+    Mesh(int dim, int order, std::string geom, moab::EntityHandle meshset_candidate);
     //Destructors
     /*! \brief The destructor for the mesh.
      */
@@ -51,6 +58,12 @@ class Mesh{
      */
     void setMesh(std::vector< std::vector<double> > & points_candidate, 
         std::vector< std::vector<int> > & connectivity_candidate);
+    /*!
+     * \brief A method for directly setting the meshset with moab compatible applications
+     *
+     * @param meshset_candidate the candidate for the meshset
+     */
+    void setMeshSet(moab::EntityHandle meshset_candidate);
     /*! \brief A method for geting a const pointer to the nodes of the mesh.
      *
      * @param points the pointer to the vector to fill with vertices
@@ -60,7 +73,27 @@ class Mesh{
      *
      * @param connectivity the pointer to the vector to fill with connectivity
      */
-    void getConnectivity(std::vector< std::vector<int> > * connectivity) const;
+    void getCells(std::vector< std::vector<int> > * connectivity) const;
+    /*! \brief A method for geting a const pointer to the connectivity fo the faces of the mesh.
+     *
+     * @param connectivity the pointer to the vector to fill with connectivity
+     */
+    void getFaces(std::vector< std::vector<int> > * faces) const;
+    /*! \brief A method for geting a const pointer to the nodes of the mesh.
+     *
+     * @param points the pointer to the vector to fill with vertices
+     */
+    void getSlicePoints(const std::vector<int> & slice, std::vector< std::vector<double> > * points) const;
+    /*! \brief A method for geting a const pointer to the connectivity of the mesh.
+     *
+     * @param connectivity the pointer to the vector to fill with connectivity
+     */
+    void getSliceCells(const std::vector<int> & slice, std::vector< std::vector<int> > * connectivity) const;
+    /*! \brief A method for geting a const pointer to the connectivity fo the faces of the mesh.
+     *
+     * @param connectivity the pointer to the vector to fill with connectivity
+     */
+    void getSliceFaces(const std::vector<int> & slice, std::vector< std::vector<int> > * faces) const;
     /*! \brief A method for accessing a specific node of the mesh.
      *
      * @param i index of the point one wishes to acquire.
@@ -74,6 +107,13 @@ class Mesh{
      * @param cell pointer to fill with node indexes
      */
     void getCell(int i, std::vector<int> * cell) const;
+    /*! \brief A method for accessing an individual face.
+     *
+     * @param i index of the face of which one wishes to get the connectivity 
+     * information. 
+     * @param cell pointer to fill with node indexes
+     */
+    void getFace(int i, std::vector<int> * face) const;
     /*!
      * \brief get a const pointer to the reference element
      */
@@ -85,43 +125,60 @@ class Mesh{
     /*! \brief get the number of cells of the mesh
      */
     int getNumberCells() const;
+    /*! \brief get the number of faces of the mesh
+     */
+    int getNumberFaces() const;
     /*! \brief get the dimension of the space the mesh is discretizing.
      */
     int getDimension() const;
-    /*! \brief A method for geting a const pointer to the inner faces of the mesh.
-     *
-     * @param innerFaces pointer to a vector to fill with inner faces
+    /*!
+     * \brief get an element to face map
      */
-    void getInnerFaces(std::vector< std::array<int, 4> > * innerFaces) const;
-    /*! \brief A method for geting a const pointer to an inner face of the mesh.
+    const std::vector< std::vector<int> > * getCell2FaceMap() const;
+    /*!
+     * \brief get the faces of a specific cell
+     *
+     * @param i index of cell
+     */
+    const std::vector<int> * getCell2Face(int i) const;
+    /*!
+     * \brief get a face to element map
+     *
+     * @param face2CellMap pointer to fill with cells adjoining faces
+     */
+    const std::vector< std::vector<int> > * getFace2CellMap() const;
+    /*!
+     * \brief get the cells adjoining a specific face
      *
      * @param i index of face
-     * @param innerFace pointer to fill with inner face
      */
-    void getInnerFace(int i, std::array<int, 4> * innerFace) const;
-    /*! \brief A method for geting a const pointer to the outer faces of the mesh.
-     *
-     * @param outerFaces pointer to a vector to fill with outer faces
-     */
-    void getOuterFaces(std::vector< std::array<int, 2> > * outerFaces) const;
-    /*! \brief A method for geting a const pointer to an outer face of the mesh.
-     *
-     *  @param i index to outer face
-     *  @param outerFace a pointer to fill with outer face info
-     */
-    void getOuterFace(int i, std::array<int, 2> * outerFace) const;
+    const std::vector<int> * getFace2Cell(int i) const;
   protected:
     /*! \brief compute and set both the inner and outer faces of the mesh.
      */
     void computeFaces();
+    /*! \brief compute the face to cell map of the mesh.
+     */
+    void computeFace2CellMap();
+    /*! \brief compute the cell to face map of the mesh.
+     */
+    void computeCell2FaceMap();
     /*!
      * \brief small method for initializing the mbInterface
      */
     void initializeMBInterface();
     /*!
+     * \brief small method for finding the internal cell index of a face
+     */
+    int getFaceIndex(const moab::EntityHandle & cell, const moab::EntityHandle & face) const;
+    /*!
      * \brief small method for determining the moab element type
      */
     moab::EntityType determineMOABType() const;
+    /*!
+     * \brief small method for determining the moab face type
+     */
+    moab::EntityType determineMOABTypeFace() const;
     /*!
      * \brief the interface to the moab description
      */
@@ -134,6 +191,14 @@ class Mesh{
      * \brief the reference element of the mesh
      */
     ReferenceElement * refElement;
+    /*!
+     * \brief the face 2 cell map
+     */
+    std::vector< std::vector<int> > face2CellMap;
+    /*!
+     * \brief the face 2 cell map
+     */
+    std::vector< std::vector<int> > cell2FaceMap;
 }; //Mesh
 
 } //hfox
