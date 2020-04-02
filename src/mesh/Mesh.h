@@ -2,9 +2,11 @@
 #define MESH_H
 
 #include <vector>
+#include <set>
 #include <algorithm>
 #include <iostream>
 #include <moab/Core.hpp>
+#include <moab/Skinner.hpp>
 #include "ReferenceElement.h"
 
 namespace hfox{
@@ -153,7 +155,15 @@ class Mesh{
      * @param i index of face
      */
     const std::vector<int> * getFace2Cell(int i) const;
+    /*!
+     * \brief get the indexes of the faces on the boundary
+     */
+    const std::set<int> * getBoundaryFaces() const;
   protected:
+    /*!
+     * \brief small method for initializing the mbInterface
+     */
+    void initializeMBInterface();
     /*! \brief compute and set both the inner and outer faces of the mesh.
      */
     void computeFaces();
@@ -163,10 +173,9 @@ class Mesh{
     /*! \brief compute the cell to face map of the mesh.
      */
     void computeCell2FaceMap();
-    /*!
-     * \brief small method for initializing the mbInterface
+    /*! \brief compute the boundary of the mesh.
      */
-    void initializeMBInterface();
+    void computeBoundary();
     /*!
      * \brief small method for finding the internal cell index of a face
      */
@@ -199,6 +208,10 @@ class Mesh{
      * \brief the face 2 cell map
      */
     std::vector< std::vector<int> > cell2FaceMap;
+    /*!
+     * \brief the indexes of the boundary faces of the mesh
+     */
+    std::set<int> boundaryFaces;
 }; //Mesh
 
 } //hfox
