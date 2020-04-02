@@ -3,3 +3,6 @@ build*
 
 #documentation
 docs*
+
+#vim files
+*.swp
