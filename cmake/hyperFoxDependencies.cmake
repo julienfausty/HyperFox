@@ -7,6 +7,8 @@ foreach(name ${hyperFoxSrcNames})
     set(hyperFoxIncludes ${hyperFoxIncludes} "${CMAKE_SOURCE_DIR}/src/${name}")
 endforeach()
 
+set(hyperFoxIncludes ${hyperFoxIncludes} ${INCLUDES_OUTPUT_PATH})
+
 SUBDIRLIST(hyperFoxTestNames "${CMAKE_SOURCE_DIR}/tests/unittests")
 
 foreach(name ${hyperFoxTestNames})

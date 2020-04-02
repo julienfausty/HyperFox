@@ -1,0 +1,15 @@
+#ifndef CONFIGRESSOURCES
+#define CONFIGRESSOURCES
+
+#include <string>
+
+namespace hfox{
+
+  std::string getRessourcePath(){
+    std::string cmake_src = "@CMAKE_SOURCE_DIR@";
+    return std::string(cmake_src + "/ressources");
+  };//getRessourcePath
+
+}
+
+#endif

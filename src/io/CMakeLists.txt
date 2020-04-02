@@ -6,6 +6,8 @@ file(GLOB
 
 add_library(io SHARED ${files})
 
-target_include_directories(io PUBLIC ${hyperFoxIncludes})
+target_include_directories(io PUBLIC ${hyperFoxIncludes} ${MOAB_INCLUDE_DIRS})
 
-target_link_libraries(io mesh field Boost::filesystem)
+link_directories(${MOAB_LIBRARY_DIRS})
+
+target_link_libraries(io mesh field Boost::filesystem ${MOAB_LIBRARIES})
