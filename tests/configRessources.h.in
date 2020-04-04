@@ -40,6 +40,8 @@ namespace hfox{
 
     delete[] lBuffer;
     delete[] rBuffer;
+    lFile.close();
+    rFile.close();
     return true;
   };
 

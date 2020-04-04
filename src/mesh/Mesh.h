@@ -8,6 +8,7 @@
 #include <moab/Core.hpp>
 #include <moab/Skinner.hpp>
 #include "ReferenceElement.h"
+#include "ErrorHandle.h"
 
 namespace hfox{
 

@@ -139,14 +139,98 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(checkFilesEqual(checkFile, outputFile));
     std::remove(outputFile.c_str());
   };
+
+  SECTION("Testing load H5M"){
+    std::string lightTriH5M = "generatedLightTri.h5m";
+    Mesh simplexMesh;
+    simplexMesh.setReferenceElement(2, 1, "simplex");
+    moabio->setMesh(&simplexMesh);
+    CHECK_NOTHROW(moabio->load(meshDirPath + lightTriH5M));
+    moabio->load(meshDirPath + lightTriH5M);
+    CHECK(simplexMesh.getDimension() == 2);
+    CHECK(simplexMesh.getNumberPoints() == testNodes.size());
+    CHECK(simplexMesh.getNumberCells() == testSimplexConnectivity.size());
+    std::vector<double> point;
+    for(int i = 0; i < simplexMesh.getNumberPoints(); i++){
+      simplexMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK(point[j] == testNodes[i][j]);
+      }
+    }
+    std::vector<int> cell;
+    for(int i = 0; i < simplexMesh.getNumberCells(); i++){
+      simplexMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK(cell[j] == testSimplexConnectivity[i][j]);
+      }
+    }
+    std::string lightQuadH5M = "generatedLightQuad.h5m";
+    Mesh orthoMesh;
+    orthoMesh.setReferenceElement(2, 1, "orthotope");
+    moabio->setMesh(&orthoMesh);
+    moabio->load(meshDirPath + lightQuadH5M);
+    CHECK(orthoMesh.getDimension() == 2);
+    CHECK(orthoMesh.getNumberPoints() == testNodes.size());
+    CHECK(orthoMesh.getNumberCells() == testOrthotopeConnectivity.size());
+    for(int i = 0; i < orthoMesh.getNumberPoints(); i++){
+      orthoMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK(point[j] == testNodes[i][j]);
+      }
+    }
+    for(int i = 0; i < orthoMesh.getNumberCells(); i++){
+      orthoMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK(cell[j] == testOrthotopeConnectivity[i][j]);
+      }
+    }
+  };
+
+  SECTION("Testing write H5M"){
     Mesh simplexMesh(2, 1, "simplex", testNodes, testSimplexConnectivity);
     moabio->setMesh(&simplexMesh);
-    std::string outputFile = meshDirPath + "generatedLightTri.h5m";
+    std::string outputFile = meshDirPath + "tmpoutput.h5m";
     moabio->write(outputFile);
     moabio->load(outputFile);
-    std::cout << "Num Nodes: " << simplexMesh.getNumberPoints() << std::endl;
-    std::cout << "Num Cells: " << simplexMesh.getNumberCells() << std::endl;
-    std::cout << "Num Faces: " << simplexMesh.getNumberFaces() << std::endl;
+    CHECK(simplexMesh.getDimension() == 2);
+    CHECK(simplexMesh.getNumberPoints() == testNodes.size());
+    CHECK(simplexMesh.getNumberCells() == testSimplexConnectivity.size());
+    std::vector<double> point;
+    for(int i = 0; i < simplexMesh.getNumberPoints(); i++){
+      simplexMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK(point[j] == testNodes[i][j]);
+      }
+    }
+    std::vector<int> cell;
+    for(int i = 0; i < simplexMesh.getNumberCells(); i++){
+      simplexMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK(cell[j] == testSimplexConnectivity[i][j]);
+      }
+    }
+    std::remove(outputFile.c_str());
+    Mesh orthoMesh(2, 1, "orthotope", testNodes, testOrthotopeConnectivity);
+    moabio->setMesh(&orthoMesh);
+    outputFile = meshDirPath + "tmpoutput.h5m";
+    moabio->write(outputFile);
+    CHECK(orthoMesh.getDimension() == 2);
+    CHECK(orthoMesh.getNumberPoints() == testNodes.size());
+    CHECK(orthoMesh.getNumberCells() == testOrthotopeConnectivity.size());
+    for(int i = 0; i < orthoMesh.getNumberPoints(); i++){
+      orthoMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK(point[j] == testNodes[i][j]);
+      }
+    }
+    for(int i = 0; i < orthoMesh.getNumberCells(); i++){
+      orthoMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK(cell[j] == testOrthotopeConnectivity[i][j]);
+      }
+    }
+    std::remove(outputFile.c_str());
+  };
 
   delete moabio;
 };

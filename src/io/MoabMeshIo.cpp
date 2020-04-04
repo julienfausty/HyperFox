@@ -40,8 +40,7 @@ void MoabMeshIo::write(std::string filename){
     throw(ErrorHandle("MoabMeshIo", "write", "must enter a mesh into the io before writing"));
   }
   moab::ErrorCode mbErr;
-  const moab::EntityHandle * ms = myMesh->getMeshSet();
-  mbErr = mbIFace->write_file(filename.c_str(), NULL, NULL, ms, 1);
+  mbErr = mbIFace->write_file(filename.c_str(), 0, 0, myMesh->getMeshSet(), 1);
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("MoabMeshIo", "write", "could not write mesh file: " + filename));
   }
