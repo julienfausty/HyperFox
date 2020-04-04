@@ -23,10 +23,7 @@ Mesh::~Mesh(){
   if(refElement != NULL){
     delete refElement;
   }
-  moab::ErrorCode mbErr = mbInterface->clear_meshset(&meshset, 1);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "Destructor", "could not clear meshset."));
-  }
+  deleteMeshSet();
   delete mbInterface;
 };//Destructor
 
@@ -54,6 +51,11 @@ void Mesh::setMesh(std::vector< std::vector<double> > & points_candidate,
   moab::ErrorCode mbErr;
   if(refElement == NULL){
     throw("Mesh", "setMesh", "cannot set mesh before reference element is set.");
+  }
+  deleteMeshSet();
+  mbErr = mbInterface->create_meshset(moab::MESHSET_SET, meshset);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "setMesh", "could not initialize meshset."));
   }
   std::vector<double> point(3, 0.0);
   std::vector<moab::EntityHandle> cell;
@@ -94,13 +96,20 @@ void Mesh::setMesh(std::vector< std::vector<double> > & points_candidate,
   computeFaces();
 };//setPoints
 
-void Mesh::setMeshSet(moab::EntityHandle meshset_candidate){
+void Mesh::setMeshSet(moab::EntityHandle & meshset_candidate){
   moab::ErrorCode mbErr;
-  mbErr = mbInterface->clear_meshset(&meshset, 1);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "setMeshSet", "could not clear current meshset (moab)."));
+  if(refElement == NULL){
+    throw("Mesh", "setMeshSet", "cannot set mesh before reference element is set.");
   }
-  meshset = meshset_candidate;
+  deleteMeshSet();
+  mbErr = mbInterface->create_meshset(moab::MESHSET_SET, meshset);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "setMeshSet", "could not initialize meshset."));
+  }
+  mbErr = mbInterface->unite_meshset(meshset, meshset_candidate);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "setMeshSet", "could not unite meshsets."));
+  }
   computeFaces();
 };//setMeshSet
 
@@ -464,8 +473,6 @@ void Mesh::computeCell2FaceMap(){
     throw(ErrorHandle("Mesh", "computeCell2FaceMap", "could not get cells from meshset"));
   }
   cell2FaceMap.resize(cells.size());
-  std::vector< std::vector<int> > faces;
-  getFaces(&faces);
   for(moab::Range::iterator itcell = cells.begin(); itcell != cells.end(); itcell++){
     moab::Range adj;
     mbErr = mbInterface->get_adjacencies(&(*itcell), 1, refElement->getDimension() - 1, 0, adj);
@@ -559,5 +566,30 @@ void Mesh::computeBoundary(){
 const std::set<int> * Mesh::getBoundaryFaces() const{
   return &boundaryFaces;
 };//getBoundaryFaces
+
+moab::Interface * Mesh::getMoabInterface(){
+  return mbInterface;
+};//getMoabInterface
+
+const moab::EntityHandle * Mesh::getMeshSet() const{
+  return &meshset;
+};//getMeshSet
+
+void Mesh::deleteMeshSet(){
+  moab::ErrorCode mbErr;
+  moab::Range allEnts;
+  mbErr = mbInterface->get_entities_by_handle(meshset, allEnts);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "deleteMeshSet", "could not get all entities"));
+  }
+  mbErr = mbInterface->delete_entities(allEnts);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "deleteMeshSet", "could not delete all entities"));
+  }
+  mbErr = mbInterface->delete_entities(&meshset, 1);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "deletMeshSet", "could not clear meshset."));
+  }
+};
 
 }//hfox

@@ -7,7 +7,7 @@
 namespace hfox{
 
 /*!
- * \brief The Input/Output class.
+ * \brief The Input/Output interface.
  *
  * A virtual class that sets up the interface for any input or output operations one may perform.
  * Every instance of the class should have a unique format (e.g. vtu, hdf5, txt, ...).

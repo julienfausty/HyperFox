@@ -2,6 +2,8 @@
 #define CONFIGRESSOURCES
 
 #include <string>
+#include <fstream>
+#include <cstring>
 
 namespace hfox{
 
@@ -9,6 +11,37 @@ namespace hfox{
     std::string cmake_src = "@CMAKE_SOURCE_DIR@";
     return std::string(cmake_src + "/ressources");
   };//getRessourcePath
+
+  bool checkFilesEqual(const std::string& lFilePath, const std::string& rFilePath){
+    std::ifstream lFile(lFilePath.c_str(), std::ifstream::in | std::ifstream::binary);
+    std::ifstream rFile(rFilePath.c_str(), std::ifstream::in | std::ifstream::binary);
+
+    if(!lFile.is_open() || !rFile.is_open())
+    {
+      return false;
+    }
+
+    int buff_size = 1024;
+
+    char *lBuffer = new char[buff_size]();
+    char *rBuffer = new char[buff_size]();
+
+    do {
+      lFile.read(lBuffer, buff_size);
+      rFile.read(rBuffer, buff_size);
+
+      if (std::memcmp(lBuffer, rBuffer, buff_size) != 0)
+      {
+        delete[] lBuffer;
+        delete[] rBuffer;
+        return false;
+      }
+    } while (lFile.good() || rFile.good());
+
+    delete[] lBuffer;
+    delete[] rBuffer;
+    return true;
+  };
 
 }
 

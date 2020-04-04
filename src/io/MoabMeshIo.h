@@ -1,11 +1,19 @@
 #ifndef MOABMESHIO_H
 #define MOABMESHIO_H
 
+#include <iostream>
 #include <moab/Core.hpp>
 #include "Io.h"
 #include "Mesh.h"
 
 namespace hfox{
+
+/*!
+ * \brief The Input/Output class that plugs in to moab's capabilities (load_file, write_file).
+ *
+ * A class to be used to import meshes directly through moab's interface. The file formats that are 
+ * supported are those that moab supports with the conventions that it uses.
+ */
 
 class MoabMeshIo : public Io{
 
@@ -39,10 +47,6 @@ class MoabMeshIo : public Io{
      */
     void write(std::string filename);
   protected:
-    /*!
-     * \brief initialize moab interface
-     */
-    void initializeMoabInterface();
     /*!
      * \brief a pointer to the associated mesh
      */

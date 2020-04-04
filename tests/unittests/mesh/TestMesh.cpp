@@ -16,28 +16,6 @@ bool vectorEqual(const std::vector<int> & a, const std::vector<int> & b){
   return areEqual;
 }
 
-//bool arrayEqual4(const std::array<int, 4> & a, const std::array<int, 4> & b){
-  //bool areEqual = 1;
-  //for(int i = 0; i < 4; i++){
-    //areEqual = (a[i] == b[i]);
-    //if(!areEqual){
-      //break;
-    //}
-  //}
-  //return areEqual;
-//}
-
-//bool arrayEqual2(const std::array<int, 2> & a, const std::array<int, 2> & b){
-  //bool areEqual = 1;
-  //for(int i = 0; i < 2; i++){
-    //areEqual = (a[i] == b[i]);
-    //if(!areEqual){
-      //break;
-    //}
-  //}
-  //return areEqual;
-//}
-
 TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
   //setup a 2D test mesh
   std::vector< std::vector<double> > testNodes;

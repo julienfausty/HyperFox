@@ -65,7 +65,7 @@ class Mesh{
      *
      * @param meshset_candidate the candidate for the meshset
      */
-    void setMeshSet(moab::EntityHandle meshset_candidate);
+    void setMeshSet(moab::EntityHandle & meshset_candidate);
     /*! \brief A method for geting a const pointer to the nodes of the mesh.
      *
      * @param points the pointer to the vector to fill with vertices
@@ -159,6 +159,14 @@ class Mesh{
      * \brief get the indexes of the faces on the boundary
      */
     const std::set<int> * getBoundaryFaces() const;
+    /*!
+     * \brief get a pointer to the moab interface
+     */
+    moab::Interface * getMoabInterface();
+    /*!
+     * \brief get a pointer to the meshset
+     */
+    const moab::EntityHandle * getMeshSet() const;
   protected:
     /*!
      * \brief small method for initializing the mbInterface
@@ -176,6 +184,10 @@ class Mesh{
     /*! \brief compute the boundary of the mesh.
      */
     void computeBoundary();
+    /*!
+     * \brief completely deletes the meshset
+     */
+    void deleteMeshSet();
     /*!
      * \brief small method for finding the internal cell index of a face
      */
