@@ -14,5 +14,17 @@ namespace hfox{
       // In case of no extension return empty string
       return "";
   }//getExtension
+  
+  void Io::setMesh(Mesh * mesh){
+    if(mesh->getReferenceElement() == NULL){
+      throw(ErrorHandle("MoabMeshIo", "setMesh", "reference element of mesh is not defined."));
+    }
+    myMesh = mesh;
+  };//setMesh
+
+
+  void Io::setField(std::string name, Field * field){
+    fieldMap[name] = field;
+  };//setField
 
 }//hfox

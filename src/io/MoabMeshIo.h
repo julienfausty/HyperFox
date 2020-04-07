@@ -29,12 +29,6 @@ class MoabMeshIo : public Io{
      */
     MoabMeshIo(Mesh * mesh);
     /*!
-     * \brief a method to set the mesh pointer (the mesh should already have a reference element)
-     *
-     * @param mesh a pointer to a Mesh object
-     */
-    void setMesh(Mesh * mesh);
-    /*!
      * \brief method to load a mesh in a file into the mesh object
      *
      * @param filename name of file to read from
@@ -48,13 +42,16 @@ class MoabMeshIo : public Io{
     void write(std::string filename);
   protected:
     /*!
-     * \brief a pointer to the associated mesh
+     * \brief a method for entering a moab meshset into a Mesh
+     *
+     * @param mbIface the interface to the moab instance
+     * @param meshset the mesh set to input into mesh
      */
-    Mesh * myMesh;
-    /*!
-     * \brief a pointer to a moab interface
+    void setMeshSet(moab::Interface * mbIFace, moab::EntityHandle & meshset);
+    /*! 
+     * \brief method for determining MOAB element type
      */
-    moab::Interface * mbIFace;
+    moab::EntityType determineMOABType() const;
 
 };//MoabMeshIo
 

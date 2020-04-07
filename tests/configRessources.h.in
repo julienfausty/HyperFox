@@ -1,5 +1,5 @@
-#ifndef CONFIGRESSOURCES
-#define CONFIGRESSOURCES
+#ifndef CONFIGRESSOURCES_H
+#define CONFIGRESSOURCES_H
 
 #include <string>
 #include <fstream>
@@ -7,12 +7,16 @@
 
 namespace hfox{
 
-  std::string getRessourcePath(){
+class RessourceConfig{
+
+  public:
+
+  static std::string getRessourcePath(){
     std::string cmake_src = "@CMAKE_SOURCE_DIR@";
     return std::string(cmake_src + "/ressources");
   };//getRessourcePath
 
-  bool checkFilesEqual(const std::string& lFilePath, const std::string& rFilePath){
+  static bool checkFilesEqual(const std::string& lFilePath, const std::string& rFilePath){
     std::ifstream lFile(lFilePath.c_str(), std::ifstream::in | std::ifstream::binary);
     std::ifstream rFile(rFilePath.c_str(), std::ifstream::in | std::ifstream::binary);
 
@@ -45,6 +49,8 @@ namespace hfox{
     return true;
   };
 
+};//RessourceConfig
+
 }
 
-#endif
+#endif//CONFIGRESSOURCES_H

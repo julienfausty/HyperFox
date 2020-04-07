@@ -3,28 +3,22 @@
 namespace hfox{
 
 Mesh::Mesh(): refElement(NULL){
-  initializeMBInterface();
 };//Empty constructor
 
-Mesh::Mesh(int dim, int order, std::string geom, std::vector< std::vector<double> > & point_candidate, 
-    std::vector< std::vector<int> > & connectivity_candidate): refElement(NULL){
+Mesh::Mesh(int dim, int order, std::string geom){
   setReferenceElement(dim, order, geom);
-  initializeMBInterface();
-  setMesh(point_candidate, connectivity_candidate);
-};//point/connectivity constructor
+};//refElement constructor
 
-Mesh::Mesh(int dim, int order, std::string geom, moab::EntityHandle meshset_candidate): refElement(NULL){
+Mesh::Mesh(int dim, int order, std::string geom, int dimPointSpace, std::vector<double> & point_candidate, 
+    std::vector<int> & connectivity_candidate): refElement(NULL){
   setReferenceElement(dim, order, geom);
-  initializeMBInterface();
-  setMeshSet(meshset_candidate);
-};//meshset constructor
+  setMesh(dimPointSpace, point_candidate, connectivity_candidate);
+};//point/connectivity constructor
 
 Mesh::~Mesh(){
   if(refElement != NULL){
     delete refElement;
   }
-  deleteMeshSet();
-  delete mbInterface;
 };//Destructor
 
 void Mesh::setReferenceElement(int dim, int order, std::string geom){
@@ -34,84 +28,22 @@ void Mesh::setReferenceElement(int dim, int order, std::string geom){
   refElement = new ReferenceElement(dim, order, geom);
 };//setReferenceElement
 
-void Mesh::initializeMBInterface(){
-  moab::ErrorCode mbErr;
-  mbInterface = new (std::nothrow) moab::Core;
-  if(mbInterface == NULL){
-    throw(ErrorHandle("Mesh", "Constructor", "could not construct new moab mesh."));
-  }
-  mbErr = mbInterface->create_meshset(moab::MESHSET_SET, meshset);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "Constructor", "could not initialize meshset."));
-  }
-};//initializeMBMesh
-
-void Mesh::setMesh(std::vector< std::vector<double> > & points_candidate, 
-    std::vector< std::vector<int> > & connectivity_candidate){
+void Mesh::setMesh(int dimPointSpace, std::vector<double> & points_candidate, 
+    std::vector<int> & connectivity_candidate){
   moab::ErrorCode mbErr;
   if(refElement == NULL){
     throw("Mesh", "setMesh", "cannot set mesh before reference element is set.");
   }
-  deleteMeshSet();
-  mbErr = mbInterface->create_meshset(moab::MESHSET_SET, meshset);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "setMesh", "could not initialize meshset."));
-  }
-  std::vector<double> point(3, 0.0);
-  std::vector<moab::EntityHandle> cell;
-  std::vector<moab::EntityHandle> orderedVertList;
-  std::vector<moab::EntityHandle> orderedElList;
-  for(int i = 0; i < points_candidate.size(); i++){
-    moab::EntityHandle ent;
-    for(int j = 0; j < points_candidate[i].size(); j++){
-      point[j] = points_candidate[i][j];
-    }
-    mbErr = mbInterface->create_vertex(point.data(), ent);
-    if(mbErr != moab::MB_SUCCESS){
-      throw(ErrorHandle("Mesh", "setMesh", "could not create vertex (moab)."));
-    }
-    orderedVertList.push_back(ent);
-  }
-  mbErr = mbInterface->add_entities(meshset, orderedVertList.data(), orderedVertList.size());
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "setMesh", "could not set vertexes in mesh (moab)."));
-  }
-  moab::EntityType type = determineMOABType();
-  for(int i = 0; i < connectivity_candidate.size(); i++){
-    moab::EntityHandle ent;
-    cell.resize(connectivity_candidate[i].size());
-    for(int j = 0; j < connectivity_candidate[i].size(); j++){
-      cell[j] = orderedVertList[connectivity_candidate[i][j]];
-    }
-    mbErr = mbInterface->create_element(type, cell.data(), cell.size(), ent);
-    if(mbErr != moab::MB_SUCCESS){
-      throw(ErrorHandle("Mesh", "setMesh", "could not create element (moab)."));
-    }
-    orderedElList.push_back(ent);
-  }
-  mbErr = mbInterface->add_entities(meshset, orderedElList.data(), orderedElList.size());
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "setMesh", "could not set elements in mesh (moab)."));
-  }
+  dimNodeSpace = dimPointSpace;
+  nNodesPerCell = refElement->getNumNodes();
+  nNodes = points_candidate.size()/dimNodeSpace;
+  nCells = connectivity_candidate.size()/nNodesPerCell;
+  nodes = points_candidate;
+  nodes.resize(nodes.size());
+  cells = connectivity_candidate;
+  cells.resize(cells.size());
   computeFaces();
 };//setPoints
-
-void Mesh::setMeshSet(moab::EntityHandle & meshset_candidate){
-  moab::ErrorCode mbErr;
-  if(refElement == NULL){
-    throw("Mesh", "setMeshSet", "cannot set mesh before reference element is set.");
-  }
-  deleteMeshSet();
-  mbErr = mbInterface->create_meshset(moab::MESHSET_SET, meshset);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "setMeshSet", "could not initialize meshset."));
-  }
-  mbErr = mbInterface->unite_meshset(meshset, meshset_candidate);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "setMeshSet", "could not unite meshsets."));
-  }
-  computeFaces();
-};//setMeshSet
 
 moab::EntityType Mesh::determineMOABType() const{
   moab::EntityType type;
@@ -194,127 +126,36 @@ moab::EntityType Mesh::determineMOABTypeFace() const{
   return type;
 };//determineMOABTypeFace
 
-void Mesh::getPoints(std::vector< std::vector<double> > * points) const{
-  moab::ErrorCode mbErr;
-  moab::Range vertexes;
-  mbErr = mbInterface->get_entities_by_dimension(meshset, 0, vertexes);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getPoints", "could not get vertexes from meshset"));
-  }
-  points->resize(vertexes.size());
-  int dim = refElement->getDimension();
-  double pV[3];
-  for(moab::Range::iterator it = vertexes.begin(); it != vertexes.end(); it++){
-    mbErr = mbInterface->get_coords(&(*it), 1, pV);
-    if(mbErr != moab::MB_SUCCESS){
-      throw(ErrorHandle("Mesh", "getPoints", "could not get vertex coords from list"));
-    }
-    int index = mbInterface->id_from_handle(*it) -1;
-    (*points)[index] = std::vector<double>(pV, pV+dim);
-  }
+const std::vector<double> * Mesh::getPoints() const{
+  return &nodes;
 };//getPoints
 
-void Mesh::getCells(std::vector< std::vector<int> > * cells) const{
-  moab::ErrorCode mbErr;
-  moab::Range elems;
-  int dim = refElement->getDimension();
-  mbErr = mbInterface->get_entities_by_dimension(meshset, dim, elems);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getCells", "could not get elements from meshset"));
-  }
-  cells->resize(elems.size());
-  for(moab::Range::iterator it = elems.begin(); it != elems.end(); it++){
-    std::vector<moab::EntityHandle> verts;
-    mbErr = mbInterface->get_connectivity(&(*it), 1, verts);
-    if(mbErr != moab::MB_SUCCESS){
-      throw(ErrorHandle("Mesh", "getCells", "could not get vertices from element"));
-    }
-    int index = mbInterface->id_from_handle(*it) - 1;
-    (*cells)[index].resize(verts.size());
-    for(int i = 0; i < verts.size(); i++){
-      (*cells)[index][i] = mbInterface->id_from_handle(verts[i])-1;
-    }
-  }
+const std::vector<int> * Mesh::getCells() const{
+  return &cells;
 };//getCells
 
 
-void Mesh::getSlicePoints(const std::vector<int> & slice, std::vector< std::vector<double> > * points) const{
-  moab::ErrorCode mbErr;
-  std::vector<moab::EntityHandle> vertexes(slice.size());
-  for(int i = 0; i < slice.size(); i++){
-    mbErr = mbInterface->handle_from_id(moab::MBVERTEX, slice[i]+1, vertexes[i]);
-    if(mbErr != moab::MB_SUCCESS){
-      throw(ErrorHandle("Mesh", "getSlicePoints", "could not get vertexes from meshset"));
-    }
-  }
+void Mesh::getSlicePoints(const std::vector<int> & slice, std::vector< const double * > * points) const{
   points->resize(slice.size());
-  int dim = refElement->getDimension();
-  std::vector<double> vs(3*slice.size());
-  mbErr = mbInterface->get_coords(vertexes.data(), vertexes.size(), vs.data());
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getSlicePoints", "could not get vertex coords from list"));
-  }
   for(int i = 0; i < slice.size(); i++){
-    (*points)[i] = std::vector<double>(vs.begin() + 3*i, vs.begin()+ 3*i + dim);
+    (*points)[i] = getPoint(slice[i]);
   }
-};//getPoints
+};//getSlicePoints
 
-void Mesh::getPoint(int i, std::vector<double> * point) const{
-  moab::ErrorCode mbErr;
-  moab::EntityHandle ent;
-  mbErr = mbInterface->handle_from_id(moab::MBVERTEX, i+1, ent);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getPoint", "could not get vertex from meshset."));
-  }
-  double pV[3];
-  mbErr = mbInterface->get_coords(&ent, 1, pV);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getPoint", "could not get coords from vertex."));
-  }
-  int dim = refElement->getDimension();
-  *point = std::vector<double>(pV, pV+dim);
+const double * Mesh::getPoint(int i) const{
+  return &(nodes[i*dimNodeSpace]);
 };//getPoint
 
 
-void Mesh::getSliceCells(const std::vector<int> & slice, std::vector< std::vector<int> > * cells) const{
-  moab::ErrorCode mbErr;
-  std::vector<moab::EntityHandle> elements(slice.size());
+void Mesh::getSliceCells(const std::vector<int> & slice, std::vector< const int * > * userCells) const{
+  userCells->resize(slice.size());
   for(int i = 0; i < slice.size(); i++){
-    mbErr = mbInterface->handle_from_id(determineMOABType(), slice[i]+1, elements[i]);
-    if(mbErr != moab::MB_SUCCESS){
-      throw(ErrorHandle("Mesh", "getSliceCell", "could not get element from meshset."));
-    }
-  }
-  int nNodesEl = refElement->getNumNodes();
-  std::vector<moab::EntityHandle> verts(elements.size()*nNodesEl);
-  mbErr = mbInterface->get_connectivity(elements.data(), elements.size(), verts);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getSliceCell", "could not get vertices from element"));
-  }
-  cells->resize(elements.size());
-  for(int i = 0; i < elements.size(); i++){
-    for(int j = 0; j < nNodesEl; j++){
-      (*cells)[i][j] = mbInterface->id_from_handle(verts[i*nNodesEl + j]) - 1;
-    }
+    (*userCells)[i] = getCell(slice[i]);
   }
 };//getSliceCell
 
-void Mesh::getCell(int i, std::vector<int> * cell) const{
-  moab::ErrorCode mbErr;
-  moab::EntityHandle ent;
-  mbErr = mbInterface->handle_from_id(determineMOABType(), i+1, ent);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getCell", "could not get element from meshset."));
-  }
-  std::vector<moab::EntityHandle> verts(refElement->getNumNodes());
-  mbErr = mbInterface->get_connectivity(&ent, 1, verts);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getCell", "could not get vertices from element"));
-  }
-  cell->resize(verts.size());
-  for(int i = 0; i < verts.size(); i++){
-    (*cell)[i] = mbInterface->id_from_handle(verts[i]) - 1;
-  }
+const int * Mesh::getCell(int i) const{
+  return &(cells[i*nNodesPerCell]);
 };//getCell
 
 const ReferenceElement * Mesh::getReferenceElement() const{
@@ -322,196 +163,224 @@ const ReferenceElement * Mesh::getReferenceElement() const{
 };//getReferenceElement
 
 int Mesh::getNumberPoints() const{
-  moab::ErrorCode mbErr;
-  moab::Range vertexes;
-  mbErr = mbInterface->get_entities_by_dimension(meshset, 0, vertexes);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getNumberPoints", "could not get vertexes from meshset"));
-  }
-  return vertexes.size();
+  return nNodes;
 };//getNumberPoints
 
 int Mesh::getNumberCells() const{
-  moab::ErrorCode mbErr;
-  moab::Range elems;
-  int dim = refElement->getDimension();
-  mbErr = mbInterface->get_entities_by_dimension(meshset, dim, elems);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getNumberCells", "could not get cells from meshset"));
-  }
-  return elems.size();
+  return nCells;
 };//getNumberCells
 
 int Mesh::getDimension() const{
   return refElement->getDimension();
 };//getDimension
 
+int Mesh::getNodeSpaceDimension() const{
+  return dimNodeSpace;
+};//getDimension
+
 void Mesh::computeFaces(){
+  //creation of moab instance
   moab::ErrorCode mbErr;
-  moab::Range cells;
-  mbErr = mbInterface->get_entities_by_dimension(meshset, refElement->getDimension(), cells);
+  moab::Interface * mbInterface = new (std::nothrow) moab::Core;
+  if(mbInterface == NULL){
+    throw(ErrorHandle("Mesh", "computeFaces", "could not construct new moab mesh."));
+  }
+  moab::EntityHandle meshset;
+  mbErr = mbInterface->create_meshset(moab::MESHSET_SET, meshset);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "computeFaces", "could not initialize meshset."));
+  }
+  //skeleton mesh creation
+  std::vector<double> point(3, 0.0);
+  std::vector<moab::EntityHandle> cell;
+  std::vector<moab::EntityHandle> orderedVertList;
+  std::vector<moab::EntityHandle> orderedElList;
+  for(int i = 0; i < nNodes; i++){
+    moab::EntityHandle ent;
+    for(int j = 0; j < dimNodeSpace; j++){
+      point[j] = nodes[i*dimNodeSpace + j];
+    }
+    mbErr = mbInterface->create_vertex(point.data(), ent);
+    if(mbErr != moab::MB_SUCCESS){
+      throw(ErrorHandle("Mesh", "computeFaces", "could not create vertex (moab)."));
+    }
+    orderedVertList.push_back(ent);
+  }
+  mbErr = mbInterface->add_entities(meshset, orderedVertList.data(), orderedVertList.size());
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "computeFaces", "could not set vertexes in mesh (moab)."));
+  }
+  std::string strGeom;
+  switch(refElement->getGeometry()){
+    case(simplex): {strGeom = "simplex"; break;}
+    case(orthotope): {strGeom = "orthotope"; break;}
+  }
+  int skelOrder = (refElement->getOrder() != 0) ? 1 : 0;
+  ReferenceElement skelRefEl(refElement->getDimension(), skelOrder, strGeom);
+  int nSkelNodes = skelRefEl.getNumNodes();
+  moab::EntityType type = determineMOABType();
+  for(int i = 0; i < nCells; i++){
+    moab::EntityHandle ent;
+    cell.resize(nSkelNodes);
+    for(int j = 0; j < nSkelNodes; j++){
+      cell[j] = orderedVertList[cells[i*nNodesPerCell + j]];
+    }
+    mbErr = mbInterface->create_element(type, cell.data(), cell.size(), ent);
+    if(mbErr != moab::MB_SUCCESS){
+      throw(ErrorHandle("Mesh", "computeFaces", "could not create element (moab)."));
+    }
+    orderedElList.push_back(ent);
+  }
+  mbErr = mbInterface->add_entities(meshset, orderedElList.data(), orderedElList.size());
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "computeFaces", "could not set elements in mesh (moab)."));
+  }
+  //face computing
+  moab::Range moabCells;
+  mbErr = mbInterface->get_entities_by_dimension(meshset, refElement->getDimension(), moabCells);
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("Mesh", "computeFaces", "could not get cells from meshset (moab)"));
   }
-  moab::Range faces;
-  mbErr = mbInterface->get_adjacencies(cells, refElement->getDimension() - 1, 1, faces, moab::Interface::UNION);
+  moab::Range moabFaces;
+  mbErr = mbInterface->get_adjacencies(moabCells, refElement->getDimension() - 1, 1, moabFaces, moab::Interface::UNION);
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("Mesh", "computeFaces", "could not develop face adjacencies from cells (moab)"));
   }
-  mbErr = mbInterface->add_entities(meshset, faces);
+  mbErr = mbInterface->add_entities(meshset, moabFaces);
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("Mesh", "computeFaces", "could not add faces to meshset (moab)"));
   }
-  computeFace2CellMap();
-  computeCell2FaceMap();
-  computeBoundary();
+  computeCell2FaceMap(mbInterface, meshset, skelRefEl);
+  computeFace2CellMap(mbInterface, meshset);
+  computeBoundary(mbInterface, meshset);
+  //destruction of moab instance
+  moab::Range allEnts;
+  mbErr = mbInterface->get_entities_by_handle(meshset, allEnts);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "computeFaces", "could not get all entities"));
+  }
+  mbErr = mbInterface->delete_entities(allEnts);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "computeFaces", "could not delete all entities"));
+  }
+  mbErr = mbInterface->delete_entities(&meshset, 1);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "computeFaces", "could not clear meshset."));
+  }
+  delete mbInterface;
 };//computeFaces
 
 int Mesh::getNumberFaces() const{
-  moab::ErrorCode mbErr;
-  moab::Range faces;
-  int dim = refElement->getDimension();
-  mbErr = mbInterface->get_entities_by_dimension(meshset, dim-1, faces);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getNumberFaces", "could not get faces from meshset"));
-  }
-  return faces.size();
+  return nFaces;
 };//getNumberFaces
 
-void Mesh::getFaces(std::vector< std::vector<int> > * faces) const{
-  moab::ErrorCode mbErr;
-  moab::Range fcs;
-  int dim = refElement->getDimension();
-  mbErr = mbInterface->get_entities_by_dimension(meshset, dim-1, fcs);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getFaces", "could not get faces from meshset"));
-  }
-  faces->resize(fcs.size());
-  for(moab::Range::iterator it = fcs.begin(); it != fcs.end(); it++){
-    std::vector<moab::EntityHandle> verts;
-    mbErr = mbInterface->get_connectivity(&(*it), 1, verts);
-    if(mbErr != moab::MB_SUCCESS){
-      throw(ErrorHandle("Mesh", "getFaces", "could not get vertices from face"));
-    }
-    int index = mbInterface->id_from_handle(*it) - 1;
-    (*faces)[index].resize(verts.size());
-    for(int i = 0; i < verts.size(); i++){
-      (*faces)[index][i] = mbInterface->id_from_handle(verts[i])-1;
-    }
-  }
+const std::vector<int> * Mesh::getFaces() const{
+  return &faces;
 };//getFaces
 
-void Mesh::getSliceFaces(const std::vector<int> & slice, std::vector< std::vector<int> > * faces) const{
-  moab::ErrorCode mbErr;
-  std::vector<moab::EntityHandle> fcs(slice.size());
+void Mesh::getSliceFaces(const std::vector<int> & slice, std::vector< const int * > * userFaces) const{
+  userFaces->resize(slice.size());
   for(int i = 0; i < slice.size(); i++){
-    mbErr = mbInterface->handle_from_id(determineMOABTypeFace(), slice[i]+1, fcs[i]);
-    if(mbErr != moab::MB_SUCCESS){
-      throw(ErrorHandle("Mesh", "getSliceFaces", "could not get face from meshset."));
-    }
-  }
-  int nNodesFace = refElement->getFaceElement()->getNumNodes();
-  std::vector<moab::EntityHandle> verts(fcs.size()*nNodesFace);
-  mbErr = mbInterface->get_connectivity(fcs.data(), fcs.size(), verts);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getSliceFaces", "could not get vertices from faces"));
-  }
-  faces->resize(fcs.size());
-  for(int i = 0; i < fcs.size(); i++){
-    for(int j = 0; j < nNodesFace; j++){
-      (*faces)[i][j] = mbInterface->id_from_handle(verts[i*nNodesFace + j]) - 1;
-    }
+    (*userFaces)[i] = getFace(slice[i]);
   }
 };//getSliceFaces
 
 
-void Mesh::getFace(int i, std::vector<int> * face) const{
-  moab::ErrorCode mbErr;
-  moab::EntityHandle ent;
-  mbErr = mbInterface->handle_from_id(determineMOABTypeFace(), i+1, ent);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getFace", "could not get face from meshset."));
-  }
-  std::vector<moab::EntityHandle> verts(refElement->getFaceElement()->getNumNodes());
-  mbErr = mbInterface->get_connectivity(&ent, 1, verts);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "getFace", "could not get vertices from element"));
-  }
-  face->resize(verts.size());
-  for(int i = 0; i < verts.size(); i++){
-    (*face)[i] = mbInterface->id_from_handle(verts[i]) - 1;
-  }
+const int * Mesh::getFace(int i) const{
+  return &(faces[i]);
 };//getFace
 
-void Mesh::computeFace2CellMap(){
+void Mesh::computeFace2CellMap(moab::Interface * mbInterface, moab::EntityHandle & meshset){
   moab::ErrorCode mbErr;
-  moab::Range faces;
-  mbErr = mbInterface->get_entities_by_dimension(meshset, refElement->getDimension() - 1, faces);
+  moab::Range moabFaces;
+  mbErr = mbInterface->get_entities_by_dimension(meshset, refElement->getDimension() - 1, moabFaces);
+  const std::vector< std::vector<int> > * faceIndexes = refElement->getFaceNodes();
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("Mesh", "computeFace2CellMap", "could not get faces from meshset"));
   }
-  face2CellMap.resize(faces.size());
-  for(moab::Range::iterator it = faces.begin(); it != faces.end(); it++){
+  nFaces = moabFaces.size();
+  nNodesPerFace = refElement->getFaceElement()->getNumNodes();
+  faces.resize(nFaces * nNodesPerFace);
+  face2CellMap.resize(nFaces * 2);
+  for(moab::Range::iterator it = moabFaces.begin(); it != moabFaces.end(); it++){
     moab::Range adj;
     mbErr = mbInterface->get_adjacencies(&(*it), 1, refElement->getDimension(), 0, adj);
     if(mbErr != moab::MB_SUCCESS){
       throw(ErrorHandle("Mesh", "computeFace2CellMap", "could not develop cell adjacencies from face (moab)"));
     }
     int index = mbInterface->id_from_handle(*it) - 1;
-    face2CellMap[index].resize(0);
+    int locInd = 0;
+    int indEl, indFc, locFaceIndex;
+    bool faceSet = 0;
     for(moab::Range::iterator itadj = adj.begin(); itadj != adj.end(); itadj++){
-      face2CellMap[index].push_back(mbInterface->id_from_handle(*itadj) - 1);
+      if(adj.size() == 2){
+        face2CellMap[index *2 + locInd] = mbInterface->id_from_handle(*itadj) - 1;
+        locInd += 1;
+      }
+      if(!faceSet){
+        indEl = mbInterface->id_from_handle(*itadj)-1;
+        locFaceIndex = std::distance(cell2FaceMap.begin() + indEl*nFacesPerCell, 
+            std::find(cell2FaceMap.begin() + indEl*nFacesPerCell, cell2FaceMap.end() + (indEl+1)*nFacesPerCell, index));
+        for(int j = 0; j < ((*faceIndexes)[locFaceIndex]).size(); j++){
+          faces[index*nNodesPerFace + j] = cells[indEl*nNodesPerCell + ((*faceIndexes)[locFaceIndex])[j]];
+        }
+        faceSet = 1;
+      }
     }
   }
 };//computeFace2CellMap
 
-void Mesh::computeCell2FaceMap(){
+void Mesh::computeCell2FaceMap(moab::Interface * mbInterface, moab::EntityHandle & meshset, ReferenceElement & skelRefEl){
   moab::ErrorCode mbErr;
-  moab::Range cells;
-  mbErr = mbInterface->get_entities_by_dimension(meshset, refElement->getDimension(), cells);
+  moab::Range moabCells;
+  mbErr = mbInterface->get_entities_by_dimension(meshset, refElement->getDimension(), moabCells);
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("Mesh", "computeCell2FaceMap", "could not get cells from meshset"));
   }
-  cell2FaceMap.resize(cells.size());
-  for(moab::Range::iterator itcell = cells.begin(); itcell != cells.end(); itcell++){
+  nFacesPerCell = refElement->getFaceNodes()->size();
+  cell2FaceMap.resize(moabCells.size() * nFacesPerCell);
+  for(moab::Range::iterator itcell = moabCells.begin(); itcell != moabCells.end(); itcell++){
     moab::Range adj;
     mbErr = mbInterface->get_adjacencies(&(*itcell), 1, refElement->getDimension() - 1, 0, adj);
     if(mbErr != moab::MB_SUCCESS){
       throw(ErrorHandle("Mesh", "computeCell2FaceMap", "could not get face adjacencies from cell (moab)"));
     }
     int index = mbInterface->id_from_handle(*itcell) - 1;
-    cell2FaceMap[index].resize(adj.size());
     for(moab::Range::iterator itadj = adj.begin(); itadj != adj.end(); itadj++){
-      int indexFace = getFaceIndex(*itcell, *itadj);
-      cell2FaceMap[index][indexFace] = mbInterface->id_from_handle(*itadj) - 1;
+      int indexFace = getFaceIndex(mbInterface, *itcell, *itadj, skelRefEl);
+      cell2FaceMap[index*nFacesPerCell + indexFace] = mbInterface->id_from_handle(*itadj) - 1;
     }
   }
 };//computeCell2FaceMap
 
-const std::vector< std::vector<int> > * Mesh::getFace2CellMap() const{
+const std::vector<int> * Mesh::getFace2CellMap() const{
   return &face2CellMap;
 };//getFace2CellMap
 
-const std::vector< std::vector<int> > * Mesh::getCell2FaceMap() const{
+const std::vector<int> * Mesh::getCell2FaceMap() const{
   return &cell2FaceMap;
 };//getFace2CellMap
 
-const std::vector<int> * Mesh::getFace2Cell(int i) const{
+const int * Mesh::getFace2Cell(int i) const{
   return &(face2CellMap[i]);
 };//getCell2Face
 
-const std::vector<int> * Mesh::getCell2Face(int i) const{
+const int * Mesh::getCell2Face(int i) const{
   return &(cell2FaceMap[i]);
 };//getCell2Face
 
-int Mesh::getFaceIndex(const moab::EntityHandle & cell, const moab::EntityHandle & face) const{
+int Mesh::getNumFacesPerCell() const{
+  return nFacesPerCell;
+};//getNumFacesPerCell
+
+int Mesh::getFaceIndex(moab::Interface * mbInterface, const moab::EntityHandle & cell, const moab::EntityHandle & face, ReferenceElement & skelRefEl) const{
   moab::ErrorCode mbErr;
-  std::vector<moab::EntityHandle> cellVerts(refElement->getNumNodes());
+  std::vector<moab::EntityHandle> cellVerts(skelRefEl.getNumNodes());
   mbErr = mbInterface->get_connectivity(&cell, 1, cellVerts);
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("Mesh", "getFaceIndex", "could not get vertices from cell (moab)"));
   }
-  std::vector<moab::EntityHandle> faceVerts(refElement->getFaceElement()->getNumNodes());
+  std::vector<moab::EntityHandle> faceVerts(skelRefEl.getFaceElement()->getNumNodes());
   mbErr = mbInterface->get_connectivity(&face, 1, faceVerts);
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("Mesh", "getFaceIndex", "could not get vertices from face (moab)"));
@@ -525,7 +394,7 @@ int Mesh::getFaceIndex(const moab::EntityHandle & cell, const moab::EntityHandle
     }
     indexes[i] = std::distance(cellVerts.begin(), it);
   }
-  const std::vector< std::vector<int> > * faceNodes = refElement->getFaceNodes();
+  const std::vector< std::vector<int> > * faceNodes = skelRefEl.getFaceNodes();
   bool isFace = 0;
   int index = -1;
   for(int i = 0; i < faceNodes->size(); i++){
@@ -546,15 +415,15 @@ int Mesh::getFaceIndex(const moab::EntityHandle & cell, const moab::EntityHandle
   return index;
 };//getFaceIndex
 
-void Mesh::computeBoundary(){
+void Mesh::computeBoundary(moab::Interface * mbInterface, moab::EntityHandle & meshset){
   moab::ErrorCode mbErr;
-  moab::Range cells, boundary;
-  mbErr = mbInterface->get_entities_by_dimension(meshset, refElement->getDimension(), cells);
+  moab::Range moabCells, boundary;
+  mbErr = mbInterface->get_entities_by_dimension(meshset, refElement->getDimension(), moabCells);
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("Mesh", "computeBoundary", "could not get cells from meshset"));
   }
   moab::Skinner mbSkinner(mbInterface);
-  mbErr = mbSkinner.find_skin(meshset, cells, refElement->getDimension()-1, boundary);
+  mbErr = mbSkinner.find_skin(meshset, moabCells, refElement->getDimension()-1, boundary);
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("Mesh", "computeBoundary", "could not find the boundary"));
   }
@@ -566,30 +435,5 @@ void Mesh::computeBoundary(){
 const std::set<int> * Mesh::getBoundaryFaces() const{
   return &boundaryFaces;
 };//getBoundaryFaces
-
-moab::Interface * Mesh::getMoabInterface(){
-  return mbInterface;
-};//getMoabInterface
-
-const moab::EntityHandle * Mesh::getMeshSet() const{
-  return &meshset;
-};//getMeshSet
-
-void Mesh::deleteMeshSet(){
-  moab::ErrorCode mbErr;
-  moab::Range allEnts;
-  mbErr = mbInterface->get_entities_by_handle(meshset, allEnts);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "deleteMeshSet", "could not get all entities"));
-  }
-  mbErr = mbInterface->delete_entities(allEnts);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "deleteMeshSet", "could not delete all entities"));
-  }
-  mbErr = mbInterface->delete_entities(&meshset, 1);
-  if(mbErr != moab::MB_SUCCESS){
-    throw(ErrorHandle("Mesh", "deletMeshSet", "could not clear meshset."));
-  }
-};
 
 }//hfox

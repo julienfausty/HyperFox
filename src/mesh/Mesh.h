@@ -25,21 +25,24 @@ class Mesh{
     /*! \brief An empty constructor for the mesh.
      */
     Mesh();
+    /*! \brief A constructor for the mesh with just parameters to the reference element.
+     *
+     * @param dim the dimension of the mesh
+     * @param order the FE order of the mesh
+     * @param geom a string with the type of element
+     */
+    Mesh(int dim, int order, std::string geom);
     /*! \brief A constructor for the mesh with points and connectivity.
      *
+     * @param dim the dimension of the mesh
+     * @param order the FE order of the mesh
+     * @param geom a string with the type of element
      * @param point_candidate
      * @param connectivity_candidate a pointer to a vector of vectors holding the 
      * indexes of the points in the points vector.
      */
-    Mesh(int dim, int order, std::string geom, std::vector< std::vector< double > > &  point_candidate,
-        std::vector< std::vector< int > > & connectivity_candidate);
-    /*! \brief A constructor for the mesh with points and connectivity.
-     *
-     * @param point_candidate
-     * @param connectivity_candidate a pointer to a vector of vectors holding the 
-     * indexes of the points in the points vector.
-     */
-    Mesh(int dim, int order, std::string geom, moab::EntityHandle meshset_candidate);
+    Mesh(int dim, int order, std::string geom, int dimPointSpace, std::vector< double > &  point_candidate,
+        std::vector< int > & connectivity_candidate);
     //Destructors
     /*! \brief The destructor for the mesh.
      */
@@ -59,64 +62,50 @@ class Mesh{
      * @param connectivity_candidate a reference to a vector of vectors holding the 
      * indexes of the points in the points vector.
      */
-    void setMesh(std::vector< std::vector<double> > & points_candidate, 
-        std::vector< std::vector<int> > & connectivity_candidate);
-    /*!
-     * \brief A method for directly setting the meshset with moab compatible applications
-     *
-     * @param meshset_candidate the candidate for the meshset
+    void setMesh(int dimPointSpace, std::vector<double> & points_candidate, 
+        std::vector<int> & connectivity_candidate);
+    /*! \brief A method for geting a const pointer to the nodes of the mesh.
      */
-    void setMeshSet(moab::EntityHandle & meshset_candidate);
+    const std::vector<double> * getPoints() const;
+    /*! \brief A method for geting a const pointer to the connectivity of the mesh.
+     */
+    const std::vector<int> * getCells() const;
+    /*! \brief A method for geting a const pointer to the connectivity fo the faces of the mesh.
+     */
+    const std::vector<int> * getFaces() const;
     /*! \brief A method for geting a const pointer to the nodes of the mesh.
      *
      * @param points the pointer to the vector to fill with vertices
      */
-    void getPoints(std::vector< std::vector<double> > * points) const;
+    void getSlicePoints(const std::vector<int> & slice, std::vector< const double * > * points) const;
     /*! \brief A method for geting a const pointer to the connectivity of the mesh.
      *
      * @param connectivity the pointer to the vector to fill with connectivity
      */
-    void getCells(std::vector< std::vector<int> > * connectivity) const;
+    void getSliceCells(const std::vector<int> & slice, std::vector< const int * > * connectivity) const;
     /*! \brief A method for geting a const pointer to the connectivity fo the faces of the mesh.
      *
      * @param connectivity the pointer to the vector to fill with connectivity
      */
-    void getFaces(std::vector< std::vector<int> > * faces) const;
-    /*! \brief A method for geting a const pointer to the nodes of the mesh.
-     *
-     * @param points the pointer to the vector to fill with vertices
-     */
-    void getSlicePoints(const std::vector<int> & slice, std::vector< std::vector<double> > * points) const;
-    /*! \brief A method for geting a const pointer to the connectivity of the mesh.
-     *
-     * @param connectivity the pointer to the vector to fill with connectivity
-     */
-    void getSliceCells(const std::vector<int> & slice, std::vector< std::vector<int> > * connectivity) const;
-    /*! \brief A method for geting a const pointer to the connectivity fo the faces of the mesh.
-     *
-     * @param connectivity the pointer to the vector to fill with connectivity
-     */
-    void getSliceFaces(const std::vector<int> & slice, std::vector< std::vector<int> > * faces) const;
+    void getSliceFaces(const std::vector<int> & slice, std::vector< const int * > * faces) const;
     /*! \brief A method for accessing a specific node of the mesh.
      *
      * @param i index of the point one wishes to acquire.
-     * @param point pointer to fill with coordinates
      */
-    void getPoint(int i, std::vector<double> * point) const;
+    const double * getPoint(int i) const;
     /*! \brief A method for accessing an individual cell.
      *
      * @param i index of the cell of which one wishes to get the connectivity 
      * information. 
      * @param cell pointer to fill with node indexes
      */
-    void getCell(int i, std::vector<int> * cell) const;
+    const int * getCell(int i) const;
     /*! \brief A method for accessing an individual face.
      *
      * @param i index of the face of which one wishes to get the connectivity 
      * information. 
-     * @param cell pointer to fill with node indexes
      */
-    void getFace(int i, std::vector<int> * face) const;
+    const int * getFace(int i) const;
     /*!
      * \brief get a const pointer to the reference element
      */
@@ -134,65 +123,54 @@ class Mesh{
     /*! \brief get the dimension of the space the mesh is discretizing.
      */
     int getDimension() const;
+    /*! \brief get the dimension of the space the mesh is embedded in.
+     */
+    int getNodeSpaceDimension() const;
+    /*! \brief get the number of faces per cell.
+     */
+    int getNumFacesPerCell() const;
     /*!
      * \brief get an element to face map
      */
-    const std::vector< std::vector<int> > * getCell2FaceMap() const;
+    const std::vector<int> * getCell2FaceMap() const;
     /*!
      * \brief get the faces of a specific cell
      *
      * @param i index of cell
      */
-    const std::vector<int> * getCell2Face(int i) const;
+    const int * getCell2Face(int i) const;
     /*!
      * \brief get a face to element map
-     *
-     * @param face2CellMap pointer to fill with cells adjoining faces
      */
-    const std::vector< std::vector<int> > * getFace2CellMap() const;
+    const std::vector<int> * getFace2CellMap() const;
     /*!
      * \brief get the cells adjoining a specific face
      *
      * @param i index of face
      */
-    const std::vector<int> * getFace2Cell(int i) const;
+    const int * getFace2Cell(int i) const;
     /*!
      * \brief get the indexes of the faces on the boundary
      */
     const std::set<int> * getBoundaryFaces() const;
-    /*!
-     * \brief get a pointer to the moab interface
-     */
-    moab::Interface * getMoabInterface();
-    /*!
-     * \brief get a pointer to the meshset
-     */
-    const moab::EntityHandle * getMeshSet() const;
   protected:
-    /*!
-     * \brief small method for initializing the mbInterface
-     */
-    void initializeMBInterface();
     /*! \brief compute and set both the inner and outer faces of the mesh.
      */
     void computeFaces();
     /*! \brief compute the face to cell map of the mesh.
      */
-    void computeFace2CellMap();
+    void computeFace2CellMap(moab::Interface * mbInterface, moab::EntityHandle & meshset);
     /*! \brief compute the cell to face map of the mesh.
      */
-    void computeCell2FaceMap();
+    void computeCell2FaceMap(moab::Interface * mbInterface, moab::EntityHandle & meshset, ReferenceElement & skelRefEl);
     /*! \brief compute the boundary of the mesh.
      */
-    void computeBoundary();
-    /*!
-     * \brief completely deletes the meshset
-     */
-    void deleteMeshSet();
+    void computeBoundary(moab::Interface * mbInterface, moab::EntityHandle & meshset);
     /*!
      * \brief small method for finding the internal cell index of a face
      */
-    int getFaceIndex(const moab::EntityHandle & cell, const moab::EntityHandle & face) const;
+    int getFaceIndex(moab::Interface * mbInterface, 
+        const moab::EntityHandle & cell, const moab::EntityHandle & face, ReferenceElement & skelRefEl) const;
     /*!
      * \brief small method for determining the moab element type
      */
@@ -202,13 +180,41 @@ class Mesh{
      */
     moab::EntityType determineMOABTypeFace() const;
     /*!
-     * \brief the interface to the moab description
+     * \brief where the node coordinates are stored
      */
-    moab::Interface * mbInterface;
+    std::vector<double> nodes;
     /*!
-     * \brief moab entity handle to the mesh set
+     * \brief dimension of the space of the nodes
      */
-    moab::EntityHandle meshset;
+    int dimNodeSpace;
+    /*!
+     * \brief the number of nodes
+     */
+    int nNodes;
+    /*!
+     * \brief where the connectivity of the cells are stored
+     */
+    std::vector<int> cells;
+    /*!
+     * \brief the number of nodes per cell
+     */
+    int nNodesPerCell;
+    /*!
+     * \brief the number of cells
+     */
+    int nCells;
+    /*!
+     * \brief where the connectivity of the faces are stored
+     */
+    std::vector<int> faces;
+    /*!
+     * \brief the number of nodes per face
+     */
+    int nNodesPerFace;
+    /*!
+     * \brief the number of faces
+     */
+    int nFaces;
     /*!
      * \brief the reference element of the mesh
      */
@@ -216,11 +222,15 @@ class Mesh{
     /*!
      * \brief the face 2 cell map
      */
-    std::vector< std::vector<int> > face2CellMap;
+    std::vector<int> face2CellMap;
     /*!
-     * \brief the face 2 cell map
+     * \brief the cell 2 face map
      */
-    std::vector< std::vector<int> > cell2FaceMap;
+    std::vector<int> cell2FaceMap;
+    /*!
+     * \brief number of faces per cell
+     */
+    int nFacesPerCell;
     /*!
      * \brief the indexes of the boundary faces of the mesh
      */

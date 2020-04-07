@@ -1,0 +1,18 @@
+# vtk DataFile Version 3.0
+MOAB 4.9.1pre
+ASCII
+DATASET UNSTRUCTURED_GRID
+POINTS 9 double
+0 0 0
+1 0 0
+1 1 0
+0 1 0
+0.5 0.5 0
+0.5 0 0
+1 0.5 0
+0.5 1 0
+0 0.5 0
+CELLS 1 10
+9 0 1 2 3 5 6 7 8 4
+CELL_TYPES 1
+28

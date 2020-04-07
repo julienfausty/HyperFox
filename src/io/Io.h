@@ -3,6 +3,10 @@
 
 #include <string>
 #include <boost/filesystem.hpp>
+#include <map>
+#include "ErrorHandle.h"
+#include "Mesh.h"
+#include "Field.h"
 
 namespace hfox{
 
@@ -28,6 +32,19 @@ class Io{
      * @param filename the name of the file on wishes to write to.
      */
     virtual void write(std::string filename)=0;
+    /*!
+     * \brief a method to set the mesh pointer (the mesh should already have a reference element)
+     *
+     * @param mesh a pointer to a Mesh object
+     */
+    virtual void setMesh(Mesh * mesh);
+    /*!
+     * \brief a method to set a field to be written
+     *
+     * @param name name one would like to give to the field
+     * @param field pointer to the field object
+     */
+    virtual void setField(std::string name, Field * field);
   protected:
     /*!
      * \brief A hgelper function used to get the extension of a file name.
@@ -35,6 +52,15 @@ class Io{
      * @param filename the name of the file on wishes to write t.
      */
     static std::string getExtension(std::string filename);
+    /*!
+     * \brief pointer to mesh object (when applicable)
+     */
+    Mesh * myMesh;
+    /*!
+     * \brief map from names of field to pointers to those fields (when applicable)
+     */
+    std::map<std::string, Field*> fieldMap;
+
 
 }; //Io
 
