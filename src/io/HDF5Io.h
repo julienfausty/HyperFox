@@ -3,6 +3,7 @@
 
 #include <string>
 #include "Io.h"
+#include "ErrorHandle.h"
 #include "hdf5.h"
 
 /*!
@@ -14,7 +15,7 @@
  *   - Nodes: vals
  *   - Cells: vals
  * - FieldData
- *   - NameOfField: fieldVals (attributes: (topological dim of corresponding entity))
+ *   - NameOfField: fieldVals (attributes: (ftype : field type integer 0->nodes, 2->faces, 3->cells))
  *
  * Default behavior is to write everything held in the class
  */

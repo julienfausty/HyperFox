@@ -24,6 +24,9 @@ Field::Field(Mesh * mesh, FieldType t, int nObjPerEnt, int nValsPerObj){
   allocate();
 };//allocation constructor
 
+Field::~Field(){
+};//Destructor
+
 void Field::allocate(){
   if(pmesh != NULL){
     int length;

@@ -5,7 +5,7 @@ namespace hfox{
 Mesh::Mesh(): refElement(NULL){
 };//Empty constructor
 
-Mesh::Mesh(int dim, int order, std::string geom){
+Mesh::Mesh(int dim, int order, std::string geom): refElement(NULL){
   setReferenceElement(dim, order, geom);
 };//refElement constructor
 
@@ -135,27 +135,29 @@ const std::vector<int> * Mesh::getCells() const{
 };//getCells
 
 
-void Mesh::getSlicePoints(const std::vector<int> & slice, std::vector< const double * > * points) const{
+void Mesh::getSlicePoints(const std::vector<int> & slice, std::vector< std::vector<double> > * points) const{
   points->resize(slice.size());
   for(int i = 0; i < slice.size(); i++){
-    (*points)[i] = getPoint(slice[i]);
+    getPoint(slice[i], &((*points)[i]));
   }
 };//getSlicePoints
 
-const double * Mesh::getPoint(int i) const{
-  return &(nodes[i*dimNodeSpace]);
+void Mesh::getPoint(int i, std::vector<double> * point) const{
+  point->resize(dimNodeSpace);
+  point->assign(nodes.begin() + i*dimNodeSpace, nodes.begin() + (i+1)*dimNodeSpace);
 };//getPoint
 
 
-void Mesh::getSliceCells(const std::vector<int> & slice, std::vector< const int * > * userCells) const{
+void Mesh::getSliceCells(const std::vector<int> & slice, std::vector< std::vector<int> > * userCells) const{
   userCells->resize(slice.size());
   for(int i = 0; i < slice.size(); i++){
-    (*userCells)[i] = getCell(slice[i]);
+    getCell(slice[i], &((*userCells)[i]));
   }
 };//getSliceCell
 
-const int * Mesh::getCell(int i) const{
-  return &(cells[i*nNodesPerCell]);
+void Mesh::getCell(int i, std::vector<int> * cell) const{
+  cell->resize(nNodesPerCell);
+  cell->assign(cells.begin() + i*nNodesPerCell, cells.begin() + (i+1)*nNodesPerCell);
 };//getCell
 
 const ReferenceElement * Mesh::getReferenceElement() const{
@@ -253,6 +255,7 @@ void Mesh::computeFaces(){
   computeCell2FaceMap(mbInterface, meshset, skelRefEl);
   computeFace2CellMap(mbInterface, meshset);
   computeBoundary(mbInterface, meshset);
+  computeFaceConnectivity(mbInterface, meshset);
   //destruction of moab instance
   moab::Range allEnts;
   mbErr = mbInterface->get_entities_by_handle(meshset, allEnts);
@@ -278,30 +281,27 @@ const std::vector<int> * Mesh::getFaces() const{
   return &faces;
 };//getFaces
 
-void Mesh::getSliceFaces(const std::vector<int> & slice, std::vector< const int * > * userFaces) const{
+void Mesh::getSliceFaces(const std::vector<int> & slice, std::vector< std::vector<int> > * userFaces) const{
   userFaces->resize(slice.size());
   for(int i = 0; i < slice.size(); i++){
-    (*userFaces)[i] = getFace(slice[i]);
+    getFace(slice[i], &((*userFaces)[i]));
   }
 };//getSliceFaces
 
 
-const int * Mesh::getFace(int i) const{
-  return &(faces[i]);
+void Mesh::getFace(int i, std::vector<int> * face) const{
+  face->resize(nNodesPerFace);
+  face->assign(faces.begin() + i*nNodesPerFace, faces.begin() + (i+1)*nNodesPerFace);
 };//getFace
 
 void Mesh::computeFace2CellMap(moab::Interface * mbInterface, moab::EntityHandle & meshset){
   moab::ErrorCode mbErr;
   moab::Range moabFaces;
   mbErr = mbInterface->get_entities_by_dimension(meshset, refElement->getDimension() - 1, moabFaces);
-  const std::vector< std::vector<int> > * faceIndexes = refElement->getFaceNodes();
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("Mesh", "computeFace2CellMap", "could not get faces from meshset"));
   }
-  nFaces = moabFaces.size();
-  nNodesPerFace = refElement->getFaceElement()->getNumNodes();
-  faces.resize(nFaces * nNodesPerFace);
-  face2CellMap.resize(nFaces * 2);
+  face2CellMap.resize(moabFaces.size() * 2);
   for(moab::Range::iterator it = moabFaces.begin(); it != moabFaces.end(); it++){
     moab::Range adj;
     mbErr = mbInterface->get_adjacencies(&(*it), 1, refElement->getDimension(), 0, adj);
@@ -310,21 +310,12 @@ void Mesh::computeFace2CellMap(moab::Interface * mbInterface, moab::EntityHandle
     }
     int index = mbInterface->id_from_handle(*it) - 1;
     int locInd = 0;
-    int indEl, indFc, locFaceIndex;
-    bool faceSet = 0;
     for(moab::Range::iterator itadj = adj.begin(); itadj != adj.end(); itadj++){
+      face2CellMap[index *2 + locInd] = mbInterface->id_from_handle(*itadj) - 1;
       if(adj.size() == 2){
-        face2CellMap[index *2 + locInd] = mbInterface->id_from_handle(*itadj) - 1;
         locInd += 1;
-      }
-      if(!faceSet){
-        indEl = mbInterface->id_from_handle(*itadj)-1;
-        locFaceIndex = std::distance(cell2FaceMap.begin() + indEl*nFacesPerCell, 
-            std::find(cell2FaceMap.begin() + indEl*nFacesPerCell, cell2FaceMap.end() + (indEl+1)*nFacesPerCell, index));
-        for(int j = 0; j < ((*faceIndexes)[locFaceIndex]).size(); j++){
-          faces[index*nNodesPerFace + j] = cells[indEl*nNodesPerCell + ((*faceIndexes)[locFaceIndex])[j]];
-        }
-        faceSet = 1;
+      } else if(adj.size() == 1){
+        face2CellMap[index * 2 + 1] = -1;
       }
     }
   }
@@ -361,12 +352,19 @@ const std::vector<int> * Mesh::getCell2FaceMap() const{
   return &cell2FaceMap;
 };//getFace2CellMap
 
-const int * Mesh::getFace2Cell(int i) const{
-  return &(face2CellMap[i]);
+void Mesh::getFace2Cell(int i, std::vector<int> * face2Cell) const{
+  if(face2CellMap[i*2 + 1] != -1){
+    face2Cell->resize(2);
+    face2Cell->assign(face2CellMap.begin() + i*2, face2CellMap.begin() + (i+1)*2);
+  } else {
+    face2Cell->resize(1);
+    (*face2Cell)[0] = face2CellMap[i*2];
+  }
 };//getCell2Face
 
-const int * Mesh::getCell2Face(int i) const{
-  return &(cell2FaceMap[i]);
+void Mesh::getCell2Face(int i, std::vector<int> * cell2Face) const{
+  cell2Face->resize(nFacesPerCell);
+  cell2Face->assign(cell2FaceMap.begin() + i*nFacesPerCell, cell2FaceMap.begin() + (i+1)*nFacesPerCell);
 };//getCell2Face
 
 int Mesh::getNumFacesPerCell() const{
@@ -435,5 +433,27 @@ void Mesh::computeBoundary(moab::Interface * mbInterface, moab::EntityHandle & m
 const std::set<int> * Mesh::getBoundaryFaces() const{
   return &boundaryFaces;
 };//getBoundaryFaces
+
+void Mesh::computeFaceConnectivity(moab::Interface * mbInterface, moab::EntityHandle & meshset){
+  moab::ErrorCode mbErr;
+  moab::Range moabFaces;
+  mbErr = mbInterface->get_entities_by_dimension(meshset, refElement->getDimension() - 1, moabFaces);
+  if(mbErr != moab::MB_SUCCESS){
+    throw(ErrorHandle("Mesh", "computeFace2CellMap", "could not get faces from meshset"));
+  }
+  const std::vector< std::vector<int> > * faceIndexes = refElement->getFaceNodes();
+  nFaces = moabFaces.size();
+  nNodesPerFace = refElement->getFaceElement()->getNumNodes();
+  faces.resize(nFaces * nNodesPerFace);
+  int indEl, locFaceIndex;
+  for(int i = 0; i < nFaces; i++){
+    indEl = face2CellMap[i*2];
+    locFaceIndex = std::distance(cell2FaceMap.begin() + indEl*nFacesPerCell, 
+        std::find(cell2FaceMap.begin() + indEl*nFacesPerCell, cell2FaceMap.end() + (indEl+1)*nFacesPerCell, i));
+    for(int j = 0; j < ((*faceIndexes)[locFaceIndex]).size(); j++){
+      faces[i*nNodesPerFace + j] = cells[indEl*nNodesPerCell + ((*faceIndexes)[locFaceIndex])[j]];
+    }
+  }
+};//computeFaceConnectivity
 
 }//hfox

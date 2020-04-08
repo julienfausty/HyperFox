@@ -77,35 +77,37 @@ class Mesh{
      *
      * @param points the pointer to the vector to fill with vertices
      */
-    void getSlicePoints(const std::vector<int> & slice, std::vector< const double * > * points) const;
+    void getSlicePoints(const std::vector<int> & slice, std::vector< std::vector< double > > * points) const;
     /*! \brief A method for geting a const pointer to the connectivity of the mesh.
      *
      * @param connectivity the pointer to the vector to fill with connectivity
      */
-    void getSliceCells(const std::vector<int> & slice, std::vector< const int * > * connectivity) const;
+    void getSliceCells(const std::vector<int> & slice, std::vector< std::vector< int > > * connectivity) const;
     /*! \brief A method for geting a const pointer to the connectivity fo the faces of the mesh.
      *
      * @param connectivity the pointer to the vector to fill with connectivity
      */
-    void getSliceFaces(const std::vector<int> & slice, std::vector< const int * > * faces) const;
+    void getSliceFaces(const std::vector<int> & slice, std::vector< std::vector<int> > * faces) const;
     /*! \brief A method for accessing a specific node of the mesh.
      *
      * @param i index of the point one wishes to acquire.
+     * @param point pointer to the vector to fill with the coordinates
      */
-    const double * getPoint(int i) const;
+    void getPoint(int i, std::vector<double> * point) const;
     /*! \brief A method for accessing an individual cell.
      *
      * @param i index of the cell of which one wishes to get the connectivity 
      * information. 
      * @param cell pointer to fill with node indexes
      */
-    const int * getCell(int i) const;
+    void getCell(int i, std::vector<int> * cell) const;
     /*! \brief A method for accessing an individual face.
      *
      * @param i index of the face of which one wishes to get the connectivity 
      * information. 
+     * @param face pointer to fill with node indexes of face
      */
-    const int * getFace(int i) const;
+    void getFace(int i, std::vector<int> * face) const;
     /*!
      * \brief get a const pointer to the reference element
      */
@@ -137,8 +139,9 @@ class Mesh{
      * \brief get the faces of a specific cell
      *
      * @param i index of cell
+     * @param cell2Face pointer to vector to fill with face indexes
      */
-    const int * getCell2Face(int i) const;
+    void getCell2Face(int i, std::vector<int> * cell2Face) const;
     /*!
      * \brief get a face to element map
      */
@@ -147,8 +150,9 @@ class Mesh{
      * \brief get the cells adjoining a specific face
      *
      * @param i index of face
+     * @param face2Cell pointer to vector to fill with cell indexes
      */
-    const int * getFace2Cell(int i) const;
+    void getFace2Cell(int i, std::vector<int> * face2Cell) const;
     /*!
      * \brief get the indexes of the faces on the boundary
      */
@@ -166,6 +170,9 @@ class Mesh{
     /*! \brief compute the boundary of the mesh.
      */
     void computeBoundary(moab::Interface * mbInterface, moab::EntityHandle & meshset);
+    /*! \brief compute face connectivity explicitly.
+     */
+    void computeFaceConnectivity(moab::Interface * mbInterface, moab::EntityHandle & meshset);
     /*!
      * \brief small method for finding the internal cell index of a face
      */

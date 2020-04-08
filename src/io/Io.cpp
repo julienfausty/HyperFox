@@ -17,7 +17,7 @@ namespace hfox{
   
   void Io::setMesh(Mesh * mesh){
     if(mesh->getReferenceElement() == NULL){
-      throw(ErrorHandle("MoabMeshIo", "setMesh", "reference element of mesh is not defined."));
+      throw(ErrorHandle("Io", "setMesh", "reference element of mesh is not defined."));
     }
     myMesh = mesh;
   };//setMesh

@@ -110,7 +110,7 @@ void MoabMeshIo::write(std::string filename){
     if(mbErr != moab::MB_SUCCESS){
       throw(ErrorHandle("MoabMeshIo", "write", "could not create vertex (moab)."));
     }
-    orderedVertList.push_back(ent);
+    orderedVertList[i] = ent;
   }
   mbErr = mbIFace->add_entities(meshset, orderedVertList.data(), orderedVertList.size());
   if(mbErr != moab::MB_SUCCESS){
@@ -126,7 +126,7 @@ void MoabMeshIo::write(std::string filename){
     if(mbErr != moab::MB_SUCCESS){
       throw(ErrorHandle("MoabMeshIo", "write", "could not create element (moab)."));
     }
-    orderedElList.push_back(ent);
+    orderedElList[i] = ent;
   }
   mbErr = mbIFace->add_entities(meshset, orderedElList.data(), orderedElList.size());
   if(mbErr != moab::MB_SUCCESS){

@@ -21,7 +21,7 @@ def readGroup(grp):
 
 dirName = '../ressources/meshes/'
 
-meshName = 'lightQuad2.h5'
+meshName = 'fieldTest.h5'
 
 f = h5py.File(dirName + meshName, 'r')
 

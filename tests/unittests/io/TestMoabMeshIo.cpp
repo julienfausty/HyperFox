@@ -1,13 +1,13 @@
 #include <catch2/catch.hpp>
 #include <iostream>
 #include <cstdio>
-#include "configRessources.h"
+#include "TestUtils.h"
 #include "MoabMeshIo.h"
 
 using namespace hfox;
 
 TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
-  std::string meshDirPath = RessourceConfig::getRessourcePath() + "/meshes/";
+  std::string meshDirPath = TestUtils::getRessourcePath() + "/meshes/";
   SECTION("Testing construction"){
     CHECK_NOTHROW(MoabMeshIo());
     Mesh refElemMesh;
@@ -76,6 +76,9 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
   testOrthotopeConnectivity.push_back(bufferElement);
   bufferElement[0] = 3; bufferElement[1] = 8; bufferElement[2] = 4; bufferElement[3] = 7;
   testOrthotopeConnectivity.push_back(bufferElement);
+  std::vector<double> testNodesStream = TestUtils::unpack(testNodes);
+  std::vector<int> testSimplexConnectivityStream = TestUtils::unpack(testSimplexConnectivity);
+  std::vector<int> testOrthotopeConnectivityStream = TestUtils::unpack(testOrthotopeConnectivity);
   SECTION("Testing load VTK"){
     std::string lightTriVtk = "lightTestTri.vtk";
     CHECK_THROWS(moabio->load(meshDirPath + lightTriVtk));
@@ -87,18 +90,18 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(simplexMesh.getDimension() == 2);
     CHECK(simplexMesh.getNumberPoints() == testNodes.size());
     CHECK(simplexMesh.getNumberCells() == testSimplexConnectivity.size());
-    const std::vector<double> * point;
+    std::vector<double> point;
     for(int i = 0; i < simplexMesh.getNumberPoints(); i++){
-      point = simplexMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      simplexMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
-    const std::vector<int> * cell;
+    std::vector<int> cell;
     for(int i = 0; i < simplexMesh.getNumberCells(); i++){
-      cell = simplexMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testSimplexConnectivity[i][j]);
+      simplexMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testSimplexConnectivity[i][j]);
       }
     }
     std::string lightQuadVtk = "lightTestQuad.vtk";
@@ -110,33 +113,33 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(orthoMesh.getNumberPoints() == testNodes.size());
     CHECK(orthoMesh.getNumberCells() == testOrthotopeConnectivity.size());
     for(int i = 0; i < orthoMesh.getNumberPoints(); i++){
-      point = orthoMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      orthoMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
     for(int i = 0; i < orthoMesh.getNumberCells(); i++){
-      cell = orthoMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testOrthotopeConnectivity[i][j]);
+      orthoMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testOrthotopeConnectivity[i][j]);
       }
     }
   };
 
   SECTION("Testing write VTK"){
-    Mesh simplexMesh(2, 1, "simplex", testNodes, testSimplexConnectivity);
+    Mesh simplexMesh(2, 1, "simplex", 2, testNodesStream, testSimplexConnectivityStream);
     moabio->setMesh(&simplexMesh);
     std::string checkFile = meshDirPath + "generatedLightTri.vtk";
     std::string outputFile = meshDirPath + "tmpoutput.vtk";
     moabio->write(outputFile);
-    CHECK(RessourceConfig::checkFilesEqual(checkFile, outputFile));
+    CHECK(TestUtils::checkFilesEqual(checkFile, outputFile));
     std::remove(outputFile.c_str());
-    Mesh orthoMesh(2, 1, "orthotope", testNodes, testOrthotopeConnectivity);
+    Mesh orthoMesh(2, 1, "orthotope", 2, testNodesStream, testOrthotopeConnectivityStream);
     moabio->setMesh(&orthoMesh);
     checkFile = meshDirPath + "generatedLightQuad.vtk";
     outputFile = meshDirPath + "test.vtk";
     moabio->write(outputFile);
-    CHECK(RessourceConfig::checkFilesEqual(checkFile, outputFile));
+    CHECK(TestUtils::checkFilesEqual(checkFile, outputFile));
     std::remove(outputFile.c_str());
   };
 
@@ -150,18 +153,18 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(simplexMesh.getDimension() == 2);
     CHECK(simplexMesh.getNumberPoints() == testNodes.size());
     CHECK(simplexMesh.getNumberCells() == testSimplexConnectivity.size());
-    const std::vector<double> * point;
+    std::vector<double> point;
     for(int i = 0; i < simplexMesh.getNumberPoints(); i++){
-      point = simplexMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      simplexMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
-    const std::vector<int> * cell;
+    std::vector<int> cell;
     for(int i = 0; i < simplexMesh.getNumberCells(); i++){
-      cell = simplexMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testSimplexConnectivity[i][j]);
+      simplexMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testSimplexConnectivity[i][j]);
       }
     }
     std::string lightQuadH5M = "generatedLightQuad.h5m";
@@ -173,21 +176,21 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(orthoMesh.getNumberPoints() == testNodes.size());
     CHECK(orthoMesh.getNumberCells() == testOrthotopeConnectivity.size());
     for(int i = 0; i < orthoMesh.getNumberPoints(); i++){
-      point = orthoMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      orthoMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
     for(int i = 0; i < orthoMesh.getNumberCells(); i++){
-      cell = orthoMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testOrthotopeConnectivity[i][j]);
+      orthoMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testOrthotopeConnectivity[i][j]);
       }
     }
   };
 
   SECTION("Testing write H5M"){
-    Mesh simplexMesh(2, 1, "simplex", testNodes, testSimplexConnectivity);
+    Mesh simplexMesh(2, 1, "simplex", 2, testNodesStream, testSimplexConnectivityStream);
     moabio->setMesh(&simplexMesh);
     std::string outputFile = meshDirPath + "tmpoutput.h5m";
     moabio->write(outputFile);
@@ -195,22 +198,22 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(simplexMesh.getDimension() == 2);
     CHECK(simplexMesh.getNumberPoints() == testNodes.size());
     CHECK(simplexMesh.getNumberCells() == testSimplexConnectivity.size());
-    const std::vector<double> * point;
+    std::vector<double> point;
     for(int i = 0; i < simplexMesh.getNumberPoints(); i++){
-      point = simplexMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      simplexMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
-    const std::vector<int> * cell;
+    std::vector<int> cell;
     for(int i = 0; i < simplexMesh.getNumberCells(); i++){
-      cell = simplexMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testSimplexConnectivity[i][j]);
+      simplexMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testSimplexConnectivity[i][j]);
       }
     }
     std::remove(outputFile.c_str());
-    Mesh orthoMesh(2, 1, "orthotope", testNodes, testOrthotopeConnectivity);
+    Mesh orthoMesh(2, 1, "orthotope", 2, testNodesStream, testOrthotopeConnectivityStream);
     moabio->setMesh(&orthoMesh);
     outputFile = meshDirPath + "tmpoutput.h5m";
     moabio->write(outputFile);
@@ -218,15 +221,15 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(orthoMesh.getNumberPoints() == testNodes.size());
     CHECK(orthoMesh.getNumberCells() == testOrthotopeConnectivity.size());
     for(int i = 0; i < orthoMesh.getNumberPoints(); i++){
-      point = orthoMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      orthoMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
     for(int i = 0; i < orthoMesh.getNumberCells(); i++){
-      cell = orthoMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testOrthotopeConnectivity[i][j]);
+      orthoMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testOrthotopeConnectivity[i][j]);
       }
     }
     std::remove(outputFile.c_str());
@@ -247,7 +250,8 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
   bufferElement[3] = 3; bufferElement[4] = 5; bufferElement[5] = 6;
   bufferElement[6] = 7; bufferElement[7] = 8; bufferElement[8] = 4;
   testOrthotopeConnectivity.push_back(bufferElement);
-
+  testSimplexConnectivityStream = TestUtils::unpack(testSimplexConnectivity);
+  testOrthotopeConnectivityStream = TestUtils::unpack(testOrthotopeConnectivity);
   SECTION("Testing higher order load VTK"){
     std::string lightTriVtk = "generatedLightTri2.vtk";
     CHECK_THROWS(moabio->load(meshDirPath + lightTriVtk));
@@ -259,18 +263,18 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(simplexMesh.getDimension() == 2);
     CHECK(simplexMesh.getNumberPoints() == testNodes.size());
     CHECK(simplexMesh.getNumberCells() == testSimplexConnectivity.size());
-    const std::vector<double> * point;
+    std::vector<double> point;
     for(int i = 0; i < simplexMesh.getNumberPoints(); i++){
-      point = simplexMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      simplexMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
-    const std::vector<int> * cell;
+    std::vector<int> cell;
     for(int i = 0; i < simplexMesh.getNumberCells(); i++){
-      cell = simplexMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testSimplexConnectivity[i][j]);
+      simplexMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testSimplexConnectivity[i][j]);
       }
     }
     std::string lightQuadVtk = "generatedLightQuad2.vtk";
@@ -282,33 +286,33 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(orthoMesh.getNumberPoints() == testNodes.size());
     CHECK(orthoMesh.getNumberCells() == testOrthotopeConnectivity.size());
     for(int i = 0; i < orthoMesh.getNumberPoints(); i++){
-      point = orthoMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      orthoMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
     for(int i = 0; i < orthoMesh.getNumberCells(); i++){
-      cell = orthoMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testOrthotopeConnectivity[i][j]);
+      orthoMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testOrthotopeConnectivity[i][j]);
       }
     }
   };
 
   SECTION("Testing higher order write VTK"){
-    Mesh simplexMesh(2, 2, "simplex", testNodes, testSimplexConnectivity);
+    Mesh simplexMesh(2, 2, "simplex", 2, testNodesStream, testSimplexConnectivityStream);
     moabio->setMesh(&simplexMesh);
     std::string checkFile = meshDirPath + "generatedLightTri2.vtk";
     std::string outputFile = meshDirPath + "tmpoutput.vtk";
     moabio->write(outputFile);
-    CHECK(RessourceConfig::checkFilesEqual(checkFile, outputFile));
+    CHECK(TestUtils::checkFilesEqual(checkFile, outputFile));
     std::remove(outputFile.c_str());
-    Mesh orthoMesh(2, 2, "orthotope", testNodes, testOrthotopeConnectivity);
+    Mesh orthoMesh(2, 2, "orthotope", 2, testNodesStream, testOrthotopeConnectivityStream);
     moabio->setMesh(&orthoMesh);
     checkFile = meshDirPath + "generatedLightQuad2.vtk";
     outputFile = meshDirPath + "tmpoutput.vtk";
     moabio->write(outputFile);
-    CHECK(RessourceConfig::checkFilesEqual(checkFile, outputFile));
+    CHECK(TestUtils::checkFilesEqual(checkFile, outputFile));
     std::remove(outputFile.c_str());
   };
 
@@ -322,18 +326,18 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(simplexMesh.getDimension() == 2);
     CHECK(simplexMesh.getNumberPoints() == testNodes.size());
     CHECK(simplexMesh.getNumberCells() == testSimplexConnectivity.size());
-    const std::vector<double> * point;
+    std::vector<double> point;
     for(int i = 0; i < simplexMesh.getNumberPoints(); i++){
-      point = simplexMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      simplexMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
-    const std::vector<int> * cell;
+    std::vector<int> cell;
     for(int i = 0; i < simplexMesh.getNumberCells(); i++){
-      cell = simplexMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testSimplexConnectivity[i][j]);
+      simplexMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testSimplexConnectivity[i][j]);
       }
     }
     std::string lightQuadH5M = "generatedLightQuad2.h5m";
@@ -345,21 +349,21 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(orthoMesh.getNumberPoints() == testNodes.size());
     CHECK(orthoMesh.getNumberCells() == testOrthotopeConnectivity.size());
     for(int i = 0; i < orthoMesh.getNumberPoints(); i++){
-      point = orthoMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      orthoMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
     for(int i = 0; i < orthoMesh.getNumberCells(); i++){
-      cell = orthoMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testOrthotopeConnectivity[i][j]);
+      orthoMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testOrthotopeConnectivity[i][j]);
       }
     }
   };
 
   SECTION("Testing higher order write H5M"){
-    Mesh simplexMesh(2, 2, "simplex", testNodes, testSimplexConnectivity);
+    Mesh simplexMesh(2, 2, "simplex", 2, testNodesStream, testSimplexConnectivityStream);
     moabio->setMesh(&simplexMesh);
     std::string outputFile = meshDirPath + "tmpoutput.h5m";
     moabio->write(outputFile);
@@ -367,22 +371,22 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(simplexMesh.getDimension() == 2);
     CHECK(simplexMesh.getNumberPoints() == testNodes.size());
     CHECK(simplexMesh.getNumberCells() == testSimplexConnectivity.size());
-    const std::vector<double> * point;
+    std::vector<double> point;
     for(int i = 0; i < simplexMesh.getNumberPoints(); i++){
-      point = simplexMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      simplexMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
-    const std::vector<int> * cell;
+    std::vector<int> cell;
     for(int i = 0; i < simplexMesh.getNumberCells(); i++){
-      cell = simplexMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testSimplexConnectivity[i][j]);
+      simplexMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testSimplexConnectivity[i][j]);
       }
     }
     std::remove(outputFile.c_str());
-    Mesh orthoMesh(2, 2, "orthotope", testNodes, testOrthotopeConnectivity);
+    Mesh orthoMesh(2, 2, "orthotope", 2, testNodesStream, testOrthotopeConnectivityStream);
     moabio->setMesh(&orthoMesh);
     outputFile = meshDirPath + "tmpoutput.h5m";
     moabio->write(outputFile);
@@ -390,15 +394,15 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
     CHECK(orthoMesh.getNumberPoints() == testNodes.size());
     CHECK(orthoMesh.getNumberCells() == testOrthotopeConnectivity.size());
     for(int i = 0; i < orthoMesh.getNumberPoints(); i++){
-      point = orthoMesh.getPoint(i);
-      for(int j = 0; j < point->size(); j++){
-        CHECK((*point)[j] == testNodes[i][j]);
+      orthoMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK((point)[j] == testNodes[i][j]);
       }
     }
     for(int i = 0; i < orthoMesh.getNumberCells(); i++){
-      cell = orthoMesh.getCell(i);
-      for(int j = 0; j < cell->size(); j++){
-        CHECK((*cell)[j] == testOrthotopeConnectivity[i][j]);
+      orthoMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        CHECK((cell)[j] == testOrthotopeConnectivity[i][j]);
       }
     }
     std::remove(outputFile.c_str());
@@ -419,7 +423,9 @@ TEST_CASE("Unit testing the MoabMeshIo class", "[unit][io][MoabMeshIo]"){
       CHECK(m.getNumberPoints() == nNodesOrdsGmsh[i]);
       CHECK(m.getNumberCells() == 16);
       CHECK(m.getNumberFaces() == 28);
-      CHECK(m.getCell(0)->size() == m.getReferenceElement()->getNumNodes());
+      std::vector<int> cell;
+      m.getCell(0, &cell);
+      CHECK(cell.size() == m.getReferenceElement()->getNumNodes());
     }
   };
 

@@ -2,32 +2,9 @@
 #include <vector>
 #include <algorithm>
 #include "Mesh.h"
+#include "TestUtils.h"
 
 using namespace hfox;
-
-bool vectorEqual(const std::vector<int> & a, const std::vector<int> & b){
-  bool areEqual = 1;
-  for(int i = 0; i < a.size(); i++){
-    areEqual = (a[i] == b[i]);
-    if(!areEqual){
-      break;
-    }
-  }
-  return areEqual;
-}
-
-template <class T>
-std::vector<T> unpack(std::vector< std::vector<T> > v){
-  std::vector<T> res(v.size()*v[0].size());
-  int index = 0;
-  for(int i = 0; i < v.size(); i++){
-    for(int j = 0; j < v[i].size(); j++){
-      res[index] = v[i][j];
-      index += 1;
-    }
-  }
-  return res;
-}
 
 TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
   //setup a 2D test mesh
@@ -79,9 +56,9 @@ TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
   testOrthotopeConnectivity.push_back(bufferElement);
   bufferElement[0] = 3; bufferElement[1] = 8; bufferElement[2] = 4; bufferElement[3] = 7;
   testOrthotopeConnectivity.push_back(bufferElement);
-  std::vector<double> testNodesStream = unpack(testNodes);
-  std::vector<int> testSimplexConnectivityStream = unpack(testSimplexConnectivity);
-  std::vector<int> testOrthotopeConnectivityStream = unpack(testOrthotopeConnectivity);
+  std::vector<double> testNodesStream = TestUtils::unpack(testNodes);
+  std::vector<int> testSimplexConnectivityStream = TestUtils::unpack(testSimplexConnectivity);
+  std::vector<int> testOrthotopeConnectivityStream = TestUtils::unpack(testOrthotopeConnectivity);
   SECTION("Testing Construction."){
     CHECK_NOTHROW(Mesh());
     CHECK_NOTHROW(Mesh(2, 1, "simplex", 2, testNodesStream, testSimplexConnectivityStream));
@@ -98,22 +75,22 @@ TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
     CHECK(orthoMesh.getNodeSpaceDimension() == 2);
     CHECK(orthoMesh.getNumberPoints() == testNodes.size());
     CHECK(orthoMesh.getNumberCells() == testOrthotopeConnectivity.size());
-    const double * point;
+    std::vector<double> point;
     for(int i = 0; i < simplexMesh.getNumberPoints(); i++){
-      point = simplexMesh.getPoint(i);
-      for(int j = 0; j < simplexMesh.getNodeSpaceDimension(); j++){
-        CHECK((point[j]) == testNodes[i][j]);
+      simplexMesh.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
+        CHECK(point[j] == testNodes[i][j]);
       }
     }
-    const int * cell;
+    std::vector<int> cell;
     for(int i = 0; i < simplexMesh.getNumberCells(); i++){
-      cell = simplexMesh.getCell(i);
-      for(int j = 0; j < simplexMesh.getReferenceElement()->getNumNodes(); j++){
+      simplexMesh.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
         CHECK((cell[j]) == testSimplexConnectivity[i][j]);
       }
     }
     for(int i = 0; i < orthoMesh.getNumberCells(); i++){
-      cell = orthoMesh.getCell(i);
+      orthoMesh.getCell(i, &cell);
       for(int j = 0; j < orthoMesh.getReferenceElement()->getNumNodes(); j++){
         CHECK((cell[j]) == testOrthotopeConnectivity[i][j]);
       }
@@ -218,11 +195,11 @@ TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
     CHECK(simplexMesh.getNumberFaces() == simplexFaces.size());
     CHECK(orthoMesh.getNumberFaces() == orthoFaces.size());
     bool areEqual;
-    const int * buffer;
+    std::vector<int> buffer;
     for(int i = 0; i < simplexFaces.size(); i++){
-      buffer = simplexMesh.getFace(i);
+      simplexMesh.getFace(i, &buffer);
       for(int j = 0; j < simplexFaces.size(); j++){
-        for(int k = 0; k < simplexMesh.getReferenceElement()->getFaceElement()->getNumNodes(); k++){
+        for(int k = 0; k < buffer.size(); k++){
           areEqual = (std::find(simplexFaces[j].begin(), simplexFaces[j].end(), (buffer[k])) != simplexFaces[j].end());
           if(!areEqual){
             break;
@@ -235,9 +212,9 @@ TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
       CHECK(areEqual);
     }
     for(int i = 0; i < orthoFaces.size(); i++){
-      buffer = orthoMesh.getFace(i);
+      orthoMesh.getFace(i, &buffer);
       for(int j = 0; j < orthoFaces.size(); j++){
-        for(int k = 0; k < orthoMesh.getReferenceElement()->getFaceElement()->getNumNodes(); k++){
+        for(int k = 0; k < buffer.size(); k++){
           areEqual = (std::find(orthoFaces[j].begin(), orthoFaces[j].end(), (buffer[k])) != orthoFaces[j].end());
           if(!areEqual){
             break;
@@ -250,84 +227,84 @@ TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
       CHECK(areEqual);
     }
 
-    CHECK(simplexMesh.getFace2CellMap()->size() == simplexFaces.size());
-    CHECK(orthoMesh.getFace2CellMap()->size() == orthoFaces.size());
-    //for(int i = 0; i < simplexFaces.size(); i++){
-      //std::vector<const int> bufferFace(2);
-      //bufferFace.data() = simplexMesh.getFace2Cell(i);
-      //for(int j = 0; j < simplexFaceToCellMap.size(); j++){
-        //if(bufferFace->size() == simplexFaceToCellMap[j].size()){
-          //for(int k = 0; k < bufferFace->size(); k++){
-            //areEqual = (std::find(simplexFaceToCellMap[j].begin(), simplexFaceToCellMap[j].end(), (*bufferFace)[k]) != simplexFaceToCellMap[j].end());
-            //if(!areEqual){
-              //break;
-            //}
-          //}
-        //} else {
-          //areEqual = 0;
-        //}
-        //if(areEqual){
-          //break;
-        //}
-      //}
-      //CHECK(areEqual);
-    //}
-    //for(int i = 0; i < orthoFaces.size(); i++){
-      //const std::vector<int> * bufferFace = orthoMesh.getFace2Cell(i);
-      //for(int j = 0; j < orthoFaceToCellMap.size(); j++){
-        //if(bufferFace->size() == orthoFaceToCellMap[j].size()){
-          //for(int k = 0; k < bufferFace->size(); k++){
-            //areEqual = (std::find(orthoFaceToCellMap[j].begin(), orthoFaceToCellMap[j].end(), (*bufferFace)[k]) != orthoFaceToCellMap[j].end());
-            //if(!areEqual){
-              //break;
-            //}
-          //}
-        //} else {
-          //areEqual = 0;
-        //}
-        //if(areEqual){
-          //break;
-        //}
-      //}
-      //CHECK(areEqual);
-    //}
-    CHECK(simplexMesh.getCell2FaceMap()->size() == testSimplexConnectivity.size());
-    CHECK(orthoMesh.getCell2FaceMap()->size() == testOrthotopeConnectivity.size());
-    //bool isIn;
-    //for(int i = 0; i < testSimplexConnectivity.size(); i++){
-      //const std::vector<int> * buff = simplexMesh.getCell2Face(i); 
-      //for(int j = 0; j < buff->size(); j++){
-        //buffer = simplexMesh.getFace((*buff)[j]);
-        //for(int k = 0; k < buffer->size(); k++){
-          //CHECK(std::find(testSimplexConnectivity[i].begin(), testSimplexConnectivity[i].end(), (*buffer)[k]) != testSimplexConnectivity[i].end());
-        //}
-      //}
-    //}
-    //for(int i = 0; i < testOrthotopeConnectivity.size(); i++){
-      //const std::vector<int> * buff = orthoMesh.getCell2Face(i); 
-      //for(int j = 0; j < buff->size(); j++){
-        //buffer = orthoMesh.getFace((*buff)[j]);
-        //for(int k = 0; k < buffer->size(); k++){
-          //CHECK(std::find(testOrthotopeConnectivity[i].begin(), testOrthotopeConnectivity[i].end(), (*buffer)[k]) != testOrthotopeConnectivity[i].end());
-        //}
-      //}
-    //}
+    CHECK(simplexMesh.getFace2CellMap()->size()/2 == simplexFaces.size());
+    CHECK(orthoMesh.getFace2CellMap()->size()/2 == orthoFaces.size());
+    std::vector<int> bufferFace;
+    for(int i = 0; i < simplexFaces.size(); i++){
+      simplexMesh.getFace2Cell(i, &bufferFace);
+      for(int j = 0; j < simplexFaceToCellMap.size(); j++){
+        if(bufferFace.size() == simplexFaceToCellMap[j].size()){
+          for(int k = 0; k < bufferFace.size(); k++){
+            areEqual = (std::find(simplexFaceToCellMap[j].begin(), simplexFaceToCellMap[j].end(), bufferFace[k]) != simplexFaceToCellMap[j].end());
+            if(!areEqual){
+              break;
+            }
+          }
+        } else {
+          areEqual = 0;
+        }
+        if(areEqual){
+          break;
+        }
+      }
+      CHECK(areEqual);
+    }
+    for(int i = 0; i < orthoFaces.size(); i++){
+      orthoMesh.getFace2Cell(i, &bufferFace);
+      for(int j = 0; j < orthoFaceToCellMap.size(); j++){
+        if(bufferFace.size() == orthoFaceToCellMap[j].size()){
+          for(int k = 0; k < bufferFace.size(); k++){
+            areEqual = (std::find(orthoFaceToCellMap[j].begin(), orthoFaceToCellMap[j].end(), (bufferFace)[k]) != orthoFaceToCellMap[j].end());
+            if(!areEqual){
+              break;
+            }
+          }
+        } else {
+          areEqual = 0;
+        }
+        if(areEqual){
+          break;
+        }
+      }
+      CHECK(areEqual);
+    }
+    CHECK(simplexMesh.getCell2FaceMap()->size()/simplexMesh.getNumFacesPerCell() == testSimplexConnectivity.size());
+    CHECK(orthoMesh.getCell2FaceMap()->size()/orthoMesh.getNumFacesPerCell() == testOrthotopeConnectivity.size());
+    bool isIn;
+    for(int i = 0; i < testSimplexConnectivity.size(); i++){
+      std::vector<int> buff; simplexMesh.getCell2Face(i, &buff); 
+      for(int j = 0; j < buff.size(); j++){
+        simplexMesh.getFace((buff)[j], &buffer);
+        for(int k = 0; k < buffer.size(); k++){
+          CHECK(std::find(testSimplexConnectivity[i].begin(), testSimplexConnectivity[i].end(), (buffer)[k]) != testSimplexConnectivity[i].end());
+        }
+      }
+    }
+    for(int i = 0; i < testOrthotopeConnectivity.size(); i++){
+      std::vector<int> buff; orthoMesh.getCell2Face(i, &buff); 
+      for(int j = 0; j < buff.size(); j++){
+        orthoMesh.getFace((buff)[j], &buffer);
+        for(int k = 0; k < buffer.size(); k++){
+          CHECK(std::find(testOrthotopeConnectivity[i].begin(), testOrthotopeConnectivity[i].end(), (buffer)[k]) != testOrthotopeConnectivity[i].end());
+        }
+      }
+    }
     CHECK(simplexMesh.getBoundaryFaces()->size() == 8);
     CHECK(orthoMesh.getBoundaryFaces()->size() == 8);
-    //const std::set<int> * buffBoundary = simplexMesh.getBoundaryFaces();
-    //for(std::set<int>::iterator it = buffBoundary->begin(); it != buffBoundary->end(); it++){
-      //buffer = simplexMesh.getFace(*it);
-      //for(int k = 0; k < buffer->size(); k++){
-        //CHECK((std::find(boundaryNodes.begin(), boundaryNodes.end(), (*buffer)[k]) != boundaryNodes.end()));
-      //}
-    //}
-    //buffBoundary = orthoMesh.getBoundaryFaces();
-    //for(std::set<int>::iterator it = buffBoundary->begin(); it != buffBoundary->end(); it++){
-      //buffer = orthoMesh.getFace(*it);
-      //for(int k = 0; k < buffer->size(); k++){
-        //CHECK((std::find(boundaryNodes.begin(), boundaryNodes.end(), (*buffer)[k]) != boundaryNodes.end()));
-      //}
-    //}
+    const std::set<int> * buffBoundary = simplexMesh.getBoundaryFaces();
+    for(std::set<int>::iterator it = buffBoundary->begin(); it != buffBoundary->end(); it++){
+      simplexMesh.getFace(*it, &buffer);
+      for(int k = 0; k < buffer.size(); k++){
+        CHECK((std::find(boundaryNodes.begin(), boundaryNodes.end(), (buffer)[k]) != boundaryNodes.end()));
+      }
+    }
+    buffBoundary = orthoMesh.getBoundaryFaces();
+    for(std::set<int>::iterator it = buffBoundary->begin(); it != buffBoundary->end(); it++){
+      orthoMesh.getFace(*it, &buffer);
+      for(int k = 0; k < buffer.size(); k++){
+        CHECK((std::find(boundaryNodes.begin(), boundaryNodes.end(), (buffer)[k]) != boundaryNodes.end()));
+      }
+    }
   };
 
   testSimplexConnectivity.resize(0);
@@ -344,8 +321,8 @@ TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
   bufferElement[3] = 3; bufferElement[4] = 5; bufferElement[5] = 6;
   bufferElement[6] = 7; bufferElement[7] = 8; bufferElement[8] = 4;
   testOrthotopeConnectivity.push_back(bufferElement);
-  testSimplexConnectivityStream = unpack(testSimplexConnectivity);
-  testOrthotopeConnectivityStream = unpack(testOrthotopeConnectivity);
+  testSimplexConnectivityStream = TestUtils::unpack(testSimplexConnectivity);
+  testOrthotopeConnectivityStream = TestUtils::unpack(testOrthotopeConnectivity);
   SECTION("Higher order mesh construction."){
     CHECK_NOTHROW(Mesh(2, 2, "simplex", 2, testNodesStream, testSimplexConnectivityStream));
     CHECK_NOTHROW(Mesh(2, 2, "orthotope", 2, testNodesStream, testOrthotopeConnectivityStream));
@@ -360,23 +337,23 @@ TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
     CHECK(orthoMesh2.getDimension() == 2);
     CHECK(orthoMesh2.getNumberPoints() == testNodes.size());
     CHECK(orthoMesh2.getNumberCells() == testOrthotopeConnectivity.size());
-    const double * point;
+    std::vector<double> point;
     for(int i = 0; i < simplexMesh2.getNumberPoints(); i++){
-      point = simplexMesh2.getPoint(i);
-      for(int j = 0; j < simplexMesh2.getNodeSpaceDimension(); j++){
+      simplexMesh2.getPoint(i, &point);
+      for(int j = 0; j < point.size(); j++){
         CHECK((point)[j] == testNodes[i][j]);
       }
     }
-    const int * cell;
+    std::vector<int> cell;
     for(int i = 0; i < simplexMesh2.getNumberCells(); i++){
-      cell = simplexMesh2.getCell(i);
-      for(int j = 0; j < simplexMesh2.getReferenceElement()->getNumNodes(); j++){
+      simplexMesh2.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
         CHECK((cell)[j] == testSimplexConnectivity[i][j]);
       }
     }
     for(int i = 0; i < orthoMesh2.getNumberCells(); i++){
-      cell = orthoMesh2.getCell(i);
-      for(int j = 0; j < orthoMesh2.getReferenceElement()->getNumNodes(); j++){
+      orthoMesh2.getCell(i, &cell);
+      for(int j = 0; j < cell.size(); j++){
         CHECK((cell)[j] == testOrthotopeConnectivity[i][j]);
       }
     }
@@ -413,115 +390,115 @@ TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
   SECTION("Testing higher order face computation"){
     CHECK(simplexMesh2.getNumberFaces() == simplexFaces.size());
     CHECK(orthoMesh2.getNumberFaces() == orthoFaces.size());
-    //bool areEqual;
-    //const std::vector<int> * buffer;
-    //for(int i = 0; i < simplexFaces.size(); i++){
-      //buffer = simplexMesh2.getFace(i);
-      //for(int j = 0; j < simplexFaces.size(); j++){
-        //for(int k = 0; k < buffer->size(); k++){
-          //areEqual = (std::find(simplexFaces[j].begin(), simplexFaces[j].end(), (*buffer)[k]) != simplexFaces[j].end());
-          //if(!areEqual){
-            //break;
-          //}
-        //}
-        //if(areEqual){
-          //break;
-        //}
-      //}
-      //CHECK(areEqual);
-    //}
-    //for(int i = 0; i < orthoFaces.size(); i++){
-      //buffer = orthoMesh2.getFace(i);
-      //for(int j = 0; j < orthoFaces.size(); j++){
-        //for(int k = 0; k < buffer->size(); k++){
-          //areEqual = (std::find(orthoFaces[j].begin(), orthoFaces[j].end(), (*buffer)[k]) != orthoFaces[j].end());
-          //if(!areEqual){
-            //break;
-          //}
-        //}
-        //if(areEqual){
-          //break;
-        //}
-      //}
-      //CHECK(areEqual);
-    //}
-    CHECK(simplexMesh2.getFace2CellMap()->size() == simplexFaces.size());
-    CHECK(orthoMesh2.getFace2CellMap()->size() == orthoFaces.size());
-    //for(int i = 0; i < simplexFaces.size(); i++){
-      //const std::vector<int> * bufferFace = simplexMesh2.getFace2Cell(i);
-      //for(int j = 0; j < simplexFaceToCellMap.size(); j++){
-        //if(bufferFace->size() == simplexFaceToCellMap[j].size()){
-          //for(int k = 0; k < bufferFace->size(); k++){
-            //areEqual = (std::find(simplexFaceToCellMap[j].begin(), simplexFaceToCellMap[j].end(), (*bufferFace)[k]) != simplexFaceToCellMap[j].end());
-            //if(!areEqual){
-              //break;
-            //}
-          //}
-        //} else {
-          //areEqual = 0;
-        //}
-        //if(areEqual){
-          //break;
-        //}
-      //}
-      //CHECK(areEqual);
-    //}
-    //for(int i = 0; i < orthoFaces.size(); i++){
-      //const std::vector<int> * bufferFace = orthoMesh2.getFace2Cell(i);
-      //for(int j = 0; j < orthoFaceToCellMap.size(); j++){
-        //if(bufferFace->size() == orthoFaceToCellMap[j].size()){
-          //for(int k = 0; k < bufferFace->size(); k++){
-            //areEqual = (std::find(orthoFaceToCellMap[j].begin(), orthoFaceToCellMap[j].end(), (*bufferFace)[k]) != orthoFaceToCellMap[j].end());
-            //if(!areEqual){
-              //break;
-            //}
-          //}
-        //} else {
-          //areEqual = 0;
-        //}
-        //if(areEqual){
-          //break;
-        //}
-      //}
-      //CHECK(areEqual);
-    //}
-    CHECK(simplexMesh2.getCell2FaceMap()->size() == testSimplexConnectivity.size());
-    CHECK(orthoMesh2.getCell2FaceMap()->size() == testOrthotopeConnectivity.size());
-    //bool isIn;
-    //for(int i = 0; i < testSimplexConnectivity.size(); i++){
-      //const std::vector<int> * buff = simplexMesh2.getCell2Face(i); 
-      //for(int j = 0; j < buff->size(); j++){
-        //buffer = simplexMesh2.getFace((*buff)[j]);
-        //for(int k = 0; k < buffer->size(); k++){
-          //CHECK(std::find(testSimplexConnectivity[i].begin(), testSimplexConnectivity[i].end(), (*buffer)[k]) != testSimplexConnectivity[i].end());
-        //}
-      //}
-    //}
-    //for(int i = 0; i < testOrthotopeConnectivity.size(); i++){
-      //const std::vector<int> * buff = orthoMesh2.getCell2Face(i); 
-      //for(int j = 0; j < buff->size(); j++){
-        //buffer = orthoMesh2.getFace((*buff)[j]);
-        //for(int k = 0; k < bufferElement.size(); k++){
-          //CHECK(std::find(testOrthotopeConnectivity[i].begin(), testOrthotopeConnectivity[i].end(), (*buffer)[k]) != testOrthotopeConnectivity[i].end());
-        //}
-      //}
-    //}
+    bool areEqual;
+    std::vector<int> buffer;
+    for(int i = 0; i < simplexFaces.size(); i++){
+      simplexMesh2.getFace(i, &buffer);
+      for(int j = 0; j < simplexFaces.size(); j++){
+        for(int k = 0; k < buffer.size(); k++){
+          areEqual = (std::find(simplexFaces[j].begin(), simplexFaces[j].end(), (buffer)[k]) != simplexFaces[j].end());
+          if(!areEqual){
+            break;
+          }
+        }
+        if(areEqual){
+          break;
+        }
+      }
+      CHECK(areEqual);
+    }
+    for(int i = 0; i < orthoFaces.size(); i++){
+      orthoMesh2.getFace(i, &buffer);
+      for(int j = 0; j < orthoFaces.size(); j++){
+        for(int k = 0; k < buffer.size(); k++){
+          areEqual = (std::find(orthoFaces[j].begin(), orthoFaces[j].end(), (buffer)[k]) != orthoFaces[j].end());
+          if(!areEqual){
+            break;
+          }
+        }
+        if(areEqual){
+          break;
+        }
+      }
+      CHECK(areEqual);
+    }
+    CHECK(simplexMesh2.getFace2CellMap()->size()/2 == simplexFaces.size());
+    CHECK(orthoMesh2.getFace2CellMap()->size()/2 == orthoFaces.size());
+    for(int i = 0; i < simplexFaces.size(); i++){
+      std::vector<int> bufferFace; simplexMesh2.getFace2Cell(i, &bufferFace);
+      for(int j = 0; j < simplexFaceToCellMap.size(); j++){
+        if(bufferFace.size() == simplexFaceToCellMap[j].size()){
+          for(int k = 0; k < bufferFace.size(); k++){
+            areEqual = (std::find(simplexFaceToCellMap[j].begin(), simplexFaceToCellMap[j].end(), (bufferFace)[k]) != simplexFaceToCellMap[j].end());
+            if(!areEqual){
+              break;
+            }
+          }
+        } else {
+          areEqual = 0;
+        }
+        if(areEqual){
+          break;
+        }
+      }
+      CHECK(areEqual);
+    }
+    for(int i = 0; i < orthoFaces.size(); i++){
+      std::vector<int> bufferFace; orthoMesh2.getFace2Cell(i, &bufferFace);
+      for(int j = 0; j < orthoFaceToCellMap.size(); j++){
+        if(bufferFace.size() == orthoFaceToCellMap[j].size()){
+          for(int k = 0; k < bufferFace.size(); k++){
+            areEqual = (std::find(orthoFaceToCellMap[j].begin(), orthoFaceToCellMap[j].end(), (bufferFace)[k]) != orthoFaceToCellMap[j].end());
+            if(!areEqual){
+              break;
+            }
+          }
+        } else {
+          areEqual = 0;
+        }
+        if(areEqual){
+          break;
+        }
+      }
+      CHECK(areEqual);
+    }
+    CHECK(simplexMesh2.getCell2FaceMap()->size()/simplexMesh2.getNumFacesPerCell() == testSimplexConnectivity.size());
+    CHECK(orthoMesh2.getCell2FaceMap()->size()/orthoMesh2.getNumFacesPerCell() == testOrthotopeConnectivity.size());
+    bool isIn;
+    for(int i = 0; i < testSimplexConnectivity.size(); i++){
+      std::vector<int> buff; simplexMesh2.getCell2Face(i, &buff); 
+      for(int j = 0; j < buff.size(); j++){
+        simplexMesh2.getFace((buff)[j], &buffer);
+        for(int k = 0; k < buffer.size(); k++){
+          CHECK(std::find(testSimplexConnectivity[i].begin(), testSimplexConnectivity[i].end(), (buffer)[k]) != testSimplexConnectivity[i].end());
+        }
+      }
+    }
+    for(int i = 0; i < testOrthotopeConnectivity.size(); i++){
+      std::vector<int> buff; orthoMesh2.getCell2Face(i, &buff); 
+      for(int j = 0; j < buff.size(); j++){
+        orthoMesh2.getFace((buff)[j], &buffer);
+        for(int k = 0; k < buffer.size(); k++){
+          CHECK(std::find(testOrthotopeConnectivity[i].begin(), testOrthotopeConnectivity[i].end(), (buffer)[k]) != testOrthotopeConnectivity[i].end());
+        }
+      }
+    }
     CHECK(simplexMesh2.getBoundaryFaces()->size() == 4);
     CHECK(orthoMesh2.getBoundaryFaces()->size() == 4);
-    //const std::set<int> * buffBoundary = simplexMesh2.getBoundaryFaces();
-    //for(std::set<int>::iterator it = buffBoundary->begin(); it != buffBoundary->end(); it++){
-      //buffer = simplexMesh2.getFace(*it);
-      //for(int k = 0; k < bufferElement.size(); k++){
-        //CHECK((std::find(boundaryNodes.begin(), boundaryNodes.end(), (*buffer)[k]) != boundaryNodes.end()));
-      //}
-    //}
-    //buffBoundary = orthoMesh2.getBoundaryFaces();
-    //for(std::set<int>::iterator it = buffBoundary->begin(); it != buffBoundary->end(); it++){
-      //buffer = orthoMesh2.getFace(*it);
-      //for(int k = 0; k < bufferElement.size(); k++){
-        //CHECK((std::find(boundaryNodes.begin(), boundaryNodes.end(), (*buffer)[k]) != boundaryNodes.end()));
-      //}
-    //}
+    const std::set<int> * buffBoundary = simplexMesh2.getBoundaryFaces();
+    for(std::set<int>::iterator it = buffBoundary->begin(); it != buffBoundary->end(); it++){
+      simplexMesh2.getFace(*it, &buffer);
+      for(int k = 0; k < buffer.size(); k++){
+        CHECK((std::find(boundaryNodes.begin(), boundaryNodes.end(), (buffer)[k]) != boundaryNodes.end()));
+      }
+    }
+    buffBoundary = orthoMesh2.getBoundaryFaces();
+    for(std::set<int>::iterator it = buffBoundary->begin(); it != buffBoundary->end(); it++){
+      orthoMesh2.getFace(*it, &buffer);
+      for(int k = 0; k < buffer.size(); k++){
+        CHECK((std::find(boundaryNodes.begin(), boundaryNodes.end(), (buffer)[k]) != boundaryNodes.end()));
+      }
+    }
   };
 
   std::vector<double> nodesOrd3({0, 0,
@@ -633,8 +610,8 @@ TEST_CASE("Unit testing the Mesh class", "[unit][mesh][Mesh]"){
 
   SECTION("Order 3 tests"){
     Mesh m(2, 3, "simplex", 2, nodesOrd3, connectOrd3);
-    CHECK(m.getNumberPoints() == nodesOrd3.size());
-    CHECK(m.getNumberCells() == connectOrd3.size());
+    CHECK(m.getNumberPoints() == nodesOrd3.size()/2);
+    CHECK(m.getNumberCells() == connectOrd3.size()/10);
     for(int i = 0; i < nodesOrd3.size(); i++){
       CHECK((*m.getPoints())[i] == nodesOrd3[i]);
     }
