@@ -114,7 +114,7 @@ void HDF5Io::loadFields(hid_t fieldGrp){
   for(std::map<std::string, Field*>::iterator itfMap = fieldMap.begin(); itfMap != fieldMap.end(); itfMap++){
     status = H5Lexists(fieldGrp, itfMap->first.c_str(), H5P_DEFAULT);
     if(status < 0){
-      throw(ErrorHandle("HDF5Io", "loadFields", "field witfMaph name " + itfMap->first + " was not found in FieldData"));
+      throw(ErrorHandle("HDF5Io", "loadFields", "field with name " + itfMap->first + " was not found in FieldData"));
     }
     fieldSet = H5Dopen(fieldGrp, itfMap->first.c_str(), H5P_DEFAULT);
     datatype = H5Dget_type(fieldSet);
@@ -123,8 +123,15 @@ void HDF5Io::loadFields(hid_t fieldGrp){
     if(status < 0){
       throw(ErrorHandle("HDF5Io", "loadFields", "could not get shape of field dataspace"));
     }
-    fType = H5Aopen_by_name(fieldSet, itfMap->first.c_str(), "ftype", H5P_DEFAULT, H5P_DEFAULT);
-    status = H5Aread(fType, H5T_NATIVE_INT, itfMap->second->getFieldType());
+    status = H5Aexists(fieldSet, "ftype");
+    if(!(status > 0)){
+      throw(ErrorHandle("HDFIo", "loadFields", "attribute ftype could not be found for field: " + itfMap->first));
+    }
+    fType = H5Aopen_by_name(fieldSet, ".", "ftype", H5P_DEFAULT, H5P_DEFAULT);
+    int ibuff;
+    status = H5Aread(fType, H5T_NATIVE_INT, &ibuff);
+    *(itfMap->second->getFieldType()) = (FieldType)ibuff;
+    *(itfMap->second->getNumEntities()) = shape[0];
     *(itfMap->second->getNumObjPerEnt()) = shape[1];
     *(itfMap->second->getNumValsPerObj()) = shape[2];
     itfMap->second->allocate();
@@ -168,7 +175,32 @@ void HDF5Io::writeMesh(hid_t meshGrp){
 };//writeMesh
 
 void HDF5Io::writeFields(hid_t fieldGrp){
-  throw(ErrorHandle("HDF5Io", "loadFields", "writeFields has not been implemented yet, sorry!"));
+  herr_t status;
+  hid_t dataspace, fieldSet, fType, attrDataspace;
+  std::vector<hsize_t> shape(3);
+  for(std::map<std::string, Field*>::iterator it = fieldMap.begin(); it != fieldMap.end(); it++){
+    shape[0] = *(it->second->getNumEntities());
+    shape[1] = *(it->second->getNumObjPerEnt());
+    shape[2] = *(it->second->getNumValsPerObj());
+    dataspace = H5Screate_simple(3, shape.data(), NULL);
+    hsize_t attrDim = 1;
+    attrDataspace = H5Screate_simple(1, &attrDim, NULL);
+    fieldSet = H5Dcreate(fieldGrp, it->first.c_str(), H5T_NATIVE_DOUBLE, dataspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    fType = H5Acreate(fieldSet, "ftype", H5T_NATIVE_INT, attrDataspace, H5P_DEFAULT, H5P_DEFAULT);
+    int ibuff = (int)*(it->second->getFieldType());
+    status = H5Awrite(fType, H5T_NATIVE_INT, &ibuff);
+    if(status < 0){
+      throw(ErrorHandle("HDF5Io", "writeFields", "problem writing ftype attribute for field: " + it->first));
+    }
+    status = H5Dwrite(fieldSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, it->second->getValues()->data());
+    if(status < 0){
+      throw(ErrorHandle("HDF5Io", "writeFields", "problem writing values of field: " + it->first));
+    }
+    H5Sclose(attrDataspace);
+    H5Aclose(fType);
+    H5Sclose(dataspace);
+    H5Dclose(fieldSet);
+  }
 };//writeField
 
 }

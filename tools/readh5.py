@@ -12,6 +12,8 @@ def readGroup(grp):
             if(isinstance(grp[k], h5py.Dataset)):
                 meshData[grp[k].name] = np.empty(grp[k].shape)
                 grp[k].read_direct(meshData[grp[k].name])
+                for p in grp[k].attrs.keys():
+                    meshData[grp[k].name + ".Attrs"] = (p, grp[k].attrs[p])
             else:
                 meshData[grp[k].name] = readGroup(grp[k])
     else:

@@ -3,7 +3,7 @@
 
 namespace hfox{
 
-enum FieldType{
+enum FieldType : int{
   None = -1,
   Node = 0,
   Edge = 1,

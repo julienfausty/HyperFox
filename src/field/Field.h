@@ -59,6 +59,10 @@ class Field {
      */
     FieldType * getFieldType(){return &type;};
     /*!
+     * \brief get pointer to the number of entities
+     */
+    int * getNumEntities(){return &numEntities;};
+    /*!
      * \brief get pointer to the number of objects per entity
      */
     int * getNumObjPerEnt(){return &numObjPerEnt;};
@@ -66,6 +70,10 @@ class Field {
      * \brief get pointer to the number of values per object
      */
     int * getNumValsPerObj(){return &numValsPerObj;};
+    /*!
+     * \brief compute the number of entities from the field type
+     */
+    void computeNumEntities();
   protected:
     /*!
      * \brief list of values of the field
@@ -79,6 +87,10 @@ class Field {
      * \brief the type of field
      */
     FieldType type;
+    /*!
+     * \brief the number of objects per entity
+     */
+    int numEntities;
     /*!
      * \brief the number of objects per entity
      */

@@ -176,11 +176,7 @@ TEST_CASE("Testing HDF5Io", "[unit][io][HDF5Io]"){
     Field cellField(&simplexMesh, Cell, 2, 1);
     tmpIo->setField("CellField", &cellField);
     std::string loadFile = meshDirPath + "fieldTest.h5";
-    try{
     tmpIo->load(loadFile);
-    } catch(std::exception){
-      std::cout << "there was an error in load" << std::endl;
-    }
     for(int i = 0; i < nodeFieldData.size(); i++){
       CHECK((*(nodeField.getValues()))[i] == nodeFieldData[i]);
     }
@@ -200,12 +196,8 @@ TEST_CASE("Testing HDF5Io", "[unit][io][HDF5Io]"){
     *(cellField.getValues()) = cellFieldData;
     tmpIo->setField("CellField", &cellField);
     std::string outputFile = meshDirPath + "tmp.h5";
-    try{
     tmpIo->write(outputFile);
     tmpIo->load(outputFile);
-    }catch(std::exception){
-      std::cout << "there was an error in io" << std::endl;
-    }
     for(int i = 0; i < nodeFieldData.size(); i++){
       CHECK((*(nodeField.getValues()))[i] == nodeFieldData[i]);
     }
