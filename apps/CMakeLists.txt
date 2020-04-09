@@ -14,7 +14,7 @@ add_executable(
   main.cpp
   )
 target_link_libraries(hyperFox ${hyperFoxLibs} 
-  MPI::MPI_CXX 
+  MPI::MPI_C 
   ${PETSC_LIBRARIES} 
   Eigen3::Eigen 
   ${MOAB_LIBRARIES} 
@@ -27,7 +27,7 @@ add_executable(
   ${testSrcFiles}
   )
 target_link_libraries(tests_hyperFox ${hyperFoxLibs}
-  MPI::MPI_CXX 
+  MPI::MPI_C 
   ${PETSC_LIBRARIES} 
   Eigen3::Eigen 
   ${MOAB_LIBRARIES} 

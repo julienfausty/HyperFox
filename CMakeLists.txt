@@ -32,3 +32,6 @@ add_subdirectory(tests)
 
 #Add subdirectory for executables.
 add_subdirectory(apps)
+
+#Add subdirectory for tools.
+add_subdirectory(tools)
