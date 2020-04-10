@@ -5,7 +5,6 @@ import matplotlib.tri as mtri
 import copy
 
 def readGroup(grp):
-    print(grp.name)
     meshData = {}
     if(isinstance(grp, h5py.Group)):
         for k in grp.keys():
@@ -23,12 +22,25 @@ def readGroup(grp):
 
 dirName = '../ressources/meshes/'
 
-meshName = 'lightSquareOrd1.h5'
+meshName = 'lightSquareOrd5.h5'
 
 f = h5py.File(dirName + meshName, 'r')
 
 meshData = readGroup(f)
 
+
 f.close()
 
-print(meshData)
+plt.figure(figsize=(12,12))
+
+
+plt.scatter(meshData['/Mesh']['/Mesh/Nodes'][:, 0], meshData['/Mesh']['/Mesh/Nodes'][:, 1], color='r')
+
+cellShape = meshData['/Mesh']['/Mesh/Cells'].shape
+
+for i in range(cellShape[0]):
+    cell = [int(index) for index in meshData['/Mesh']['/Mesh/Cells'][i, [0, 1, 2, 0]]]
+    plt.plot(meshData['/Mesh']['/Mesh/Nodes'][cell, 0], 
+            meshData['/Mesh']['/Mesh/Nodes'][cell, 1], color='black')
+
+plt.show() 

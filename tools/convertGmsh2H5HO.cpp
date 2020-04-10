@@ -3,8 +3,10 @@
 #include <cstdio>
 #include <exception>
 #include <tuple>
+#include <cmath>
 #include <moab/Core.hpp>
 #include "ErrorHandle.h"
+#include "DenseEigen.h"
 #include "Mesh.h"
 #include "ReferenceElement.h"
 #include "HDF5Io.h"
@@ -26,7 +28,6 @@ int main(int argc, char **argv){
   std::string inputFile, outputFile;
   int dimension = 0;
   int order = 0;
-  bool verbose;
   std::string optstr("i:d:r:o:vh");
   int opt;
   while((opt = getopt(argc, argv, optstr.c_str())) != -1){
@@ -49,11 +50,6 @@ int main(int argc, char **argv){
       case 'o':
         {
           outputFile.assign(optarg);
-          break;
-        }
-      case 'v':
-        {
-          verbose = 1;
           break;
         }
       case 'h':
@@ -95,14 +91,12 @@ int main(int argc, char **argv){
     std::cout << e.what() << std::endl;
     return EXIT_FAILURE;
   }
-  if(verbose){
-    std::cout << "New mesh characteristics" << std::endl;
-    std::cout << "Dimension: " << hoMesh.getDimension() << std::endl;
-    std::cout << "Number of nodes: " << hoMesh.getNumberPoints() << std::endl;
-    std::cout << "Number of cells: " << hoMesh.getNumberCells() << std::endl;
-    std::cout << "Number of faces: " << hoMesh.getNumberFaces() << std::endl;
-    std::cout << "Number of boundary faces: " << hoMesh.getBoundaryFaces()->size() << std::endl;
-  }
+  std::cout << "New mesh characteristics" << std::endl;
+  std::cout << "Dimension: " << hoMesh.getDimension() << std::endl;
+  std::cout << "Number of nodes: " << hoMesh.getNumberPoints() << std::endl;
+  std::cout << "Number of cells: " << hoMesh.getNumberCells() << std::endl;
+  std::cout << "Number of faces: " << hoMesh.getNumberFaces() << std::endl;
+  std::cout << "Number of boundary faces: " << hoMesh.getBoundaryFaces()->size() << std::endl; 
   try{
     HDF5Io hdfio(&hoMesh);
     hdfio.write(outputFile);
@@ -123,60 +117,138 @@ void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
   std::vector<double> linNodes;
   std::vector< std::vector<int> > linCells(dim);
   std::vector< std::vector<int> > elementAdjacencies(dim);
+
   try{
     readMesh(input, &linNodes, &linCells, &elementAdjacencies);
   } catch(const std::exception & e){
     throw(e);
   }
 
+  std::cout << "Linear mesh characteristics" << std::endl;
+  std::cout << "Number of nodes: " << linNodes.size()/dim << std::endl;
+  for(int i = 0; i < dim; i++){
+    std::cout << "Number of " + std::to_string(i+1) + " cells: " << linCells[i].size()/(i+2) << std::endl;
+  }
+
   int nCells = linCells[dim-1].size()/(dim+1);
   int nNodesPerEl = hoMesh->getReferenceElement()->getNumNodes();
   std::vector<double> hoNodes;
   std::vector< std::vector<int> > hoCells(dim+1);
-  std::vector<int> hoElements;
+  std::vector<int> hoElements(nCells*nNodesPerEl);
 
   std::vector<int> nCellsPerTopDim(dim);
+  std::vector<int> nInnerNodesPerCell(dim);
   std::vector<ReferenceElement *> refElements(dim);
-  std::vector< std::vector<bool> > tracking(dim);
+  std::vector< std::vector<bool> > tracking(dim+1);
+  tracking[0].resize(linNodes.size()/dim , false);
+  hoCells[0].resize(linNodes.size()/dim);
   for(int i = 0; i < dim; i++){
     nCellsPerTopDim[i] = elementAdjacencies[i].size()/nCells;
     refElements[i] = new ReferenceElement(i+1, hoMesh->getReferenceElement()->getOrder(), "simplex");
-    tracking[i].resize(linCells[i].size()/nCellsPerTopDim[i], 0);
+    tracking[i+1].resize(linCells[i].size()/(i+2), false);
+    nInnerNodesPerCell[i] = refElements[i]->getInnerNodes()->size();
+    hoCells[i+1].resize(nInnerNodesPerCell[i]*((linCells[i].size())/(i+2)));
   }
 
-  std::vector<double> cellNodes, elNodes, linCellNodes, linElNodes;
+  std::vector<double> cellNodes, totalCellNodes, elNodes, linCellNodes, linElNodes((dim+1)*dim);
   std::vector<int> cell;
-  int cellId;
+  std::vector<double> cellNode(dim);
+  int cellId, nodeId;
+  int hoNodesIndex = 0;
+  //big element loop
   for(int iEl = 0; iEl < nCells; iEl++){
-    linElNodes.resize((dim+1)*dim);
+    cell.resize(dim+1);
     for(int i = 0; i < dim+1; i++){
+      nodeId = linCells[dim-1][iEl*(dim+1) + i];
       for(int j = 0; j < dim; j++){
-        linElNodes[i*dim + j] = linNodes[linCells[dim-1][iEl*(dim+1) + i]*dim + j];
+        linElNodes[i*dim + j] = linNodes[nodeId*dim + j];
+      }
+      if(!tracking[0][nodeId]){
+        for(int j = 0; j < dim ; j++){
+          hoNodes.push_back(linElNodes[i*dim + j]);
+        }
+        tracking[0][nodeId] = true;
+        hoCells[0][nodeId] = hoNodesIndex;
+        cell[i] = hoNodesIndex;
+        hoNodesIndex += 1;
+      } else{
+        cell[i] = hoCells[0][nodeId];
       }
     }
+    //add linNodes
+    for(int i = 0; i < cell.size(); i++){
+      hoElements[iEl*nNodesPerEl + i] = cell[i];
+    }
     generateCellNodes(hoMesh->getReferenceElement(), &linElNodes, &elNodes);
+    //topological dim loop
     for(int i = 0; i < dim; i++){
       linCellNodes.resize((i+2)*dim);
+      //cells in element loop
       for(int j = 0; j < nCellsPerTopDim[i]; j++){
         cellId = elementAdjacencies[i][iEl*nCellsPerTopDim[i] + j];
-        if(!tracking[i][cellId]){
+        cell.resize(nInnerNodesPerCell[i]);
+        //did we already generate the cell or not?
+        if(!tracking[i+1][cellId]){
+          //generate the nodes and the cell
           for(int l = 0; l < (i+2); l++){
+            nodeId = linCells[i][cellId*(i+2) + l];
             for(int k = 0; k < dim ; k++){
-              linCellNodes[l*dim + k] = linNodes[linCells[i][cellId*(i+2) + l]*dim + k];
+              linCellNodes[l*dim + k] = linNodes[nodeId*dim + k];
             }
           }
-          generateCellNodes(refElements[i], &linCellNodes, &cellNodes);
-          //put these new nodes in the hoNodes
+          generateCellNodes(refElements[i], &linCellNodes, &totalCellNodes);
           //generate the new cell
+          std::iota(cell.begin(), cell.end(), hoNodesIndex);
+          //put these new nodes in the hoNodes (only inner nodes though)
+          const std::vector<int> * innerNodes = refElements[i]->getInnerNodes();
+          cellNodes.resize(nInnerNodesPerCell[i]*dim);
+          for(int l = 0; l < innerNodes->size(); l++){
+            for(int k = 0; k < dim; k++){
+              cellNodes[l*dim + k] = totalCellNodes[(*innerNodes)[l]*dim + k];
+              hoNodes.push_back(cellNodes[l*dim+k]);
+            }
+            hoNodesIndex += 1;
+          }
           //put that in hoCells
+          for(int l = 0; l < cell.size(); l++){
+            hoCells[i+1][cellId*nInnerNodesPerCell[i] + l] = cell[l];
+          }
           //set tracking to true
+          tracking[i+1][cellId] = true;
         }else{
-          int nNodesPerCell = refElements[i]->getNumNodes();
-          cell.resize(nNodesPerCell);
-          cell.assign(hoCells[i].begin() + cellId*nNodesPerCell, hoCells[i].begin() + (cellId+1)*nNodesPerCell);
+          //get the right cell and corresponding nodes
+          cell.assign(hoCells[i+1].begin() + cellId*nInnerNodesPerCell[i], 
+              hoCells[i+1].begin() + (cellId+1)*nInnerNodesPerCell[i]);
           //get the cellNodes from hoNodes
+          cellNodes.resize(cell.size()*dim);
+          for(int l = 0; l < cell.size(); l++){
+            for(int k = 0; k < dim; k++){
+              cellNodes[l*dim + k] = hoNodes[cell[l]*dim + k];
+            }
+          }
         }
-        //put the cell in hoElements in the right order using elNodes (only inner nodes though)
+        //put the cell in hoElements in the right order using elNodes
+        bool areEqual;
+        for(int l = 0; l < cell.size(); l++){
+          for(int k = 0; k < dim; k++){
+            cellNode[k] = cellNodes[l*dim + k];
+          }
+          for(int k = 0; k < nNodesPerEl; k++){
+            for(int p = 0; p < dim; p++){
+              areEqual = (std::abs((cellNode[p] - elNodes[k*dim + p])) < 1e-8);
+              if(!areEqual){
+                break;
+              }
+            }
+            if(areEqual){
+              hoElements[iEl*nNodesPerEl + k] = cell[l];
+              break;
+            }
+          }
+          if(!areEqual){
+            throw(ErrorHandle("convertGmsh2H5HO", "generateHigherOrderMesh", "one of the cell nodes could not be found in element"));
+          }
+        }
       }
     }
   }
@@ -228,24 +300,25 @@ void readMesh(std::string input, std::vector<double> * linNodes, std::vector< st
     throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not get elements from meshset"));
   }
   for(int i = 0; i < dim; i++){
-    moab::Range tmp;
-    mbErr = mbIFace->get_adjacencies(elems, i+1, 1, tmp, moab::Interface::UNION);
+    moab::Range tmp0;
+    mbErr = mbIFace->get_adjacencies(elems, i+1, 1, tmp0, moab::Interface::UNION);
     if(mbErr != moab::MB_SUCCESS){
       throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not develop face adjacencies from cells (moab)"));
     }
-    mbErr = mbIFace->add_entities(meshset, tmp);
+    mbErr = mbIFace->add_entities(meshset, tmp0);
     if(mbErr != moab::MB_SUCCESS){
       throw(ErrorHandle("Mesh", "computeFaces", "could not add faces to meshset (moab)"));
     }
-    mbErr = mbIFace->get_entities_by_dimension(meshset, i+1, tmp);
+    moab::Range tmp1;
+    mbErr = mbIFace->get_entities_by_dimension(meshset, i+1, tmp1);
     if(mbErr != moab::MB_SUCCESS){
       throw(ErrorHandle("convertGmsh2H5HO", "readMesh", 
             "could not get " + std::to_string(i) + " cells from meshset"));
     }
-    std::vector<moab::EntityHandle> verts;
     int nNodesPerCell = i+2;
-    (*linCells)[i].resize(nNodesPerCell*tmp.size());
-    for(moab::Range::iterator it = tmp.begin(); it != tmp.end(); it++){
+    (*linCells)[i].resize(nNodesPerCell*tmp1.size());
+    for(moab::Range::iterator it = tmp1.begin(); it != tmp1.end(); it++){
+      std::vector<moab::EntityHandle> verts;
       mbErr = mbIFace->get_connectivity(&(*it), 1, verts);
       if(mbErr != moab::MB_SUCCESS){
         throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not get vertices from element"));
@@ -255,14 +328,15 @@ void readMesh(std::string input, std::vector<double> * linNodes, std::vector< st
         (*linCells)[i][index*nNodesPerCell + j] = mbIFace->id_from_handle(verts[j])-1;
       }
     }
-    moab::Range adj;
-    mbErr = mbIFace->get_adjacencies(&(*(elems.begin())), 1, i+1, 1, adj);
+    moab::Range tmpAdj;
+    mbErr = mbIFace->get_adjacencies(&(*(elems.begin())), 1, i+1, 1, tmpAdj);
     if(mbErr != moab::MB_SUCCESS){
       throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not " + std::to_string(i) + " adjacencies"));
     }
-    int nCellsPerElement = adj.size();
+    int nCellsPerElement = tmpAdj.size();
     (*elementAdjacencies)[i].resize(elems.size()*nCellsPerElement);
     for(moab::Range::iterator itEl = elems.begin(); itEl != elems.end(); itEl++){
+      moab::Range adj;
       mbErr = mbIFace->get_adjacencies(&(*itEl), 1, i+1, 1, adj);
       if(mbErr != moab::MB_SUCCESS){
         throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not " + std::to_string(i) + " adjacencies"));
@@ -294,4 +368,33 @@ void readMesh(std::string input, std::vector<double> * linNodes, std::vector< st
 
 void generateCellNodes(const ReferenceElement * refElement, std::vector<double> * linCellNodes, 
     std::vector<double> * cellNodes){
+  const std::vector< std::vector<double> > * refNodes = refElement->getNodes();
+  int topDim = refElement->getDimension();
+  int dim = linCellNodes->size()/(topDim+1);
+  EMatrix locT(topDim, topDim);
+  for(int i = 0; i < topDim; i++){
+    for(int j = 0; j < topDim; j++){
+      locT(j, i) = (*refNodes)[(i+1)][j] - (*refNodes)[0][j];
+    }
+  }
+  EMatrix T(dim, topDim);
+  for(int i = 0; i < topDim; i++){
+    for(int j = 0; j < dim; j++){
+      T(j, i) = (*linCellNodes)[(i+1)*dim + j] - (*linCellNodes)[j];
+    }
+  }
+  T = T*locT.inverse();
+  const EVector locV0 = Eigen::Map<const EVector>((*refNodes)[0].data(), topDim);
+  const EVector v0 = Eigen::Map<const EVector>(linCellNodes->data(), dim);
+  EVector v(topDim), node(dim);
+  cellNodes->resize(dim*(refNodes->size()));
+  for(int i = 0; i < refNodes->size(); i++){
+    for(int j = 0; j < topDim; j++){
+      v[j] = (*refNodes)[i][j];
+    }
+    node = T*(v-locV0) + v0;
+    for(int j = 0; j < dim; j++){
+      (*cellNodes)[i*dim + j] = node[j];
+    }
+  }
 };

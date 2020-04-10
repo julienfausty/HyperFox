@@ -311,5 +311,20 @@ TEST_CASE("Testing HDF5Io", "[unit][io][HDF5Io]"){
     std::remove(outputFile.c_str());
   };
 
+  std::vector<int> nNodes = {13, 41, 85, 145, 221};
+  int nFaces = 28;
+  int nCells = 16;
+  for(int i = 0; i < 5; i++){
+    SECTION("Test loads " + std::to_string(i) + " order mesh"){
+      Mesh simplexMesh(2, i+1, "simplex");
+      hdfio->setMesh(&simplexMesh);
+      std::string loadFile = meshDirPath + "lightSquareOrd" + std::to_string(i+1) + ".h5";
+      hdfio->load(loadFile);
+      CHECK(simplexMesh.getNumberPoints() == nNodes[i]);
+      CHECK(simplexMesh.getNumberFaces() == nFaces);
+      CHECK(simplexMesh.getNumberCells() == nCells);
+    };
+  }
+
   delete hdfio;
 };
