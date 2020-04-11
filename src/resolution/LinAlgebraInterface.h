@@ -25,12 +25,9 @@ class LinAlgebraInterface{
      */
     virtual void initialize()=0;
     /*!
-     * \brief configure the initialized objects with the user defined parameters
-     *
-     * @param configuration a map with key value pairs set to strings that should completely configure the
-     * behavior of the package.
+     * \brief configure the initialized objects with the user defined parameters (these parameters should be passed in during construction of the object)
      */
-    virtual void configure(std::map<std::string, std::string> configuration)=0;
+    virtual void configure()=0;
     /*!
      * \brief allocate for the size of the linear system
      *
@@ -44,39 +41,59 @@ class LinAlgebraInterface{
      * @param j column number
      * @param val the value in the matrix
      */
-    virtual void setValMatrix(int i, int j, double val)=0;
+    virtual void setValMatrix(int i, int j, double & val)=0;
     /*!
      * \brief set multiple values of the matrix
      *
      * @param ijs vector of tuples with the indexes of the matrix vals (line number, column number) 
      * @param vals a vector of values
      */
-    virtual void setValsMatrix(std::vector< std::tuple<int, int> > ijs, std::vector<double> vals)=0;
+    virtual void setValsMatrix(std::vector< std::tuple<int, int> > & ijs, std::vector<double> & vals)=0;
     /*!
      * \brief set an element of the right hand side
      *
      * @param i line number
      * @param val the value in the right hand side
      */
-    virtual void setValRHS(int i, double val)=0;
+    virtual void setValRHS(int i, double & val)=0;
     /*!
      * \brief set multiple values of the right hand side
      *
      * @param is vector of ints with the indexes of the rhs vals
      * @param vals a vector of values
      */
-    virtual void setValsRHS(std::vector< int > is, std::vector<double> vals)=0;
+    virtual void setValsRHS(std::vector< int > & is, std::vector<double> & vals)=0;
     /*!
-     * \brief command to have the package solve the assembled system and return the result as a vector
+     * \brief command to have the package solve the assembled system
+     *
+     * @param solution vector to insert the solution into
      */
-    virtual std::vector<double> solve()=0;
-
-
+    virtual void solve(std::vector<double> * solution)=0;
+    /*!
+     * \brief clear the values set in the system but keep the structure if possible
+     */
+    virtual void clearSystem()=0;
+    /*!
+     * \brief get the number of degrees of freedom in the system
+     */
+    virtual int getNumDofs() const{return nDOFs;};
   protected:
     /*!
      * \brief number of degrees of freedom and thus the size of the linear system
      */
     int nDOFs;
+    /*!
+     * \brief boolean value tracking if the object has been initialized
+     */
+    bool initialized = 0;
+    /*!
+     * \brief boolean value tracking if the object has been configured
+     */
+    bool configured = 0;
+    /*!
+     * \brief boolean value tracking if the object has been allocated
+     */
+    bool allocated = 0;
 };//LinAlgebraInterface
 
 }//hfox
