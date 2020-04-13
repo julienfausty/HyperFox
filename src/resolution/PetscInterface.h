@@ -2,8 +2,10 @@
 #define PETSCINTERFACE_H
 
 #include "petscksp.h"
+#include "petscerror.h"
 #include "LinAlgebraInterface.h"
-#include "PetscOptions.h"
+#include "ErrorHandle.h"
+#include "PetscOpts.h"
 
 /*!
  * \brief Interface class the the PetsC library for linear algebra
@@ -22,7 +24,7 @@ class PetscInterface : public LinAlgebraInterface{
      *
      * @param options a struct with the user controlable options
      */
-    PetscInterface(PetscOptions options);
+    PetscInterface(PetscOpts options);
     /*!
      * \brief destructor for the class
      */
@@ -42,6 +44,36 @@ class PetscInterface : public LinAlgebraInterface{
      */
     void allocate(int ndofs);
     /*!
+     * \brief add an element to the matrix
+     *
+     * @param i line number
+     * @param j column number
+     * @param val the value in the matrix
+     */
+    void addValMatrix(int i, int j, double & val);
+    /*!
+     * \brief add multiple values to the matrix
+     *
+     * @param ijs vector of tuples with the indexes of the matrix vals (line number, column number) 
+     * @param vals a vector of values
+     */
+    void addValsMatrix(std::vector<int> & is, std::vector<int> & js, std::vector<double> & vals);
+    /*!
+     * \brief add an element to the right hand side
+     *
+     * @param i line number
+     * @param val the value in the right hand side
+     */
+    void addValRHS(int i, double & val);
+    /*!
+     * \brief add multiple values to the right hand side
+     *
+     * @param is vector of ints with the indexes of the rhs vals
+     * @param vals a vector of values
+     */
+    void addValsRHS(std::vector< int > & is, std::vector<double> & vals);
+
+    /*!
      * \brief set an element of the matrix
      *
      * @param i line number
@@ -55,7 +87,7 @@ class PetscInterface : public LinAlgebraInterface{
      * @param ijs vector of tuples with the indexes of the matrix vals (line number, column number) 
      * @param vals a vector of values
      */
-    void setValsMatrix(std::vector< std::tuple<int, int> > & ijs, std::vector<double> & vals);
+    void setValsMatrix(std::vector<int> & is, std::vector<int> & js, std::vector<double> & vals);
     /*!
      * \brief set an element of the right hand side
      *
@@ -77,13 +109,17 @@ class PetscInterface : public LinAlgebraInterface{
      */
     void solve(std::vector<double> * solution);
     /*!
+     * \brief assemble the system
+     */
+    void assemble();
+    /*!
      * \brief clear the values set in the system but keep the structure if possible
      */
     void clearSystem();
     /*!
      * \brief get a const pointer to the options struct
      */
-    const PetscOptions * getOptions() const{return &myOptions;};
+    const PetscOpts * getOptions() const{return &myOptions;};
     /*!
      * \brief get a const pointer to the lhs matrix
      */
@@ -102,9 +138,13 @@ class PetscInterface : public LinAlgebraInterface{
     const PC * getPreConditionner() const{return &preCond;};
   protected:
     /*!
+     * \brief helper method for setting up the class
+     */
+    void setUp();
+    /*!
      * \brief the options struct determining the behavior of the solvers
      */
-    PetscOptions myOptions;
+    PetscOpts myOptions;
     /*!
      * \brief the left hand side (lhs) matrix where it all happens
      */
@@ -121,6 +161,14 @@ class PetscInterface : public LinAlgebraInterface{
      * \brief the preconditionner context
      */
     PC preCond;
+    /*!
+     * \brief boolean that tracks whether Petsc was initialized elsewhere or not
+     */
+    bool masterPetscClass = 0;
+    /*!
+     * \brief buffer PETSC error code to not deal with the setup and teardown all the time
+     */
+    PetscErrorCode pErr;
 
 };//PetscInterface
 

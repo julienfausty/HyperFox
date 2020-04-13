@@ -31,9 +31,38 @@ class LinAlgebraInterface{
     /*!
      * \brief allocate for the size of the linear system
      *
-     * @param ndofs number of degrees of freedom (i.e. A = ndofs x ndofs, b = ndofs)
+     * @param local ndofs number of degrees of freedom (i.e. A = ndofs x ndofs, b = ndofs) locally on partition
      */
     virtual void allocate(int ndofs)=0;
+    /*!
+     * \brief add an element to the matrix
+     *
+     * @param i line number
+     * @param j column number
+     * @param val the value in the matrix
+     */
+    virtual void addValMatrix(int i, int j, double & val)=0;
+    /*!
+     * \brief add multiple values to the matrix
+     *
+     * @param ijs vector of tuples with the indexes of the matrix vals (line number, column number) 
+     * @param vals a vector of values
+     */
+    virtual void addValsMatrix(std::vector<int> & is, std::vector<int> & js, std::vector<double> & vals)=0;
+    /*!
+     * \brief add an element to the right hand side
+     *
+     * @param i line number
+     * @param val the value in the right hand side
+     */
+    virtual void addValRHS(int i, double & val)=0;
+    /*!
+     * \brief add multiple values to the right hand side
+     *
+     * @param is vector of ints with the indexes of the rhs vals
+     * @param vals a vector of values
+     */
+    virtual void addValsRHS(std::vector< int > & is, std::vector<double> & vals)=0;
     /*!
      * \brief set an element of the matrix
      *
@@ -48,7 +77,7 @@ class LinAlgebraInterface{
      * @param ijs vector of tuples with the indexes of the matrix vals (line number, column number) 
      * @param vals a vector of values
      */
-    virtual void setValsMatrix(std::vector< std::tuple<int, int> > & ijs, std::vector<double> & vals)=0;
+    virtual void setValsMatrix(std::vector<int> & is, std::vector<int> & js, std::vector<double> & vals)=0;
     /*!
      * \brief set an element of the right hand side
      *
@@ -63,6 +92,10 @@ class LinAlgebraInterface{
      * @param vals a vector of values
      */
     virtual void setValsRHS(std::vector< int > & is, std::vector<double> & vals)=0;
+    /*!
+     * \brief assemble the system
+     */
+    virtual void assemble()=0;
     /*!
      * \brief command to have the package solve the assembled system
      *
@@ -94,6 +127,10 @@ class LinAlgebraInterface{
      * \brief boolean value tracking if the object has been allocated
      */
     bool allocated = 0;
+    /*!
+     * \brief boolean value tracking if the object has been assembled (at least once)
+     */
+    bool assembled = 0;
 };//LinAlgebraInterface
 
 }//hfox

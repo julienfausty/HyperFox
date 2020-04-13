@@ -1,27 +1,14 @@
-///////////////////////////////////////////////////////////////////////////////
-
-                        |\                      /|
-                        |  \                  /  |
-                        | -  \/\/\/\/\/\/\/\/  - |
-                        \        _      _        /
-                          \     \-/    \./     /
-                            \                /
-                              \   |.T.|    /
-                                \        /
-                                  \    /
-                                    \/
-
-///////////////////////////////////////////////////////////////////////////////
-
 # HyperFox Project
 
 The HyperFox project is an attempt to create a general purpose finite element 
 library for running simulations in arbitrary dimensions of both parameters and 
-solutions and of arbitrary order.
+solutions and of arbitrary order with favoring of DG methods.
 
 # Dependencies
 
 For now the project has the following dependencies:
+
+- CMake: for generating the makefiles easily
 
 - OpenMpi: For MPI parallelism support
 
@@ -31,7 +18,7 @@ For now the project has the following dependencies:
 
 - Eigen: A header library for linear algebra
 
-- Petsc: For parallel linear solvers for linear algebra on spare matrices (with the requisite BLAS/LAPACK installations)
+- Petsc: For parallel linear solvers for linear algebra on spare matrices (with the requisite BLAS/LAPACK installations, with clanguage=cxx)
 
 - HDF5: for input/output binary file formatting
 
@@ -52,4 +39,24 @@ mkdir build
 cd build
 cmake ..
 make
+```
+
+# To run tests
+
+The tests are all linked to the "tests_hyperfox" binary. Tu run all the tests one can simply run
+
+```bash
+./bin/tests_hyperfox
+```
+
+from the build directory. To run tests specific to one library of the project run
+
+```bash
+./bin/tests_hyperfox [library_name]
+```
+
+In order to run tests for one specific class run
+
+```bash
+./bin/tests_hyperfox [class_name]
 ```
