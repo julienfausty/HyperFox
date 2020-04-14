@@ -107,6 +107,10 @@ class LinAlgebraInterface{
      */
     virtual void clearSystem()=0;
     /*!
+     * \brief destroy the structures of the system setting the system to an uninitialized state
+     */
+    virtual void destroySystem()=0;
+    /*!
      * \brief get the number of degrees of freedom in the system
      */
     virtual int getNumDofs() const{return nDOFs;};

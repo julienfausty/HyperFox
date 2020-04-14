@@ -1,6 +1,9 @@
 #ifndef PETSCINTERFACE_H
 #define PETSCINTERFACE_H
 
+#include <vector>
+#include <iostream>
+#include <string>
 #include "petscksp.h"
 #include "petscerror.h"
 #include "LinAlgebraInterface.h"
@@ -116,6 +119,10 @@ class PetscInterface : public LinAlgebraInterface{
      * \brief clear the values set in the system but keep the structure if possible
      */
     void clearSystem();
+    /*!
+     * \brief destroy the structures of the system setting the system to an uninitialized state
+     */
+    void destroySystem();
     /*!
      * \brief get a const pointer to the options struct
      */

@@ -4,13 +4,17 @@
 #include <tuple>
 #include "LinAlgebraInterface.h"
 #include "PetscInterface.h"
+#include "PetscOpts.h"
 
 using namespace hfox;
 
 TEST_CASE("Stock linear systems", "[unit][resolution][LinAlgebraInterface]"){
   //setup
   std::map<std::string, LinAlgebraInterface*> interfaces;
-  interfaces["Petsc"] = new PetscInterface();
+  PetscOpts myOpts;
+  myOpts.rtol = 1e-16;
+  myOpts.verbose = 0;
+  interfaces["Petsc"] = new PetscInterface(myOpts);
   
   std::map<std::string, LinAlgebraInterface*>::iterator itIFace;
   for(itIFace = interfaces.begin(); itIFace != interfaces.end(); itIFace++){
@@ -60,103 +64,110 @@ TEST_CASE("Stock linear systems", "[unit][resolution][LinAlgebraInterface]"){
       CHECK_NOTHROW(iFace->solve(&doubleVec));
 
       ////empty system
-      //CHECK_NOTHROW(iFace->clearSystem());
+      CHECK_NOTHROW(iFace->clearSystem());
     }
 
-    //SECTION(name + ": Identity solving"){
-      //int maxDofs = 1e2;
-      //std::vector<int> is;
-      //std::vector<int> js;
-      //std::vector<double> vals, rhs, sol;
-      //for(int k = 0; k < maxDofs; k++){
-        //iFace->clearSystem();
-        //iFace->allocate(k+1);
-        //vals.push_back(1.0);
-        //is.push_back(k);
-        //js.push_back(k);
-        //rhs.push_back(k);
-        //for(int i = 0; i < is.size(); i++){
-          //iFace->setValMatrix(is[i], js[i], vals[i]);
-          //iFace->setValRHS(is[i], rhs[i]);
-        //}
-        //iFace->assemble();
-        //CHECK_NOTHROW(iFace->solve(&sol));
-        //for(int j = 0; j < k+1; j++){   
-          //CHECK(sol[j] == Approx(rhs[j]).margin(1e-12));
-        //}
-      //}
-    //};
+    SECTION(name + ": Identity solving"){
+      int maxDofs = 1e2;
+      std::vector<int> is;
+      std::vector<int> js;
+      std::vector<double> vals, rhs, sol;
+      for(int k = 0; k < maxDofs; k++){
+        if(k != 0){iFace->destroySystem();}
+        iFace->initialize();
+        iFace->configure();
+        iFace->allocate(k+1);
+        vals.push_back(1.0);
+        is.push_back(k);
+        js.push_back(k);
+        rhs.push_back(k);
+        for(int i = 0; i < is.size(); i++){
+          iFace->setValMatrix(is[i], js[i], vals[i]);
+          iFace->setValRHS(is[i], rhs[i]);
+        }
+        iFace->assemble();
+        CHECK_NOTHROW(iFace->solve(&sol));
+        for(int j = 0; j < k+1; j++){   
+          CHECK(sol[j] == Approx(rhs[j]).margin(1e-12));
+        }
+      }
+    };
 
-    //SECTION(name + ": Triangular matrix"){
-      //int maxDofs = 1e2;
-      //std::vector<int> is;
-      //std::vector<int> js, ls;
-      //std::vector<double> vals, rhs, sol, anaSol;
-      //for(int k = 0; k < maxDofs; k++){
-        //iFace->clearSystem();
-        //iFace->allocate(k+1);
-        //vals.push_back(1.0);
-        //is.push_back(k);
-        //js.push_back(k);
-        //for(int j = 0; j < k; j++){
-          //vals.push_back(1.0);
-          //is.push_back(k);
-          //js.push_back(j);
-        //}
-        //ls.push_back(k);
-        //rhs.push_back(1.0);
-        //anaSol.resize(k+1, 0.0);
-        //anaSol[0] = 1.0;
-        //for(int i = 0; i < is.size(); i++){
-          //iFace->setValMatrix(is[i], js[i], vals[i]);
-          //iFace->setValRHS(is[i], rhs[i]);
-        //}
-        //iFace->assemble();
-        //CHECK_NOTHROW(iFace->solve(&sol));
-        //for(int j = 0; j < k+1; j++){   
-          //CHECK(sol[j] == Approx(anaSol[j]).margin(1e-12));
-        //}
-      //}
-    //};
+    SECTION(name + ": Triangular matrix"){
+      int maxDofs = 1e2;
+      std::vector<int> is;
+      std::vector<int> js, ls;
+      std::vector<double> vals, rhs, sol, anaSol;
+      for(int k = 0; k < maxDofs; k++){
+        if(k != 0){iFace->destroySystem();}
+        iFace->initialize();
+        iFace->configure();
+        iFace->allocate(k+1);
+        vals.push_back(1.0);
+        is.push_back(k);
+        js.push_back(k);
+        for(int j = 0; j < k; j++){
+          vals.push_back(1.0);
+          is.push_back(k);
+          js.push_back(j);
+        }
+        ls.push_back(k);
+        rhs.push_back(1.0);
+        anaSol.resize(k+1, 0.0);
+        anaSol[0] = 1.0;
+        for(int i = 0; i < is.size(); i++){
+          iFace->setValMatrix(is[i], js[i], vals[i]);
+        }
+        for(int i = 0; i < ls.size(); i++){
+          iFace->setValRHS(ls[i], rhs[i]);
+        }
+        iFace->assemble();
+        CHECK_NOTHROW(iFace->solve(&sol));
+        for(int j = 0; j < k+1; j++){   
+          CHECK(sol[j] == Approx(anaSol[j]).margin(1e-12));
+        }
+      }
+    };
 
-    //SECTION(name + ": Hinge matrix"){
-      //int maxDofs = 1e2;
-      //std::vector<int> is, ls;
-      //std::vector<int> js;
-      //std::vector<double> vals, rhs, sol, anaSol;
-      //for(int k = 0; k < maxDofs; k++){
-        //iFace->clearSystem();
-        //iFace->allocate(k+1);
-        //vals.push_back(1.0);
-        //is.push_back(k);
-        //js.push_back(k);
-        //if(k != 0){
-          //vals.push_back(1.0);
-          //is.push_back(k);
-          //js.push_back(k-1);
-        //}
-        //ls.push_back(k);
-        //rhs.push_back(1.0);
-        //anaSol.resize(k+1, 0.0);
-        //if((k % 2) == 0){
-          //anaSol.push_back(1.0);
-        //} else {
-          //anaSol.push_back(0.0);
-        //}
-        //for(int i = 0; i < is.size(); i++){
-          //iFace->setValMatrix(is[i], js[i], vals[i]);
-          //iFace->setValRHS(is[i], rhs[i]);
-        //}
-        //iFace->assemble();
-        //CHECK_NOTHROW(iFace->solve(&sol));
-        //for(int j = 0; j < k+1; j++){   
-          //CHECK(sol[j] == Approx(anaSol[j]).margin(1e-12));
-        //}
-      //}
-    //};
+    SECTION(name + ": Hinge matrix"){
+      int maxDofs = 1e2;
+      std::vector<int> is, ls;
+      std::vector<int> js;
+      std::vector<double> vals, rhs, sol, anaSol;
+      for(int k = 0; k < maxDofs; k++){
+        if(k != 0){iFace->destroySystem();}
+        iFace->initialize();
+        iFace->configure();
+        iFace->allocate(k+1);
+        vals.push_back(1.0);
+        is.push_back(k);
+        js.push_back(k);
+        if(k != 0){
+          vals.push_back(1.0);
+          is.push_back(k);
+          js.push_back(k-1);
+        }
+        ls.push_back(k);
+        rhs.push_back(1.0);
+        if((k % 2) == 0){
+          anaSol.push_back(1.0);
+        } else {
+          anaSol.push_back(0.0);
+        }
+        for(int i = 0; i < is.size(); i++){
+          iFace->setValMatrix(is[i], js[i], vals[i]);
+        }
+        for(int i = 0; i < ls.size(); i++){
+          iFace->setValRHS(ls[i], rhs[i]);
+        }
+        iFace->assemble();
+        CHECK_NOTHROW(iFace->solve(&sol));
+        for(int j = 0; j < k+1; j++){   
+          CHECK(sol[j] == Approx(anaSol[j]).margin(1e-12));
+        }
+      }
+    };
   }
-
-
 
   for(itIFace = interfaces.begin(); itIFace != interfaces.end(); itIFace++){
     delete (itIFace->second);

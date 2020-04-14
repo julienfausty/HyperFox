@@ -23,6 +23,14 @@ void PetscInterface::setUp(){
 };//setUp
 
 PetscInterface::~PetscInterface(){
+  destroySystem();
+  if(masterPetscClass){
+    pErr = PetscFinalize();
+    CHKERRXX(pErr);
+  }
+};//destructor
+
+void PetscInterface::destroySystem(){
   if(initialized){
     pErr = KSPDestroy(&kspSolver);
     CHKERRXX(pErr);
@@ -31,11 +39,11 @@ PetscInterface::~PetscInterface(){
     pErr = VecDestroy(&b);
     CHKERRXX(pErr);
   }
-  if(masterPetscClass){
-    pErr = PetscFinalize();
-    CHKERRXX(pErr);
-  }
-};//destructor
+  initialized = 0;
+  configured = 0;
+  allocated = 0;
+  assembled = 0;
+};//destroySystem
 
 void PetscInterface::initialize(){
   if(!initialized){
@@ -63,6 +71,10 @@ void PetscInterface::configure(){
     CHKERRXX(pErr);
     pErr = KSPSetTolerances(kspSolver, myOptions.rtol, PETSC_DEFAULT, PETSC_DEFAULT, myOptions.maxits);
     CHKERRXX(pErr);
+    if(myOptions.verbose){
+      pErr = PetscOptionsSetValue(NULL, "-ksp_monitor", NULL);
+      CHKERRXX(pErr);
+    }
     pErr = KSPSetFromOptions(kspSolver);
     CHKERRXX(pErr);
     configured = 1;
@@ -178,9 +190,9 @@ void PetscInterface::solve(std::vector<double> * solution){
   if(assembled){
     KSPSetOperators(kspSolver, M, M);
     if(myOptions.verbose){
-      PetscInt iter, rnorm;
-      pErr = KSPMonitorDefault(kspSolver, iter, rnorm, NULL);
-      CHKERRXX(pErr);
+      std::cout << "PetsC resolution (rtol = " + std::to_string(myOptions.rtol) + 
+        ", maxIter = " + std::to_string(myOptions.maxits) + ", nDOFs = " +
+        std::to_string(nDOFs)+"): " << std::endl;
     }
     PetscInt blocksize;
     pErr = VecGetBlockSize(b, &blocksize);
@@ -199,6 +211,7 @@ void PetscInterface::solve(std::vector<double> * solution){
 };//solve
 
 void PetscInterface::clearSystem(){
+  //std::cout << "assembled: " << assembled << std::endl;
   if(assembled){
     MatZeroEntries(M);
     VecSet(b, 0.0);
