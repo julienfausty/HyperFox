@@ -8,15 +8,25 @@ void Diffusion::assemble(const std::vector< double > & detJacobians,
     throw(ErrorHandle("Diffusion", "assemble", "cannot assemble before allocating."));
   }
   op = EMatrix::Zero(op.rows(), op.cols());
-  // w(ip)(det(J)(invJ^T invJ):(\partial\phi_i (\partial \phi_j)^T))(ip)
-  std::vector<EVector> invJTinvJs(refEl->getNumIPs());
-  std::transform(invJacobians.begin(), invJacobians.end(), invJTinvJs.begin(), 
-      [this](EMatrix invJ){return symMat2Vec(invJ.transpose() * invJ);});
   const std::vector< std::vector< std::vector<double> > > * ipDerivShape;
   ipDerivShape = refEl->getIPDerivShapeFunctions();
   const std::vector<double> * ipWeights = refEl->getIPWeights();
   int elDim = refEl->getDimension();
   int nNodes = refEl->getNumNodes();
+  // w(ip)(det(J)(invJ^T invJ):(\partial\phi_i (\partial \phi_j)^T))(ip)
+  std::vector<EVector> invJTinvJs(refEl->getNumIPs(), EVector(elDim*(elDim+1)/2));
+  if(diffTensor.size() == 0){
+    std::transform(invJacobians.begin(), invJacobians.end(), invJTinvJs.begin(), 
+        [this](EMatrix invJ){return symMat2Vec(invJ.transpose() * invJ);});
+  } else {
+    for(int i = 0; i < refEl->getNumIPs(); i++){
+      if(diffTensor[i].cols() == 1){
+        invJTinvJs[i] = symMat2Vec(invJacobians[i].transpose() * diffTensor[i](0,0) * invJacobians[i]);
+      } else{
+        invJTinvJs[i] = symMat2Vec(invJacobians[i].transpose() * diffTensor[i].transpose() * invJacobians[i]);
+      }
+    }
+  }
   for(int i = 0; i < refEl->getNumIPs(); i++){
     EMatrix pPhipPhiT(elDim*(elDim+1)/2, nNodes);
     for(int j = 0; j < nNodes; j++){
@@ -57,5 +67,15 @@ EVector Diffusion::symMat2Vec(const EMatrix & symMat){
   }
   return res;
 };//symMat2Vec
+
+void Diffusion::setDiffTensor(std::vector<EMatrix> & diffCoeff){
+  diffTensor.resize(refEl->getNumIPs(), EMatrix::Zero(diffCoeff[0].rows(), diffCoeff[0].cols()));
+  const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
+  for(int i = 0 ; i < refEl->getNumIPs(); i++){
+    for(int j = 0; j < refEl->getNumNodes(); j++){
+      diffTensor[i] += (*ipShapes)[i][j]*diffCoeff[j];
+    }
+  }
+};//setDiffTensor
 
 }//hfox

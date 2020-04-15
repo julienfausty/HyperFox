@@ -128,4 +128,71 @@ TEST_CASE("Testing the Diffusion operator", "[unit][operator][Diffusion]"){
       };
     }
   }
+
+  //dim loop
+  for(int i = 1; i < maxDim; i++){
+    //order loop
+    for(int j = 0; j < maxOrder; j++){
+      SECTION("Test Diffusion operator on monomials in rotated element with scalar diffusion (dim=" + std::to_string(i+1) + ", order" + std::to_string(j+1) + ")"){
+        refEl = new ReferenceElement(i+1, j+1, "simplex");
+        Diffusion diffOp(refEl);
+        diffOp.allocate(1);
+        EMatrix elJac = EMatrix::Identity(i+1, i+1); 
+        double theta = 1.5;//rotation angle
+        EMatrix rot(2,2); rot << std::cos(theta), -std::sin(theta), std::sin(theta), std::cos(theta);
+        elJac.block<2,2>(0,0) = rot;
+        double elDet = elJac.determinant();
+        std::vector<double> offset(i+1, 2.0);
+        std::vector< std::vector<double> > linElement = TestUtils::linElement(*(refEl->getNodes()), elJac, offset);
+        std::vector<EMatrix> jacobians = Operator::calcJacobians(linElement, refEl);
+        std::vector<double> detJacs(jacobians.size());
+        std::vector<EMatrix> invJacs(jacobians.size());
+        std::transform(jacobians.begin(), jacobians.end(), detJacs.begin(), [](EMatrix jac){return jac.determinant();});
+        std::transform(jacobians.begin(), jacobians.end(), invJacs.begin(), [](EMatrix jac){return jac.inverse();});
+        std::vector<EMatrix> diffCoeff(refEl->getNumNodes(), (1.0/(i+1.0))*EMatrix::Identity(1, 1));
+        CHECK_NOTHROW(diffOp.setDiffTensor(diffCoeff));
+        CHECK_NOTHROW(diffOp.assemble(detJacs, invJacs));
+        std::vector< double > monos(refEl->getNumNodes());
+        std::transform(refEl->getNodes()->begin(), refEl->getNodes()->end(), monos.begin(), [j](const std::vector<double> & point){return monomials(point, j+1);});
+        Eigen::Map<EVector> vecMonos(monos.data(), monos.size());
+        double integral = vecMonos.transpose() * (*(diffOp.getMatrix())) * vecMonos;
+        CHECK(integral == Approx((1.0/(i+1.0))*integrals[i*maxOrder + j]).margin(1e-12));
+        delete refEl;
+      };
+    }
+  }
+
+  //dim loop
+  for(int i = 1; i < maxDim; i++){
+    //order loop
+    for(int j = 0; j < maxOrder; j++){
+      SECTION("Test Diffusion operator on monomials in rotated element with tensorial diffusion (dim=" + std::to_string(i+1) + ", order" + std::to_string(j+1) + ")"){
+        refEl = new ReferenceElement(i+1, j+1, "simplex");
+        Diffusion diffOp(refEl);
+        diffOp.allocate(1);
+        EMatrix elJac = EMatrix::Identity(i+1, i+1); 
+        double theta = 1.5;//rotation angle
+        EMatrix rot(2,2); rot << std::cos(theta), -std::sin(theta), std::sin(theta), std::cos(theta);
+        elJac.block<2,2>(0,0) = rot;
+        double elDet = elJac.determinant();
+        std::vector<double> offset(i+1, 2.0);
+        std::vector< std::vector<double> > linElement = TestUtils::linElement(*(refEl->getNodes()), elJac, offset);
+        std::vector<EMatrix> jacobians = Operator::calcJacobians(linElement, refEl);
+        std::vector<double> detJacs(jacobians.size());
+        std::vector<EMatrix> invJacs(jacobians.size());
+        std::transform(jacobians.begin(), jacobians.end(), detJacs.begin(), [](EMatrix jac){return jac.determinant();});
+        std::transform(jacobians.begin(), jacobians.end(), invJacs.begin(), [](EMatrix jac){return jac.inverse();});
+        std::vector<EMatrix> diffCoeff(refEl->getNumNodes(), (1.0/(i+1.0))*EMatrix::Identity(i+1, i+1));
+        CHECK_NOTHROW(diffOp.setDiffTensor(diffCoeff));
+        CHECK_NOTHROW(diffOp.assemble(detJacs, invJacs));
+        std::vector< double > monos(refEl->getNumNodes());
+        std::transform(refEl->getNodes()->begin(), refEl->getNodes()->end(), monos.begin(), [j](const std::vector<double> & point){return monomials(point, j+1);});
+        Eigen::Map<EVector> vecMonos(monos.data(), monos.size());
+        double integral = vecMonos.transpose() * (*(diffOp.getMatrix())) * vecMonos;
+        CHECK(integral == Approx((1.0/(i+1.0))*integrals[i*maxOrder + j]).margin(1e-12));
+        delete refEl;
+      };
+    }
+  }
+
 };
