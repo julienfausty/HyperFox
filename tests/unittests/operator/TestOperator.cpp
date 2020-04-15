@@ -6,20 +6,9 @@
 #include "DenseEigen.h"
 #include "Operator.h"
 #include "ReferenceElement.h"
+#include "TestUtils.h"
 
 using namespace hfox;
-
-std::vector< std::vector<double> > linElement(const std::vector< std::vector<double> > & nodes, 
-    const EMatrix & Jac, const std::vector<double> & offset){
-  std::vector< std::vector<double> > res(nodes.size(), std::vector<double>(Jac.rows(), 0.0));
-  Eigen::Map<const EVector> shift(offset.data(), offset.size());
-  for(int i = 0; i < nodes.size(); i++){
-    Eigen::Map<const EVector> refNode(nodes[i].data(), nodes[i].size()); 
-    Eigen::Map<EVector> elNode(res[i].data(), res[i].size());
-    elNode = Jac*refNode + shift;
-  }
-  return res;
-};
 
 std::vector< std::vector<double> > nonLinearElement(const std::vector< std::vector<double> > & nodes,
     int ord){
@@ -50,7 +39,7 @@ TEST_CASE("Testing static methods in Operator", "[unit][operator][Operator]"){
       1, 4;
   std::vector<double> offset(2, 0.0);
   ReferenceElement * refEl = new ReferenceElement(2, 3, "simplex");
-  std::vector< std::vector<double> > linEl = linElement(*(refEl->getNodes()), Jac, offset);
+  std::vector< std::vector<double> > linEl = TestUtils::linElement(*(refEl->getNodes()), Jac, offset);
   SECTION("Test linear element Jacobian computation (2D)"){
     std::vector<EMatrix> jacobians = Operator::calcJacobians(linEl, refEl);
     for(int i = 0; i < jacobians.size(); i++){
@@ -65,7 +54,7 @@ TEST_CASE("Testing static methods in Operator", "[unit][operator][Operator]"){
   Jac(0,0) += 2; Jac(0,1) += -1;
   Jac(1, 0) += 1; Jac(1,1) += 3;
   offset[0] = 1.0; offset[1] = 2.0;
-  linEl = linElement(*(refEl->getNodes()), Jac, offset);
+  linEl = TestUtils::linElement(*(refEl->getNodes()), Jac, offset);
   SECTION("Test linear element Jacobian computation with offset (2D)"){
     std::vector<EMatrix> jacobians = Operator::calcJacobians(linEl, refEl);
     for(int i = 0; i < jacobians.size(); i++){
@@ -97,7 +86,7 @@ TEST_CASE("Testing static methods in Operator", "[unit][operator][Operator]"){
   Jac.resize(3, 3);
   Jac(2, 2) = 5; 
   offset.resize(3, 0.0);
-  linEl = linElement(*(refEl->getNodes()), Jac, offset);
+  linEl = TestUtils::linElement(*(refEl->getNodes()), Jac, offset);
   SECTION("Test linear element Jacobian computation (3D)"){
     std::vector<EMatrix> jacobians = Operator::calcJacobians(linEl, refEl);
     for(int i = 0; i < jacobians.size(); i++){
@@ -112,7 +101,7 @@ TEST_CASE("Testing static methods in Operator", "[unit][operator][Operator]"){
   Jac(0,0) += 2; Jac(0,1) += -1;
   Jac(1, 0) += 1; Jac(1,1) += 3;
   offset[0] = 1.0; offset[1] = 2.0;
-  linEl = linElement(*(refEl->getNodes()), Jac, offset);
+  linEl = TestUtils::linElement(*(refEl->getNodes()), Jac, offset);
   SECTION("Test linear element Jacobian computation with offset (3D)"){
     std::vector<EMatrix> jacobians = Operator::calcJacobians(linEl, refEl);
     for(int i = 0; i < jacobians.size(); i++){

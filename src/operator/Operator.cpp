@@ -3,6 +3,9 @@
 namespace hfox{
 
 void Operator::allocate(int nDOFsPerNodeUser){
+  if(nDOFsPerNodeUser < 1){
+    throw(ErrorHandle("Operator", "allocate", "the number of DOFs per node must be at least one"));
+  }
   nDOFsPerNode = nDOFsPerNodeUser;
   op = Eigen::MatrixXd::Zero(nDOFsPerNode * refEl->getNumNodes(), nDOFsPerNode * refEl->getNumNodes());
   allocated = 1;

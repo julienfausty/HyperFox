@@ -5,6 +5,8 @@
 #include <fstream>
 #include <cstring>
 #include <vector>
+#include "DenseEigen.h"
+
 
 namespace hfox{
 
@@ -62,6 +64,18 @@ class TestUtils{
       }
       return res;
     };
+  
+  static std::vector< std::vector<double> > linElement(const std::vector< std::vector<double> > & nodes, 
+    const EMatrix & Jac, const std::vector<double> & offset){
+  std::vector< std::vector<double> > res(nodes.size(), std::vector<double>(Jac.rows(), 0.0));
+  Eigen::Map<const EVector> shift(offset.data(), offset.size());
+  for(int i = 0; i < nodes.size(); i++){
+    Eigen::Map<const EVector> refNode(nodes[i].data(), nodes[i].size()); 
+    Eigen::Map<EVector> elNode(res[i].data(), res[i].size());
+    elNode = Jac*refNode + shift;
+  }
+  return res;
+};
 
 };//TestUtils
 
