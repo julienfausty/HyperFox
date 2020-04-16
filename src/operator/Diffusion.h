@@ -34,7 +34,7 @@ class Diffusion : public Operator{
      *
      * @param diffCoeff a pointer to a list of diffusion tensors per node
      */
-    void setDiffTensor(std::vector<EMatrix> & diffCoeff);
+    void setDiffTensor(const std::vector<EMatrix> & diffCoeff);
   protected:
     /*!
      * \brief helper method for extracting n(n+1)/2 vector from a symmetric matrix

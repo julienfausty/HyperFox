@@ -1,7 +1,9 @@
 #ifndef OPERATOR_H
 #define OPERATOR_H
 
-#include "Field.h"
+#include <vector>
+#include <algorithm>
+#include <cmath>
 #include "DenseEigen.h"
 #include "ReferenceElement.h"
 
@@ -16,7 +18,7 @@ namespace hfox{
 class Operator{
   public:
     //Default constructor
-    Operator(ReferenceElement * referenceEl){refEl = referenceEl;};
+    Operator(const ReferenceElement * referenceEl){refEl = referenceEl;};
     // Destructor
     virtual ~Operator(){};
     /*!
@@ -45,6 +47,18 @@ class Operator{
      */
     static std::vector<EMatrix> calcJacobians(const std::vector< std::vector<double> > & points, 
         const ReferenceElement * referenceEl);
+    /*!
+     * \brief a helper method for computing the inverse Jacobians
+     *
+     * @param jacobians list of jacobians
+     */
+    static std::vector<EMatrix> calcInvJacobians(const std::vector<EMatrix> & jacobians);
+    /*!
+     * \brief a helper method for computing the determinant of Jacobians
+     *
+     * @param jacobians list of jacobians
+     */
+    static std::vector<double> calcDetJacobians(const std::vector<EMatrix> & jacobians);
   protected:
     /*!
      * \brief the matrix representation of the operator

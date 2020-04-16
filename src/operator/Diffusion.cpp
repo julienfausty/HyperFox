@@ -68,7 +68,7 @@ EVector Diffusion::symMat2Vec(const EMatrix & symMat){
   return res;
 };//symMat2Vec
 
-void Diffusion::setDiffTensor(std::vector<EMatrix> & diffCoeff){
+void Diffusion::setDiffTensor(const std::vector<EMatrix> & diffCoeff){
   diffTensor.resize(refEl->getNumIPs(), EMatrix::Zero(diffCoeff[0].rows(), diffCoeff[0].cols()));
   const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
   for(int i = 0 ; i < refEl->getNumIPs(); i++){

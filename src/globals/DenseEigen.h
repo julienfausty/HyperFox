@@ -7,7 +7,11 @@
 
 #include <eigen3/Eigen/Dense>
 
+namespace hfox{
+
 typedef Eigen::MatrixXd EMatrix;
 typedef Eigen::VectorXd EVector;
+
+}//hfox
 
 #endif //DENSEEIGEN_H

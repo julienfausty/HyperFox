@@ -25,17 +25,53 @@ std::vector<EMatrix> Operator::calcJacobians(const std::vector< std::vector<doub
           "the dimension of the mesh space cannot be smaller than the "
           "topological dimension of the reference element."));
   }
-  std::vector<EMatrix> jacobians(referenceEl->getNumIPs(), Eigen::MatrixXd::Zero(dimMeshSpace, dimRefSpace));
+  std::vector<EMatrix> jacobians(referenceEl->getNumIPs(), Eigen::MatrixXd::Zero(dimRefSpace, dimMeshSpace));
   const std::vector< std::vector< std::vector<double> > > * ipDerivShape;
   ipDerivShape = referenceEl->getIPDerivShapeFunctions();
   for(int i = 0; i < referenceEl->getNumNodes(); i++){
-    Eigen::Map<const EVector> elNodes(points[i].data(), dimMeshSpace);
+    Eigen::Map<const EMatrix> elNodes(points[i].data(), 1, dimMeshSpace);
     for(int j = 0; j < referenceEl->getNumIPs(); j++){
-      Eigen::Map<const EMatrix> derivs((*ipDerivShape)[j][i].data(), 1, dimRefSpace);
-      jacobians[j] += elNodes * derivs;
+      Eigen::Map<const EVector> derivs((*ipDerivShape)[j][i].data(), dimRefSpace);
+      jacobians[j] += derivs * elNodes;
     }
   }
   return jacobians;
-};
+};//calcJacobians
+
+std::vector<EMatrix> Operator::calcInvJacobians(const std::vector< EMatrix > & jacobians){
+  int nJacs = jacobians.size();
+  if(nJacs != 0){
+    int rowsJacs = jacobians[0].rows();
+    int colsJacs = jacobians[0].cols();
+    std::vector<EMatrix> invJacs(nJacs, EMatrix::Zero(rowsJacs, colsJacs));
+    if(rowsJacs == colsJacs){
+      std::transform(jacobians.begin(), jacobians.end(), invJacs.begin(), [](EMatrix jac){return jac.inverse();});
+    } else {
+      std::transform(jacobians.begin(), jacobians.end(), invJacs.begin(), [](EMatrix jac){
+          return jac.completeOrthogonalDecomposition().pseudoInverse();});
+    }
+    return invJacs;
+  } else {
+    return std::vector<EMatrix>(0);
+  }
+};//calcInvJacobians
+
+std::vector<double> Operator::calcDetJacobians(const std::vector< EMatrix > & jacobians){
+  int nJacs = jacobians.size();
+  if(nJacs != 0){
+    int rowsJacs = jacobians[0].rows();
+    int colsJacs = jacobians[0].cols();
+    std::vector<double> detJacs(nJacs, 0.0);
+    if(rowsJacs == colsJacs){
+      std::transform(jacobians.begin(), jacobians.end(), detJacs.begin(), [](EMatrix jac){return jac.determinant();});
+    } else {
+      std::transform(jacobians.begin(), jacobians.end(), detJacs.begin(), [](EMatrix jac){
+          return std::sqrt((jac*jac.transpose()).determinant());});
+    }
+    return detJacs;
+  } else {
+    return std::vector<double>(0);
+  }
+};//calcInvJacobians
 
 }//hfox

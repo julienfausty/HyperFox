@@ -4,7 +4,6 @@
 #include <map>
 #include <string>
 #include "ReferenceElement.h"
-#include "DenseEigen.h"
 
 
 namespace hfox{
@@ -24,15 +23,12 @@ class Model{
      *
      * @param pointer to a map of names and corresponding local values of fields
      */
-    virtual void setFieldMap(const std::map<std::string, std::vector<double> > * fm){fieldMap = fm;};
-    /*!
-     * \brief a method to set the reference element
-     */
-    virtual void setReferenceElement(const ReferenceElement * re){refEl = re;};
+    virtual void setFieldMap(const std::map<std::string, std::vector<double> > * fm) = 0;
     /*!
      * \brief a method to set the current element nodes
      */
-    virtual void setElementNodes(const std::vector< std::vector<double> > * ens){elementNodes = ens;};
+    virtual void setElementNodes(const std::vector< std::vector<double> > * ens){elementNodes = ens; 
+      nodeSet = 1;};
     /*!
      * \brief a method where all the relevant values must be computed
      */
@@ -43,13 +39,17 @@ class Model{
      */
     const std::vector< std::vector<double> > * elementNodes;
     /*!
-     * \brief the reference element of the FE mesh
+     * \brief a pointer to the map containing all the relevant local fields
      */
-    const ReferenceElement * refEl;
+    std::map<std::string, const std::vector<double> * > fieldMap;
     /*!
-     * \brief a pointer to the map containing all the local fields
+     * \brief boolean value tracking if the fields have been set
      */
-    const std::map<std::string, std::vector<double> > * fieldMap;
+    bool fieldSet = 0;
+    /*!
+     * \brief boolean value tracking if the nodes have been set
+     */
+    bool nodeSet = 0;
 
 }; //Model
 
