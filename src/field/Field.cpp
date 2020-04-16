@@ -45,4 +45,19 @@ void Field::allocate(){
   }
 };//allocate
 
+void Field::getValues(int i, std::vector<double> * vals){
+  int numValsPerEnt = numObjPerEnt*numValsPerObj;
+  vals->resize(numValsPerEnt);
+  std::copy(values.begin() + i*numValsPerEnt, values.begin() + (i+1)*numValsPerEnt, vals->begin());
+}; //getValue
+
+void Field::getSliceValues(std::vector<int> & is, std::vector<double> * vals){
+  int numValsPerEnt = numObjPerEnt*numValsPerObj;
+  vals->resize(is.size()*numValsPerEnt);
+  for(int i = 0; i < is.size(); i++){
+    std::copy(values.begin() + is[i]*numValsPerEnt, values.begin() + (is[i]+1)*numValsPerEnt, 
+        vals->begin() + i*numValsPerEnt);
+  }
+};//getSliceValues
+
 } //hfox

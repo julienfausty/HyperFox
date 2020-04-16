@@ -74,6 +74,20 @@ class Field {
      * \brief compute the number of entities from the field type
      */
     void computeNumEntities();
+    /*!
+     * \brief get the values belonging to a specific entity
+     *
+     * @param i the local index of the entity
+     * @param vals a pointer to the vector to fill with the vals
+     */
+    void getValues(int i, std::vector<double> * vals);
+    /*!
+     * \brief get the values belonging to a specific entity
+     *
+     * @param is the local indexes of the entities one wishes to get
+     * @param vals a pointer to the vector to fill with the vals
+     */
+    void getSliceValues(std::vector<int> & is, std::vector<double> * vals);
   protected:
     /*!
      * \brief list of values of the field
