@@ -18,4 +18,22 @@ void Solver::constructLocalFields(std::vector<int> & entities, std::map<std::str
   }
 };//constructLocalFields
 
+std::map<std::string, std::vector<double> > Solver::prepareLocalFieldMap(FieldType ft){
+  const ReferenceElement * refEl = myMesh->getReferenceElement();
+  std::map<std::string, std::vector<double> > localFieldMap;
+  int elSize = 0;
+  switch(ft){
+    case Node:{elSize = refEl->getNumNodes() * nDOFsPerNode; break;}
+    case Face:{elSize = refEl->getFaceElement()->getNumNodes() * nDOFsPerNode; break;}
+    case Cell:{elSize = refEl->getNumNodes() * nDOFsPerNode; break;}
+  }
+  std::map<std::string, Field * >::iterator it;
+  for(it = fieldMap->begin(); it != fieldMap->end(); it++){
+    if(*(it->second->getFieldType()) == ft){
+      localFieldMap[it->first] = std::vector<double>(elSize, 0.0);
+    }
+  }
+  return localFieldMap;
+};
+
 }//hfox

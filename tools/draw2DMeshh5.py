@@ -20,9 +20,9 @@ def readGroup(grp):
     return meshData
 
 
-dirName = '../ressources/meshes/'
+dirName = '../ressources/meshes/regression/'
 
-meshName = 'lightSquareOrd5.h5'
+meshName = 'regression_dim-2_h-7e-2_ord-4.h5'
 
 f = h5py.File(dirName + meshName, 'r')
 

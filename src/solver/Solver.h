@@ -61,7 +61,16 @@ class Solver{
     virtual void solve()=0;
   protected:
     /*!
+     * \brief a helper method to create a local field map with a given field type
+     *
+     * @param ft the field type the fieldMap is adhereing to
+     */
+    std::map<std::string, std::vector<double> > prepareLocalFieldMap(FieldType ft);
+    /*!
      * \brief a helper method for constructing local fields
+     *
+     * @param entities indexes of the local entities
+     * @param fm the field map to fill
      */
     void constructLocalFields(std::vector<int> & entities, std::map<std::string, std::vector<double> > * fm);
     /*!

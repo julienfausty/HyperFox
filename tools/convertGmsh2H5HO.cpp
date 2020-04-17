@@ -118,11 +118,7 @@ void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
   std::vector< std::vector<int> > linCells(dim);
   std::vector< std::vector<int> > elementAdjacencies(dim);
 
-  try{
-    readMesh(input, &linNodes, &linCells, &elementAdjacencies);
-  } catch(const std::exception & e){
-    throw(e);
-  }
+  readMesh(input, &linNodes, &linCells, &elementAdjacencies);
 
   std::cout << "Linear mesh characteristics" << std::endl;
   std::cout << "Number of nodes: " << linNodes.size()/dim << std::endl;
@@ -331,7 +327,7 @@ void readMesh(std::string input, std::vector<double> * linNodes, std::vector< st
     moab::Range tmpAdj;
     mbErr = mbIFace->get_adjacencies(&(*(elems.begin())), 1, i+1, 1, tmpAdj);
     if(mbErr != moab::MB_SUCCESS){
-      throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not " + std::to_string(i) + " adjacencies"));
+      throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not " + std::to_string(i+1) + " adjacencies"));
     }
     int nCellsPerElement = tmpAdj.size();
     (*elementAdjacencies)[i].resize(elems.size()*nCellsPerElement);
@@ -339,7 +335,7 @@ void readMesh(std::string input, std::vector<double> * linNodes, std::vector< st
       moab::Range adj;
       mbErr = mbIFace->get_adjacencies(&(*itEl), 1, i+1, 1, adj);
       if(mbErr != moab::MB_SUCCESS){
-        throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not " + std::to_string(i) + " adjacencies"));
+        throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not " + std::to_string(i+1) + " adjacencies"));
       }
       int index = mbIFace->id_from_handle(*itEl) - 1;
       int indexCell = 0;

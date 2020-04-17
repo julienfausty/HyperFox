@@ -44,17 +44,8 @@ void CGSolver::assemble(){
     linSystem->clearSystem();
   }
   const ReferenceElement * refEl = myMesh->getReferenceElement();
-  std::map<std::string, std::vector<double> > nodalFieldMap;
-  std::map<std::string, std::vector<double> > faceFieldMap;
-  std::map<std::string, Field * >::iterator it;
-  for(it = fieldMap->begin(); it != fieldMap->end(); it++){
-    if(*(it->second->getFieldType()) == Node){
-      nodalFieldMap[it->first] = std::vector<double>(refEl->getNumNodes()*nDOFsPerNode, 0.0);
-    }
-    if(*(it->second->getFieldType()) == Face){
-      faceFieldMap[it->first] = std::vector<double>(refEl->getFaceElement()->getNumNodes()*nDOFsPerNode, 0.0);
-    }
-  }
+  std::map<std::string, std::vector<double> > nodalFieldMap = prepareLocalFieldMap(Node);
+  std::map<std::string, std::vector<double> > faceFieldMap = prepareLocalFieldMap(Face);
 
   std::vector<int> cell(refEl->getNumNodes());
   std::vector< std::vector<double> > nodes(refEl->getNumNodes(), std::vector<double>(myMesh->getNodeSpaceDimension(), 0.0));
