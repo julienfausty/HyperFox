@@ -15,6 +15,9 @@ namespace hfox{
  * like to use for solving the sparse matrix problem.
  *
  * AX = b
+ *
+ * Warning: the convention here will be a column major data ordering such that when using 
+ * Eigen one must transpose the data before inputting
  */
 
 class LinAlgebraInterface{
@@ -41,28 +44,28 @@ class LinAlgebraInterface{
      * @param j column number
      * @param val the value in the matrix
      */
-    virtual void addValMatrix(int i, int j, double & val)=0;
+    virtual void addValMatrix(int i, int j, const double & val)=0;
     /*!
      * \brief add multiple values to the matrix
      *
      * @param ijs vector of tuples with the indexes of the matrix vals (line number, column number) 
      * @param vals a vector of values
      */
-    virtual void addValsMatrix(std::vector<int> & is, std::vector<int> & js, std::vector<double> & vals)=0;
+    virtual void addValsMatrix(std::vector<int> & is, std::vector<int> & js, const double * vals)=0;
     /*!
      * \brief add an element to the right hand side
      *
      * @param i line number
      * @param val the value in the right hand side
      */
-    virtual void addValRHS(int i, double & val)=0;
+    virtual void addValRHS(int i, const double & val)=0;
     /*!
      * \brief add multiple values to the right hand side
      *
      * @param is vector of ints with the indexes of the rhs vals
      * @param vals a vector of values
      */
-    virtual void addValsRHS(std::vector< int > & is, std::vector<double> & vals)=0;
+    virtual void addValsRHS(std::vector< int > & is, const double * vals)=0;
     /*!
      * \brief set an element of the matrix
      *
@@ -70,28 +73,34 @@ class LinAlgebraInterface{
      * @param j column number
      * @param val the value in the matrix
      */
-    virtual void setValMatrix(int i, int j, double & val)=0;
+    virtual void setValMatrix(int i, int j, const double & val)=0;
     /*!
      * \brief set multiple values of the matrix
      *
      * @param ijs vector of tuples with the indexes of the matrix vals (line number, column number) 
      * @param vals a vector of values
      */
-    virtual void setValsMatrix(std::vector<int> & is, std::vector<int> & js, std::vector<double> & vals)=0;
+    virtual void setValsMatrix(std::vector<int> & is, std::vector<int> & js, const double * vals)=0;
     /*!
      * \brief set an element of the right hand side
      *
      * @param i line number
      * @param val the value in the right hand side
      */
-    virtual void setValRHS(int i, double & val)=0;
+    virtual void setValRHS(int i, const double & val)=0;
     /*!
      * \brief set multiple values of the right hand side
      *
      * @param is vector of ints with the indexes of the rhs vals
      * @param vals a vector of values
      */
-    virtual void setValsRHS(std::vector< int > & is, std::vector<double> & vals)=0;
+    virtual void setValsRHS(std::vector< int > & is, const double * vals)=0;
+    /*!
+     * \brief zero out the set of rows
+     *
+     * @param is vector of the ints of the rows to zero out
+     */
+    virtual void zeroOutRows(std::vector<int> & is) = 0;
     /*!
      * \brief assemble the system
      */

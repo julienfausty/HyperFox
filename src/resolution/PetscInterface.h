@@ -10,11 +10,11 @@
 #include "ErrorHandle.h"
 #include "PetscOpts.h"
 
+namespace hfox{
+
 /*!
  * \brief Interface class the the PetsC library for linear algebra
  */
-
-namespace hfox{
 
 class PetscInterface : public LinAlgebraInterface{
   public:
@@ -53,28 +53,28 @@ class PetscInterface : public LinAlgebraInterface{
      * @param j column number
      * @param val the value in the matrix
      */
-    void addValMatrix(int i, int j, double & val);
+    void addValMatrix(int i, int j, const double & val);
     /*!
      * \brief add multiple values to the matrix
      *
      * @param ijs vector of tuples with the indexes of the matrix vals (line number, column number) 
      * @param vals a vector of values
      */
-    void addValsMatrix(std::vector<int> & is, std::vector<int> & js, std::vector<double> & vals);
+    void addValsMatrix(std::vector<int> & is, std::vector<int> & js, const double * vals);
     /*!
      * \brief add an element to the right hand side
      *
      * @param i line number
      * @param val the value in the right hand side
      */
-    void addValRHS(int i, double & val);
+    void addValRHS(int i, const double & val);
     /*!
      * \brief add multiple values to the right hand side
      *
      * @param is vector of ints with the indexes of the rhs vals
      * @param vals a vector of values
      */
-    void addValsRHS(std::vector< int > & is, std::vector<double> & vals);
+    void addValsRHS(std::vector< int > & is, const double * vals);
 
     /*!
      * \brief set an element of the matrix
@@ -83,28 +83,35 @@ class PetscInterface : public LinAlgebraInterface{
      * @param j column number
      * @param val the value in the matrix
      */
-    void setValMatrix(int i, int j, double & val);
+    void setValMatrix(int i, int j, const double & val);
     /*!
      * \brief set multiple values of the matrix
      *
-     * @param ijs vector of tuples with the indexes of the matrix vals (line number, column number) 
+     * @param is vector of indexes of the matrix vals (row number) 
+     * @param js vector of indexes of the matrix vals (col number) 
      * @param vals a vector of values
      */
-    void setValsMatrix(std::vector<int> & is, std::vector<int> & js, std::vector<double> & vals);
+    void setValsMatrix(std::vector<int> & is, std::vector<int> & js, const double * vals);
     /*!
      * \brief set an element of the right hand side
      *
      * @param i line number
      * @param val the value in the right hand side
      */
-    void setValRHS(int i, double & val);
+    void setValRHS(int i, const double & val);
     /*!
      * \brief set multiple values of the right hand side
      *
      * @param is vector of ints with the indexes of the rhs vals
      * @param vals a vector of values
      */
-    void setValsRHS(std::vector< int > & is, std::vector<double> & vals);
+    void setValsRHS(std::vector< int > & is, const double * vals);
+    /*!
+     * \brief zero out the set of rows
+     *
+     * @param is vector of the ints of the rows to zero out
+     */
+    virtual void zeroOutRows(std::vector<int> & is);
     /*!
      * \brief command to have the package solve the assembled system
      *

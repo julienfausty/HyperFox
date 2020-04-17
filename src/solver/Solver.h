@@ -20,6 +20,10 @@ namespace hfox{
 class Solver{
   public:
     /*!
+     * \brief empty constructor
+     */
+    Solver(){};
+    /*!
      * \brief a method to set the model
      */
     virtual void setModel(FEModel * m){model = m;};
@@ -30,7 +34,7 @@ class Solver{
     /*!
      * \brief a method to set the linear algebra interface
      */
-    virtual void setLinSystem(LinAlgebraInterface * lai){LinSystem = lai;};
+    virtual void setLinSystem(LinAlgebraInterface * lai){linSystem = lai;};
     /*!
      * \brief a method to set the linear algebra interface
      */
@@ -39,6 +43,14 @@ class Solver{
      * \brief a method to set the linear algebra interface
      */
     virtual void setMesh(Mesh * m){myMesh = m;};
+    /*!
+     * \brief a method for initializing all components
+     */
+    virtual void initialize();
+    /*!
+     * \brief a method for allocating the memory for all components
+     */
+    virtual void allocate()=0;
     /*!
      * \brief a method to assemble the linear system
      */
@@ -49,17 +61,21 @@ class Solver{
     virtual void solve()=0;
   protected:
     /*!
+     * \brief a helper method for constructing local fields
+     */
+    void constructLocalFields(std::vector<int> & entities, std::map<std::string, std::vector<double> > * fm);
+    /*!
      * \brief the interface to the linear algebra package
      */
-    LinAlgebraInterface * LinSystem;
+    LinAlgebraInterface * linSystem = NULL;
     /*!
      * \brief the model of the system being simulated
      */
-    FEModel * model;
+    FEModel * model = NULL;
     /*!
      * \brief the model of the boundary being simulated
      */
-    FEModel * boundaryModel;
+    FEModel * boundaryModel = NULL;
     /*!
      * \brief the map to the fields
      */
@@ -67,7 +83,23 @@ class Solver{
     /*!
      * \brief a pointer to the mesh
      */
-    Mesh * myMesh;
+    Mesh * myMesh = NULL;
+    /*!
+     * \brief the number of degrees of freedom per node
+     */
+    int nDOFsPerNode = 1;
+    /*!
+     * \brief boolean tracking initialization
+     */
+    bool initialized = 0;
+    /*!
+     * \brief boolean tracking allocation
+     */
+    bool allocated = 0;
+    /*!
+     * \brief boolean tracking assembly
+     */
+    bool assembled = 0;
 
 };//Solver
 

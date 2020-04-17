@@ -15,6 +15,7 @@ TEST_CASE("Testing the PetscInterface", "[unit][resolution][PetscInterface]"){
     PetscOpts pOpts;
     pOpts.rtol = 1e-10;
     pOpts.solverType = KSPCG;
+    pOpts.verbose=0;
     CHECK_NOTHROW(PetscInterface(pOpts));
   };
 
@@ -48,8 +49,8 @@ TEST_CASE("Testing the PetscInterface", "[unit][resolution][PetscInterface]"){
     std::vector<int> js = {0, 1, 2, 3};
     PetscInterface pIFace;
     pIFace.initialize(); pIFace.configure(); pIFace.allocate(n);
-    CHECK_NOTHROW(pIFace.setValsMatrix(is, js, vals));
-    CHECK_NOTHROW(pIFace.setValsRHS(is, vals));
+    CHECK_NOTHROW(pIFace.setValsMatrix(is, js, vals.data()));
+    CHECK_NOTHROW(pIFace.setValsRHS(is, vals.data()));
     CHECK_NOTHROW(pIFace.assemble());
     const Mat * M = pIFace.getMatrix();
     const Vec * rhs = pIFace.getRHS();
@@ -99,9 +100,9 @@ TEST_CASE("Testing the PetscInterface", "[unit][resolution][PetscInterface]"){
     std::vector<int> js = {0, 1, 2, 3};
     PetscInterface pIFace;
     pIFace.initialize(); pIFace.configure(); pIFace.allocate(n);
-    CHECK_NOTHROW(pIFace.addValsMatrix(is, js, vals));
-    CHECK_NOTHROW(pIFace.addValsMatrix(is, js, skew));
-    CHECK_NOTHROW(pIFace.addValsRHS(is, vals));
+    CHECK_NOTHROW(pIFace.addValsMatrix(is, js, vals.data()));
+    CHECK_NOTHROW(pIFace.addValsMatrix(is, js, skew.data()));
+    CHECK_NOTHROW(pIFace.addValsRHS(is, vals.data()));
     CHECK_NOTHROW(pIFace.assemble());
     const Mat * M = pIFace.getMatrix();
     const Vec * rhs = pIFace.getRHS();

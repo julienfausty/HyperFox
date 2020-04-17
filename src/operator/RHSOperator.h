@@ -3,11 +3,11 @@
 
 #include "Operator.h"
 
+namespace hfox{
+
 /*!
  * \brief an intermediate interface class specified to the right hand side
  */
-
-namespace hfox{
 
 class RHSOperator : public Operator{
   public:

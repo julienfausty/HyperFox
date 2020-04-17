@@ -101,7 +101,7 @@ void PetscInterface::allocate(int ndofs){
   }
 };//allocate
 
-void PetscInterface::addValMatrix(int i, int j, double & val){
+void PetscInterface::addValMatrix(int i, int j, const double & val){
   if(allocated){
     pErr = MatSetValues(M, 1, &i, 1, &j, &val, ADD_VALUES);
     CHKERRXX(pErr);
@@ -110,16 +110,16 @@ void PetscInterface::addValMatrix(int i, int j, double & val){
   }
 };//addValMatrix
 
-void PetscInterface::addValsMatrix(std::vector<int> & is, std::vector<int> & js, std::vector<double> & vals){
+void PetscInterface::addValsMatrix(std::vector<int> & is, std::vector<int> & js, const double * vals){
   if(allocated){
-    pErr = MatSetValues(M, is.size(), is.data(), js.size(), js.data(), vals.data(), ADD_VALUES);
+    pErr = MatSetValues(M, is.size(), is.data(), js.size(), js.data(), vals, ADD_VALUES);
     CHKERRXX(pErr);
   } else {
     throw(ErrorHandle("PetscInterface", "addValsMatrix", "the matrix must be allocated before adding values."));
   }
 };//addValsMatrix
 
-void PetscInterface::addValRHS(int i, double & val){
+void PetscInterface::addValRHS(int i, const double & val){
   if(allocated){
     pErr = VecSetValues(b, 1, &i, &val, ADD_VALUES);
     CHKERRXX(pErr);
@@ -128,16 +128,16 @@ void PetscInterface::addValRHS(int i, double & val){
   }
 };//addValRHS
 
-void PetscInterface::addValsRHS(std::vector<int> & is, std::vector<double> & vals){
+void PetscInterface::addValsRHS(std::vector<int> & is, const double * vals){
   if(allocated){
-    pErr = VecSetValues(b, is.size(), is.data(), vals.data(), ADD_VALUES);
+    pErr = VecSetValues(b, is.size(), is.data(), vals, ADD_VALUES);
     CHKERRXX(pErr);
   } else {
     throw(ErrorHandle("PetscInterface", "addValsRHS", "the RHS must be allocated before adding values."));
   }
 };//addValsRHS
 
-void PetscInterface::setValMatrix(int i, int j, double & val){
+void PetscInterface::setValMatrix(int i, int j, const double & val){
   if(allocated){
     pErr = MatSetValues(M, 1, &i, 1, &j, &val, INSERT_VALUES);
     CHKERRXX(pErr);
@@ -147,16 +147,16 @@ void PetscInterface::setValMatrix(int i, int j, double & val){
 };//setValMatrix
 
 
-void PetscInterface::setValsMatrix(std::vector<int> & is, std::vector<int> & js, std::vector<double> & vals){
+void PetscInterface::setValsMatrix(std::vector<int> & is, std::vector<int> & js, const double * vals){
   if(allocated){
-    pErr = MatSetValues(M, is.size(), is.data(), js.size(), js.data(), vals.data(), INSERT_VALUES);
+    pErr = MatSetValues(M, is.size(), is.data(), js.size(), js.data(), vals, INSERT_VALUES);
     CHKERRXX(pErr);
   } else {
     throw(ErrorHandle("PetscInterface", "setValsMatrix", "the matrix must be allocated before setting values."));
   }
 };//setValsMatrix
 
-void PetscInterface::setValRHS(int i, double & val){
+void PetscInterface::setValRHS(int i, const double & val){
   if(allocated){
     pErr = VecSetValues(b, 1, &i, &val, INSERT_VALUES);
     CHKERRXX(pErr);
@@ -165,12 +165,21 @@ void PetscInterface::setValRHS(int i, double & val){
   }
 };//setValRHS
 
-void PetscInterface::setValsRHS(std::vector<int> & is, std::vector<double> & vals){
+void PetscInterface::setValsRHS(std::vector<int> & is, const double * vals){
   if(allocated){
-    pErr = VecSetValues(b, is.size(), is.data(), vals.data(), INSERT_VALUES);
+    pErr = VecSetValues(b, is.size(), is.data(), vals, INSERT_VALUES);
     CHKERRXX(pErr);
   } else {
     throw(ErrorHandle("PetscInterface", "setValsRHS", "the RHS must be allocated before setting values."));
+  }
+};//setValsRHS
+
+void PetscInterface::zeroOutRows(std::vector<int> & is){
+  if(allocated){
+    pErr = MatZeroRows(M, is.size(), is.data(), 0.0, 0, 0);
+    CHKERRXX(pErr);
+  } else {
+    throw(ErrorHandle("PetscInterface", "zeroOutRows", "the matrix must be allocated before zeroing out rows."));
   }
 };//setValsRHS
 
@@ -211,7 +220,6 @@ void PetscInterface::solve(std::vector<double> * solution){
 };//solve
 
 void PetscInterface::clearSystem(){
-  //std::cout << "assembled: " << assembled << std::endl;
   if(assembled){
     MatZeroEntries(M);
     VecSet(b, 0.0);

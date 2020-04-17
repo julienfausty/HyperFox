@@ -28,9 +28,9 @@ TEST_CASE("Stock linear systems", "[unit][resolution][LinAlgebraInterface]"){
       //constructed interface
       CHECK_THROWS(iFace->solve(&doubleVec));
       CHECK_THROWS(iFace->assemble());
-      CHECK_THROWS(iFace->setValsRHS(intVec, doubleVec));
+      CHECK_THROWS(iFace->setValsRHS(intVec, doubleVec.data()));
       CHECK_THROWS(iFace->setValRHS(i, val));
-      CHECK_THROWS(iFace->setValsMatrix(intVec, intVec, doubleVec));
+      CHECK_THROWS(iFace->setValsMatrix(intVec, intVec, doubleVec.data()));
       CHECK_THROWS(iFace->setValMatrix(i, j, val));
       CHECK_THROWS(iFace->allocate(ndofs));
       CHECK_THROWS(iFace->configure());
@@ -39,9 +39,9 @@ TEST_CASE("Stock linear systems", "[unit][resolution][LinAlgebraInterface]"){
       //initialized interface
       CHECK_THROWS(iFace->solve(&doubleVec));
       CHECK_THROWS(iFace->assemble());
-      CHECK_THROWS(iFace->setValsRHS(intVec, doubleVec));
+      CHECK_THROWS(iFace->setValsRHS(intVec, doubleVec.data()));
       CHECK_THROWS(iFace->setValRHS(i, val));
-      CHECK_THROWS(iFace->setValsMatrix(intVec, intVec, doubleVec));
+      CHECK_THROWS(iFace->setValsMatrix(intVec, intVec, doubleVec.data()));
       CHECK_THROWS(iFace->setValMatrix(i, j, val));
       CHECK_THROWS(iFace->allocate(ndofs));
 
@@ -49,16 +49,16 @@ TEST_CASE("Stock linear systems", "[unit][resolution][LinAlgebraInterface]"){
       //configured interface
       CHECK_THROWS(iFace->solve(&doubleVec));
       CHECK_THROWS(iFace->assemble());
-      CHECK_THROWS(iFace->setValsRHS(intVec, doubleVec));
+      CHECK_THROWS(iFace->setValsRHS(intVec, doubleVec.data()));
       CHECK_THROWS(iFace->setValRHS(i, val));
-      CHECK_THROWS(iFace->setValsMatrix(intVec, intVec, doubleVec));
+      CHECK_THROWS(iFace->setValsMatrix(intVec, intVec, doubleVec.data()));
       CHECK_THROWS(iFace->setValMatrix(i, j, val));
 
       CHECK_NOTHROW(iFace->allocate(ndofs));
       //allocated interface
-      CHECK_NOTHROW(iFace->setValsRHS(intVec, doubleVec));
+      CHECK_NOTHROW(iFace->setValsRHS(intVec, doubleVec.data()));
       CHECK_NOTHROW(iFace->setValRHS(i, val));
-      CHECK_NOTHROW(iFace->setValsMatrix(intVec, intVec, doubleVec));
+      CHECK_NOTHROW(iFace->setValsMatrix(intVec, intVec, doubleVec.data()));
       CHECK_NOTHROW(iFace->setValMatrix(i, j, val));
       CHECK_NOTHROW(iFace->assemble());
       CHECK_NOTHROW(iFace->solve(&doubleVec));

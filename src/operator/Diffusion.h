@@ -6,14 +6,14 @@
 #include "Operator.h"
 #include "ReferenceElement.h"
 
+namespace hfox{
+
 /*!
  * \brief The operator for diffusional terms
  *
  * \int_{Omega} \partial u \cdot \partial \varphi
  *
  */
-
-namespace hfox{
 
 class Diffusion : public Operator{
 

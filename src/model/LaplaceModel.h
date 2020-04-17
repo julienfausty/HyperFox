@@ -7,7 +7,7 @@
 namespace hfox{
 
 /*!
- * \brief A continuous Galerkin model for the laplace equation (\Delta u = 0)
+ * \brief A continuous Galerkin model for the laplace equation (\nabla D \nabla u = 0)
  */
 
 class LaplaceModel : public FEModel{

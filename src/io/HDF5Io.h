@@ -6,6 +6,8 @@
 #include "ErrorHandle.h"
 #include "hdf5.h"
 
+namespace hfox{
+
 /*!
  * \brief The Input/Output class that manages the native HDF5 format
  *
@@ -19,8 +21,6 @@
  *
  * Default behavior is to write everything held in the class
  */
-
-namespace hfox{
 
 class HDF5Io : public Io{
 
