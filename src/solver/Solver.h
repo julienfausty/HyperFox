@@ -25,22 +25,32 @@ class Solver{
     Solver(){};
     /*!
      * \brief a method to set the model
+     *
+     * @param m a pointer to the model
      */
     virtual void setModel(FEModel * m){model = m;};
     /*!
-     * \brief a method to set the model
+     * \brief a method to set the boundary model
+     *
+     * @param m a pointer to the boundary model
      */
     virtual void setBoundaryModel(FEModel * m){boundaryModel = m;};
     /*!
      * \brief a method to set the linear algebra interface
+     *
+     * @param lai a pointer to the linear algebra interface
      */
     virtual void setLinSystem(LinAlgebraInterface * lai){linSystem = lai;};
     /*!
-     * \brief a method to set the linear algebra interface
+     * \brief a method to set the field map
+     *
+     * @param fm pointer to the field map
      */
     virtual void setFieldMap(std::map<std::string, Field* > * fm){fieldMap = fm;};
     /*!
-     * \brief a method to set the linear algebra interface
+     * \brief a method to set the mesh
+     *
+     * @param m pointer to the mesh
      */
     virtual void setMesh(Mesh * m){myMesh = m;};
     /*!

@@ -41,7 +41,7 @@ void Field::computeNumEntities(){
 void Field::allocate(){
   if(pmesh != NULL){
     int length = numEntities*numObjPerEnt*numValsPerObj;
-    values.resize(length);
+    values.resize(length, 0.0);
   }
 };//allocate
 

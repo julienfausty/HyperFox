@@ -50,11 +50,14 @@ void CGSolver::assemble(){
   std::vector<int> cell(refEl->getNumNodes());
   std::vector< std::vector<double> > nodes(refEl->getNumNodes(), std::vector<double>(myMesh->getNodeSpaceDimension(), 0.0));
   const AssemblyType * modAssemble = model->getAssemblyType();
-  std::vector<double> zeroRows(refEl->getNumNodes() * myMesh->getNumberPoints(), 0.0);
-  std::vector<int> colRange(myMesh->getNumberPoints(), 0);
-  std::iota(colRange.begin(), colRange.end(), 0);
   //element loop
-  for(int iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
+  int iEl = 0;
+  ProgressBar pb;
+  pb.setIterIndex(&iEl);
+  pb.setNumIterations(myMesh->getNumberCells());
+  std::cout << "Assembly - Element loop (nElements = " << myMesh->getNumberCells() << ", nNodes/El = " << cell.size() << "):" << std::endl;
+  pb.update();
+  for(iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
     myMesh->getCell(iEl, &cell);
     myMesh->getSlicePoints(cell, &nodes);
     constructLocalFields(cell, &nodalFieldMap);
@@ -67,7 +70,6 @@ void CGSolver::assemble(){
                  break;
                }
       case Set:{
-                 linSystem->setValsMatrix(cell, colRange, zeroRows.data());
                  linSystem->setValsMatrix(cell, cell, model->getLocalMatrix()->transpose().data());
                  break;
                }
@@ -82,6 +84,7 @@ void CGSolver::assemble(){
                  break;
                }
     }
+    pb.update();
   }
   linSystem->assemble();
 
@@ -89,10 +92,26 @@ void CGSolver::assemble(){
   nodes.resize(0);
   nodes.resize(cell.size(), std::vector<double>(myMesh->getNodeSpaceDimension(), 0.0));
   modAssemble = boundaryModel->getAssemblyType();
-  zeroRows.resize(cell.size()*myMesh->getNumberPoints(), 0.0);
   std::vector<int> slice(1, 0);
   const std::set<int> * boundaryFaces = myMesh->getBoundaryFaces();
   std::set<int>::const_iterator itFace;
+  int index = 0;
+  pb.setIterIndex(&index);
+  pb.setNumIterations(boundaryFaces->size());
+  if(modAssemble->matrix == Set){
+    std::cout << "Assembly - Zero loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << cell.size() << "):" << std::endl;
+    pb.update();
+    for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
+      myMesh->getFace(*itFace, &cell);
+      linSystem->zeroOutRows(cell);
+      index += 1;
+      pb.update();
+    }
+    linSystem->assemble();
+  }
+  index = 0;
+  std::cout << "Assembly - Boundary loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << cell.size() << "):" << std::endl;
+  pb.update();
   for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
     myMesh->getFace(*itFace, &cell);
     myMesh->getSlicePoints(cell, &nodes);
@@ -107,7 +126,6 @@ void CGSolver::assemble(){
                  break;
                }
       case Set:{
-                 linSystem->setValsMatrix(cell, colRange, zeroRows.data());
                  linSystem->setValsMatrix(cell, cell, boundaryModel->getLocalMatrix()->transpose().data());
                  break;
                }
@@ -122,6 +140,8 @@ void CGSolver::assemble(){
                  break;
                }
     }
+    index += 1;
+    pb.update();
   }
   linSystem->assemble();
   assembled = 1;

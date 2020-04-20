@@ -3,6 +3,7 @@
 
 #include "Solver.h"
 #include "ErrorHandle.h"
+#include "ProgressBar.h"
 
 namespace hfox{
 

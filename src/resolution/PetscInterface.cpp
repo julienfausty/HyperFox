@@ -181,7 +181,7 @@ void PetscInterface::zeroOutRows(std::vector<int> & is){
   } else {
     throw(ErrorHandle("PetscInterface", "zeroOutRows", "the matrix must be allocated before zeroing out rows."));
   }
-};//setValsRHS
+};//zeroOutRows
 
 void PetscInterface::assemble(){
   if(allocated){

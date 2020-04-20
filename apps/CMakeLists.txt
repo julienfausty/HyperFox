@@ -7,8 +7,6 @@ ENDFOREACH()
 
 include_directories(${MPI_CXX_INCLUDE_DIRS} ${MOAB_INCLUDE_DIRS} ${PETSC_INCLUDES} ${HDF5_C_INCLUDE_DIRS})
 
-link_directories(${MOAB_LIBRARY_DIRS})
-
 add_executable(
   hyperFox
   main.cpp
@@ -20,6 +18,8 @@ target_link_libraries(hyperFox ${hyperFoxLibs}
   ${MOAB_LIBRARIES} 
   ${HDF5_C_LIBRARIES} 
   )
+
+link_directories(${MOAB_LIBRARY_DIRS})
 
 add_executable(
   tests_hyperFox
