@@ -2,7 +2,7 @@ import subprocess
 
 meshSizes = {}
 
-meshSizes['2'] = ['1e-1', '7e-2', '5e-2', '2e-2', '1e-2']
+meshSizes['2'] = ['5e-1', '3e-1', '2e-1', '1e-1', '7e-2', '5e-2', '2e-2', '1e-2']
 meshSizes['3'] = ['3e-1', '2e-1', '1e-1', '8e-2']
 
 orders = range(1,6)

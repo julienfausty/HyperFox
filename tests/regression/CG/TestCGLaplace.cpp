@@ -1,10 +1,14 @@
 #include <catch2/catch.hpp>
 #include <string>
 #include <chrono>
+#define _USE_MATH_DEFINES
 #include <cmath>
+#include <iostream>
+#include <fstream>
 #include "Mesh.h"
 #include "Field.h"
 #include "HDF5Io.h"
+#include "Operator.h"
 #include "LaplaceModel.h"
 #include "DirichletModel.h"
 #include "PetscInterface.h"
@@ -20,37 +24,130 @@ struct SimRun{
   std::string meshLocation;
   double linAlgErr;
   double l2Err;
+  double dL2Err;
   std::chrono::duration<double> runtime;
 };
 
 double analyticalSolution(const std::vector<double> & point){
   if(point.size() == 2){
-    return (std::cos(point[0]) * std::cosh(point[1]));
+    return (std::sin(point[0]) * std::exp(point[1]));
   } else if(point.size() == 3){
-    return (std::cos(point[0]) * std::cosh(point[1]) * std::cos(point[2]));
+    return (std::sin(point[0]) * std::exp(point[1]));
   } else{
     return 0;
   }
 };
 
+double l2ProjectionNodeField(Field * field1, Field * field2, Mesh * mesh){
+  double integral = 0;
+  const ReferenceElement * refEl = mesh->getReferenceElement();
+  std::vector<int> cell(refEl->getNumNodes(), 0);
+  std::vector< std::vector<double> > nodes(cell.size(), 
+      std::vector<double>(mesh->getNodeSpaceDimension(), 0.0));
+  const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
+  const std::vector<double> * ipWeights = refEl->getIPWeights();
+  std::vector<double> detJacs(refEl->getNumIPs(), 0.0);
+  for(int i = 0; i < mesh->getNumberCells(); i++){
+    mesh->getCell(i, &cell);
+    mesh->getSlicePoints(cell, &nodes);
+    detJacs = Operator::calcDetJacobians(Operator::calcJacobians(nodes, refEl));
+    for(int j = 0; j < refEl->getNumIPs(); j++){
+      double dV = detJacs[j]*ipWeights->at(j);
+      for(int k = 0; k < cell.size(); k++){
+        for(int l = 0; l < cell.size(); l++){
+          integral += ipShapes->at(j)[l]*(ipShapes->at(j)[k])*(field1->getValues()->at(cell[k]))*(field2->getValues()->at(cell[l]))*dV;
+        }
+      }
+    }
+  }
+  return integral;
+};
+
+double l2ProjectionNodeField(Field * field1, double (* anaField)(const std::vector<double>&), Mesh * mesh){
+  double integral = 0;
+  const ReferenceElement * refEl = mesh->getReferenceElement();
+  ReferenceElement intEl(refEl->getDimension(), 10, "simplex");
+  std::vector<int> cell(refEl->getNumNodes(), 0);
+  std::vector< std::vector<double> > nodes(cell.size(), 
+      std::vector<double>(mesh->getNodeSpaceDimension(), 0.0));
+  std::vector< std::vector<double> > intNodes(intEl.getNumNodes(), 
+      std::vector<double>(mesh->getNodeSpaceDimension(), 0.0));
+  std::vector< std::vector<double> > ipShapes(intEl.getNumIPs(), 
+      std::vector<double>(refEl->getNumNodes(), 0.0));
+  const std::vector< std::vector<double> > * ipCoords = intEl.getIPCoords();
+  const std::vector<double> * ipWeights = intEl.getIPWeights();
+  std::vector<double> detJacs(intEl.getNumIPs(), 0.0);
+  std::vector<double> ipNode(mesh->getNodeSpaceDimension(), 0.0);
+  Eigen::Map<EVector> ipNodeMap(ipNode.data(), ipNode.size());
+  std::vector<double> buffInterp(refEl->getNumNodes(), 0.0);
+  for(int i = 0; i < intEl.getNumIPs(); i++){
+    ipShapes[i] = refEl->interpolate(ipCoords->at(i));
+  }
+  for(int i = 0; i < mesh->getNumberCells(); i++){
+    mesh->getCell(i, &cell);
+    mesh->getSlicePoints(cell, &nodes);
+    for(int j = 0; j < intEl.getNumNodes(); j++){
+      Eigen::Map<EVector> intNodeMap(intNodes[j].data(), intNodes[j].size());
+      intNodeMap *= 0;
+      buffInterp = refEl->interpolate(intEl.getNodes()->at(j));
+      for(int k = 0; k < refEl->getNumNodes(); k++){
+        intNodeMap += buffInterp[k] * Eigen::Map<const EVector>(nodes[k].data(), nodes[k].size());
+      }
+    }
+    detJacs = Operator::calcDetJacobians(Operator::calcJacobians(intNodes, &intEl));
+    for(int j = 0; j < intEl.getNumIPs(); j++){
+      double dV = detJacs[j]*(ipWeights->at(j));
+      ipNodeMap *= 0;
+      for(int k = 0; k < intNodes.size(); k++){
+        Eigen::Map<EVector> node(intNodes[k].data(), intNodes[k].size());
+        ipNodeMap += intEl.getIPShapeFunctions()->at(j)[k]*node;
+      }
+      double anaValue = anaField(ipNode);
+      for(int k = 0; k < cell.size(); k++){
+        integral += anaValue * ipShapes[j][k]*(field1->getValues()->at(cell[k]))*dV;
+      }
+    }
+  }
+  return integral;
+};
+
 void runSimulation(SimRun * thisRun){
   thisRun->meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/";
-  thisRun->meshLocation += "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
-  thisRun->meshLocation += "_ord-" + thisRun->order + ".h5";
+  std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
+  meshName += "_ord-" + thisRun->order + ".h5";
+  thisRun->meshLocation += meshName; 
   Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
   HDF5Io hdfio(&myMesh);
   hdfio.load(thisRun->meshLocation);
-  Field dirichlet(&myMesh, Face, 1, 1);
+  int nNodesPerFace = myMesh.getReferenceElement()->getFaceElement()->getNumNodes();
+  Field dirichlet(&myMesh, Face, nNodesPerFace, 1);
   //set dirichlet field to analytical solution
+  const std::set<int> * boundary = myMesh.getBoundaryFaces();
+  std::vector<int> cell(nNodesPerFace, 0);
+  std::vector< std::vector<double> > nodes(nNodesPerFace, std::vector<double>(myMesh.getNodeSpaceDimension(), 0.0));
+  for(auto it = boundary->begin(); it != boundary->end(); it++){
+    myMesh.getFace(*it, &cell);
+    myMesh.getSlicePoints(cell, &nodes);
+    for(int j = 0; j < nNodesPerFace; j++){
+      dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalSolution(nodes[j]);
+    }
+  }
   Field sol(&myMesh, Node, 1, 1);
   Field anaSol(&myMesh, Node, 1, 1);
   //calculate analytical solution
+  std::vector<double> node(myMesh.getNodeSpaceDimension());
+  for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
+    myMesh.getPoint(iNode, &node);
+    anaSol.getValues()->at(iNode) = analyticalSolution(node);
+  }
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
   fieldMap["Dirichlet"] = &dirichlet;
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   LaplaceModel lapMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
+  myOpts.maxits = 20000;
+  myOpts.rtol = 1e-16;
   myOpts.verbose = true;
   PetscInterface petsciface(myOpts);
   CGSolver mySolver;
@@ -64,16 +161,27 @@ void runSimulation(SimRun * thisRun){
   mySolver.assemble();
   mySolver.solve();
   //get linalg err
+  const KSP * ksp = petsciface.getKSP();
+  KSPGetResidualNorm(*ksp, &(thisRun->linAlgErr));
   //calculate l2 err
+  Field residual(&myMesh, Node, 1, 1);
+  double sumRes = 0, sumAna = 0;
+  for(int i = 0; i < myMesh.getNumberPoints(); i++){
+    residual.getValues()->at(i) = anaSol.getValues()->at(i) - sol.getValues()->at(i);
+    sumRes += std::pow(residual.getValues()->at(i), 2);
+    sumAna += std::pow(anaSol.getValues()->at(i), 2);
+  }
+  thisRun->l2Err = std::sqrt(l2ProjectionNodeField(&residual, &residual, &myMesh));
+  thisRun->dL2Err = std::sqrt(sumRes/sumAna);
+  hdfio.setField("Solution", &sol);
+  hdfio.write("/home/julien/workspace/M2P2/Postprocess/results/" + meshName);
 };
 
 TEST_CASE("Testing regression CGLaplace", "[regression][CG][Laplace]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
-  //meshSizes["2"] = {"1e-1", "7e-2", "5e-2", "2e-2", "1e-2"};
-  //meshSizes["3"] = {"3e-1", "2e-1", "1e-1", "8e-2"};
-  meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
-  meshSizes["3"] = {"3e-1", "2e-1"};
-  std::vector<std::string> orders = {"1", "2", "3", "4"};
+  meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
+  meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
+  std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -92,6 +200,19 @@ TEST_CASE("Testing regression CGLaplace", "[regression][CG][Laplace]"){
     runSimulation(&(*it));
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
-    std::cout << it->runtime.count() << "s" << std::endl;
   }
+
+  std::ofstream myfile;
+  myfile.open("/home/julien/workspace/M2P2/Postprocess/results/CGLaplace.csv");
+  myfile << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
+  for(auto it = simRuns.begin(); it != simRuns.end(); it++){
+    myfile << it->dim << ", ";
+    myfile << it->order << ", ";
+    myfile << it->meshSize << ", ";
+    myfile << it->linAlgErr << ", ";
+    myfile << it->l2Err << ", ";
+    myfile << it->dL2Err << ", ";
+    myfile << it->runtime.count() << "\n";
+  }
+  myfile.close();
 };

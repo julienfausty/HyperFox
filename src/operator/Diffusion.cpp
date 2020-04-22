@@ -27,13 +27,15 @@ void Diffusion::assemble(const std::vector< double > & detJacobians,
       }
     }
   }
+  EMatrix pPhipPhiT(elDim*(elDim+1)/2, nNodes);
+  EMatrix bufferMat(nNodes, nNodes);
   for(int i = 0; i < refEl->getNumIPs(); i++){
-    EMatrix pPhipPhiT(elDim*(elDim+1)/2, nNodes);
     for(int j = 0; j < nNodes; j++){
       Eigen::Map<const EVector> pPhi_j((*ipDerivShape)[i][j].data(), (*ipDerivShape)[i][j].size());
       for(int k = 0; k < nNodes; k++){
         Eigen::Map<const EVector> pPhi_k((*ipDerivShape)[i][k].data(), (*ipDerivShape)[i][k].size());
-        pPhipPhiT.col(k) = symMat2Vec(pPhi_k * pPhi_j.transpose());
+        bufferMat = pPhi_k * pPhi_j.transpose();
+        pPhipPhiT.col(k) = (symMat2Vec(bufferMat + bufferMat.transpose()))/2.0;
       }
       op.block(j, 0, 1, nNodes) += ((*ipWeights)[i])*detJacobians[i]*(invJTinvJs[i].transpose() * pPhipPhiT);
     }
