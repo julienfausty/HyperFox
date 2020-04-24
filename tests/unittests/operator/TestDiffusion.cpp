@@ -49,7 +49,8 @@ TEST_CASE("Testing the Diffusion operator", "[unit][operator][Diffusion]"){
         std::vector<EMatrix> invJacs(jacobians.size());
         std::transform(jacobians.begin(), jacobians.end(), detJacs.begin(), [](EMatrix jac){return jac.determinant();});
         std::transform(jacobians.begin(), jacobians.end(), invJacs.begin(), [](EMatrix jac){return jac.inverse();});
-        CHECK_NOTHROW(diffOp.assemble(detJacs, invJacs));
+        std::vector<double> dV = Operator::calcMeasure(detJacs, refEl);
+        CHECK_NOTHROW(diffOp.assemble(dV, invJacs));
         std::vector< double > monos(refEl->getNumNodes());
         std::transform(refEl->getNodes()->begin(), refEl->getNodes()->end(), monos.begin(), [j](const std::vector<double> & point){return monomials(point, j+1);});
         Eigen::Map<EVector> vecMonos(monos.data(), monos.size());
@@ -81,7 +82,8 @@ TEST_CASE("Testing the Diffusion operator", "[unit][operator][Diffusion]"){
         std::vector<EMatrix> invJacs(jacobians.size());
         std::transform(jacobians.begin(), jacobians.end(), detJacs.begin(), [](EMatrix jac){return jac.determinant();});
         std::transform(jacobians.begin(), jacobians.end(), invJacs.begin(), [](EMatrix jac){return jac.inverse();});
-        CHECK_NOTHROW(diffOp.assemble(detJacs, invJacs));
+        std::vector<double> dV = Operator::calcMeasure(detJacs, refEl);
+        CHECK_NOTHROW(diffOp.assemble(dV, invJacs));
         std::vector< double > monos(refEl->getNumNodes());
         std::transform(refEl->getNodes()->begin(), refEl->getNodes()->end(), monos.begin(), [j](const std::vector<double> & point){return monomials(point, j+1);});
         Eigen::Map<EVector> vecMonos(monos.data(), monos.size());
@@ -112,7 +114,8 @@ TEST_CASE("Testing the Diffusion operator", "[unit][operator][Diffusion]"){
         std::vector<EMatrix> invJacs(jacobians.size());
         std::transform(jacobians.begin(), jacobians.end(), detJacs.begin(), [](EMatrix jac){return jac.determinant();});
         std::transform(jacobians.begin(), jacobians.end(), invJacs.begin(), [](EMatrix jac){return jac.inverse();});
-        CHECK_NOTHROW(diffOp.assemble(detJacs, invJacs));
+        std::vector<double> dV = Operator::calcMeasure(detJacs, refEl);
+        CHECK_NOTHROW(diffOp.assemble(dV, invJacs));
         int nNodes = refEl->getNumNodes();
         std::vector< double > monos(nNodes);
         std::transform(refEl->getNodes()->begin(), refEl->getNodes()->end(), monos.begin(), [j](const std::vector<double> & point){return monomials(point, j+1);});
@@ -151,7 +154,8 @@ TEST_CASE("Testing the Diffusion operator", "[unit][operator][Diffusion]"){
         std::transform(jacobians.begin(), jacobians.end(), invJacs.begin(), [](EMatrix jac){return jac.inverse();});
         std::vector<EMatrix> diffCoeff(refEl->getNumNodes(), (1.0/(i+1.0))*EMatrix::Identity(1, 1));
         CHECK_NOTHROW(diffOp.setDiffTensor(diffCoeff));
-        CHECK_NOTHROW(diffOp.assemble(detJacs, invJacs));
+        std::vector<double> dV = Operator::calcMeasure(detJacs, refEl);
+        CHECK_NOTHROW(diffOp.assemble(dV, invJacs));
         std::vector< double > monos(refEl->getNumNodes());
         std::transform(refEl->getNodes()->begin(), refEl->getNodes()->end(), monos.begin(), [j](const std::vector<double> & point){return monomials(point, j+1);});
         Eigen::Map<EVector> vecMonos(monos.data(), monos.size());
@@ -184,7 +188,8 @@ TEST_CASE("Testing the Diffusion operator", "[unit][operator][Diffusion]"){
         std::transform(jacobians.begin(), jacobians.end(), invJacs.begin(), [](EMatrix jac){return jac.inverse();});
         std::vector<EMatrix> diffCoeff(refEl->getNumNodes(), (1.0/(i+1.0))*EMatrix::Identity(i+1, i+1));
         CHECK_NOTHROW(diffOp.setDiffTensor(diffCoeff));
-        CHECK_NOTHROW(diffOp.assemble(detJacs, invJacs));
+        std::vector<double> dV = Operator::calcMeasure(detJacs, refEl);
+        CHECK_NOTHROW(diffOp.assemble(dV, invJacs));
         std::vector< double > monos(refEl->getNumNodes());
         std::transform(refEl->getNodes()->begin(), refEl->getNodes()->end(), monos.begin(), [j](const std::vector<double> & point){return monomials(point, j+1);});
         Eigen::Map<EVector> vecMonos(monos.data(), monos.size());

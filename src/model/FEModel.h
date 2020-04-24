@@ -96,9 +96,9 @@ class FEModel : public Model{
      */
     std::vector<EMatrix> invJacobians;
     /*!
-     * \brief a vector of the jacobian determinants at IPs
+     * \brief a vector of the discrete measure values at IPs (detJac*weight)
      */
-    std::vector<double> detJacobians;
+    std::vector<double> dV;
     /*!
      * \brief boolean value tracking if the local objects have been allocated
      */

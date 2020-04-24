@@ -63,54 +63,6 @@ double l2ProjectionNodeField(Field * field1, Field * field2, Mesh * mesh){
   return integral;
 };
 
-double l2ProjectionNodeField(Field * field1, double (* anaField)(const std::vector<double>&), Mesh * mesh){
-  double integral = 0;
-  const ReferenceElement * refEl = mesh->getReferenceElement();
-  ReferenceElement intEl(refEl->getDimension(), 10, "simplex");
-  std::vector<int> cell(refEl->getNumNodes(), 0);
-  std::vector< std::vector<double> > nodes(cell.size(), 
-      std::vector<double>(mesh->getNodeSpaceDimension(), 0.0));
-  std::vector< std::vector<double> > intNodes(intEl.getNumNodes(), 
-      std::vector<double>(mesh->getNodeSpaceDimension(), 0.0));
-  std::vector< std::vector<double> > ipShapes(intEl.getNumIPs(), 
-      std::vector<double>(refEl->getNumNodes(), 0.0));
-  const std::vector< std::vector<double> > * ipCoords = intEl.getIPCoords();
-  const std::vector<double> * ipWeights = intEl.getIPWeights();
-  std::vector<double> detJacs(intEl.getNumIPs(), 0.0);
-  std::vector<double> ipNode(mesh->getNodeSpaceDimension(), 0.0);
-  Eigen::Map<EVector> ipNodeMap(ipNode.data(), ipNode.size());
-  std::vector<double> buffInterp(refEl->getNumNodes(), 0.0);
-  for(int i = 0; i < intEl.getNumIPs(); i++){
-    ipShapes[i] = refEl->interpolate(ipCoords->at(i));
-  }
-  for(int i = 0; i < mesh->getNumberCells(); i++){
-    mesh->getCell(i, &cell);
-    mesh->getSlicePoints(cell, &nodes);
-    for(int j = 0; j < intEl.getNumNodes(); j++){
-      Eigen::Map<EVector> intNodeMap(intNodes[j].data(), intNodes[j].size());
-      intNodeMap *= 0;
-      buffInterp = refEl->interpolate(intEl.getNodes()->at(j));
-      for(int k = 0; k < refEl->getNumNodes(); k++){
-        intNodeMap += buffInterp[k] * Eigen::Map<const EVector>(nodes[k].data(), nodes[k].size());
-      }
-    }
-    detJacs = Operator::calcDetJacobians(Operator::calcJacobians(intNodes, &intEl));
-    for(int j = 0; j < intEl.getNumIPs(); j++){
-      double dV = detJacs[j]*(ipWeights->at(j));
-      ipNodeMap *= 0;
-      for(int k = 0; k < intNodes.size(); k++){
-        Eigen::Map<EVector> node(intNodes[k].data(), intNodes[k].size());
-        ipNodeMap += intEl.getIPShapeFunctions()->at(j)[k]*node;
-      }
-      double anaValue = anaField(ipNode);
-      for(int k = 0; k < cell.size(); k++){
-        integral += anaValue * ipShapes[j][k]*(field1->getValues()->at(cell[k]))*dV;
-      }
-    }
-  }
-  return integral;
-};
-
 void runSimulation(SimRun * thisRun){
   thisRun->meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/";
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
@@ -148,9 +100,10 @@ void runSimulation(SimRun * thisRun){
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-16;
-  myOpts.verbose = true;
+  myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   CGSolver mySolver;
+  mySolver.setVerbosity(0);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
@@ -173,15 +126,15 @@ void runSimulation(SimRun * thisRun){
   }
   thisRun->l2Err = std::sqrt(l2ProjectionNodeField(&residual, &residual, &myMesh));
   thisRun->dL2Err = std::sqrt(sumRes/sumAna);
-  hdfio.setField("Solution", &sol);
-  hdfio.write("/home/julien/workspace/M2P2/Postprocess/results/" + meshName);
 };
 
 TEST_CASE("Testing regression CGLaplace", "[regression][CG][Laplace]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
-  meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
-  meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
-  std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
+  //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
+  //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
+  meshSizes["3"] = {"3e-1"};
+  meshSizes["2"] = {"3e-1", "2e-1", "1e-1"};
+  std::vector<std::string> orders = {"1", "2", "3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -200,19 +153,7 @@ TEST_CASE("Testing regression CGLaplace", "[regression][CG][Laplace]"){
     runSimulation(&(*it));
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
+    CHECK(it->l2Err < 1e-2);
   }
 
-  std::ofstream myfile;
-  myfile.open("/home/julien/workspace/M2P2/Postprocess/results/CGLaplace.csv");
-  myfile << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
-  for(auto it = simRuns.begin(); it != simRuns.end(); it++){
-    myfile << it->dim << ", ";
-    myfile << it->order << ", ";
-    myfile << it->meshSize << ", ";
-    myfile << it->linAlgErr << ", ";
-    myfile << it->l2Err << ", ";
-    myfile << it->dL2Err << ", ";
-    myfile << it->runtime.count() << "\n";
-  }
-  myfile.close();
 };

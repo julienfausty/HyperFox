@@ -53,10 +53,12 @@ void CGSolver::assemble(){
   //element loop
   int iEl = 0;
   ProgressBar pb;
-  pb.setIterIndex(&iEl);
-  pb.setNumIterations(myMesh->getNumberCells());
-  std::cout << "Assembly - Element loop (nElements = " << myMesh->getNumberCells() << ", nNodes/El = " << cell.size() << "):" << std::endl;
-  pb.update();
+  if(verbose){
+    pb.setIterIndex(&iEl);
+    pb.setNumIterations(myMesh->getNumberCells());
+    std::cout << "Assembly - Element loop (nElements = " << myMesh->getNumberCells() << ", nNodes/El = " << cell.size() << "):" << std::endl;
+    pb.update();
+  }
   for(iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
     myMesh->getCell(iEl, &cell);
     myMesh->getSlicePoints(cell, &nodes);
@@ -84,7 +86,9 @@ void CGSolver::assemble(){
                  break;
                }
     }
-    pb.update();
+    if(verbose){
+      pb.update();
+    }
   }
   linSystem->assemble();
 
@@ -96,22 +100,30 @@ void CGSolver::assemble(){
   const std::set<int> * boundaryFaces = myMesh->getBoundaryFaces();
   std::set<int>::const_iterator itFace;
   int index = 0;
-  pb.setIterIndex(&index);
-  pb.setNumIterations(boundaryFaces->size());
+  if(verbose){
+    pb.setIterIndex(&index);
+    pb.setNumIterations(boundaryFaces->size());
+  }
   if(modAssemble->matrix == Set){
-    std::cout << "Assembly - Zero loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << cell.size() << "):" << std::endl;
-    pb.update();
+    if(verbose){
+      std::cout << "Assembly - Zero loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << cell.size() << "):" << std::endl;
+      pb.update();
+    }
     for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
       myMesh->getFace(*itFace, &cell);
       linSystem->zeroOutRows(cell);
-      index += 1;
-      pb.update();
+      if(verbose){
+        index += 1;
+        pb.update();
+      }
     }
     linSystem->assemble();
   }
-  index = 0;
-  std::cout << "Assembly - Boundary loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << cell.size() << "):" << std::endl;
-  pb.update();
+  if(verbose){
+    index = 0;
+    std::cout << "Assembly - Boundary loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << cell.size() << "):" << std::endl;
+    pb.update();
+  }
   for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
     myMesh->getFace(*itFace, &cell);
     myMesh->getSlicePoints(cell, &nodes);
@@ -140,8 +152,10 @@ void CGSolver::assemble(){
                  break;
                }
     }
-    index += 1;
-    pb.update();
+    if(verbose){
+      index += 1;
+      pb.update();
+    }
   }
   linSystem->assemble();
   assembled = 1;

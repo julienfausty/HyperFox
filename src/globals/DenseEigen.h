@@ -11,6 +11,8 @@ namespace hfox{
 
 typedef Eigen::MatrixXd EMatrix;
 typedef Eigen::VectorXd EVector;
+template <class T>
+using EMap = Eigen::Map<T>;
 
 }//hfox
 

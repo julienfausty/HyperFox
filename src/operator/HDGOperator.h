@@ -1,15 +1,16 @@
-#ifndef RHSOPERATOR_H
-#define RHSOPERATOR_H
+#ifndef HDGOPERATOR_H
+#define HDGOPERATOR_H
 
 #include "Operator.h"
 
 namespace hfox{
 
 /*!
- * \brief an intermediate interface class specified to the right hand side
+ * \brief Interface class to Hybrid Discontinuous Galerkin type operators
  */
 
-class RHSOperator : public Operator{
+class HDGOperator : public Operator{
+
   public:
     /*!
      * \brief constructor inheritance
@@ -27,8 +28,10 @@ class RHSOperator : public Operator{
      */
     virtual void assemble(const std::vector< double > & dV, 
         const std::vector< EMatrix > & invJacobians) = 0;
-};//RHSOperator
+
+};//HDGOperator
 
 }//hfox
 
-#endif//RHSOPERATOR_H
+
+#endif //HDGOPERATOR_H

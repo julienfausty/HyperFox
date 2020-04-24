@@ -74,4 +74,26 @@ std::vector<double> Operator::calcDetJacobians(const std::vector< EMatrix > & ja
   }
 };//calcInvJacobians
 
+
+std::vector<double> Operator::calcMeasure(const std::vector<double> & detJacs, const ReferenceElement * re){
+  std::vector<double> dV(detJacs.size(), 0.0);
+  for(int i = 0; i < detJacs.size(); i++){
+    dV[i] = re->getIPWeights()->at(i)*detJacs[i];
+  }
+  return dV;
+};
+
+void Operator::multiplyDOFs(){
+  int nNodes = refEl->getNumNodes();
+  EMatrix buff = op.block(0, 0, nNodes, nNodes);
+  op.block(0,0,nNodes,nNodes) = EMatrix::Zero(nNodes, nNodes);
+  for(int i = 0; i < nNodes; i++){
+    for(int j = 0; j < nNodes; j++){
+      for(int k = 0; k < nDOFsPerNode; k++){
+        op(i*nDOFsPerNode + k, j*nDOFsPerNode + k) = buff(i, j);
+      }
+    }
+  }
+};//multiplyDOFs
+
 }//hfox

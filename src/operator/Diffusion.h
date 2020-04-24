@@ -26,9 +26,9 @@ class Diffusion : public Operator{
      * \brief method for assembling the operator
      *
      * @param invJacobians the values of the inverse jacobian matrices at the integration points
-     * @param detJacobians the values of the determinants of jacobian matrices at the integration points
+     * @param dV values of discrete mesure at the integration points
      */
-    void assemble(const std::vector< double > & detJacobians, const std::vector< EMatrix > & invJacobians);
+    void assemble(const std::vector< double > & dV, const std::vector< EMatrix > & invJacobians);
     /*!
      * \brief method for setting the diffusion coefficient tensor
      *

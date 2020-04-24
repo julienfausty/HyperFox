@@ -35,8 +35,8 @@ TEST_CASE("Testing the LaplaceModel", "[unit][model][LaplaceModel]"){
         diffOp.allocate(1);
         std::vector<EMatrix> jacs = Operator::calcJacobians(*(refEl.getNodes()), &refEl);
         std::vector<EMatrix> invJacs = Operator::calcInvJacobians(jacs);
-        std::vector<double> detJacs = Operator::calcDetJacobians(jacs);
-        diffOp.assemble(detJacs, invJacs);
+        std::vector<double> dV = Operator::calcMeasure(Operator::calcDetJacobians(jacs), &refEl);
+        diffOp.assemble(dV, invJacs);
         LaplaceModel lapModel(&refEl);
         lapModel.allocate(1);
         lapModel.setElementNodes(refEl.getNodes());
@@ -53,10 +53,10 @@ TEST_CASE("Testing the LaplaceModel", "[unit][model][LaplaceModel]"){
         diffOp.allocate(1);
         std::vector<EMatrix> jacs = Operator::calcJacobians(*(refEl.getNodes()), &refEl);
         std::vector<EMatrix> invJacs = Operator::calcInvJacobians(jacs);
-        std::vector<double> detJacs = Operator::calcDetJacobians(jacs);
         std::vector<EMatrix> diffTensors(refEl.getNumNodes(), 2.0*EMatrix::Identity(i+1, i+1));
         diffOp.setDiffTensor(diffTensors);
-        diffOp.assemble(detJacs, invJacs);
+        std::vector<double> dV = Operator::calcMeasure(Operator::calcDetJacobians(jacs), &refEl);
+        diffOp.assemble(dV, invJacs);
         LaplaceModel lapModel(&refEl);
         lapModel.allocate(1);
         lapModel.setElementNodes(refEl.getNodes());

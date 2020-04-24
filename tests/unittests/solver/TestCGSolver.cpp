@@ -31,6 +31,8 @@ TEST_CASE("Testing the CGSolver", "[unit][solver][CGSolver]"){
   SECTION("Testing setup"){
     CGSolver cgSolve;
 
+    CHECK_NOTHROW(cgSolve.setVerbosity(0));
+
     CHECK_THROWS(cgSolve.solve());
     CHECK_THROWS(cgSolve.assemble());
     CHECK_THROWS(cgSolve.allocate());

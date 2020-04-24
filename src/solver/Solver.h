@@ -54,6 +54,12 @@ class Solver{
      */
     virtual void setMesh(Mesh * m){myMesh = m;};
     /*!
+     * \brief a method to set the verbosity (0 quiet | 1 verbose)
+     *
+     * @param v boolean controlling verbosity
+     */
+    virtual void setVerbosity(bool v){verbose = v;};
+    /*!
      * \brief a method for initializing all components
      */
     virtual void initialize();
@@ -119,6 +125,10 @@ class Solver{
      * \brief boolean tracking assembly
      */
     bool assembled = 0;
+    /*!
+     * \brief boolean value controlling verbosity
+     */
+    bool verbose = 1;
 
 };//Solver
 

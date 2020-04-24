@@ -29,9 +29,9 @@ class Operator{
      * \brief a virtual method for assembling the operator
      *
      * @param invJacobians the values of the inverse jacobian matrices at the integration points
-     * @param detJacobians the values of the determinants of jacobian matrices at the integration points
+     * @param dV the values of the determinants of jacobian matrices multiplied by the weights at the integration points
      */
-    virtual void assemble(const std::vector< double > & detJacobians, 
+    virtual void assemble(const std::vector< double > & dV, 
         const std::vector< EMatrix > & invJacobians) = 0;
     /*!
      * \brief a method for allocating the operator
@@ -59,7 +59,18 @@ class Operator{
      * @param jacobians list of jacobians
      */
     static std::vector<double> calcDetJacobians(const std::vector<EMatrix> & jacobians);
+    /*!
+     * \brief a helper method for computing the descrete measure
+     *
+     * @param detJacs a list of jacobians at the IPs
+     * @param re a pointer to the reference element
+     */
+    static std::vector<double> calcMeasure(const std::vector<double> & detJacs, const ReferenceElement * re);
   protected:
+    /*!
+     * \brief helper method to go from 1 dof to n dofs
+     */
+    void multiplyDOFs();
     /*!
      * \brief the matrix representation of the operator
      */

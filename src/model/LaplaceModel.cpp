@@ -33,7 +33,7 @@ void LaplaceModel::computeLocalMatrix(){
   if(nodeSet and allocated){
     jacobians = Operator::calcJacobians(*elementNodes, refEl);
     invJacobians = Operator::calcInvJacobians(jacobians);
-    detJacobians = Operator::calcDetJacobians(jacobians);
+    dV = Operator::calcMeasure(Operator::calcDetJacobians(jacobians), refEl);
     std::map<std::string, const std::vector<double> * >::iterator it = fieldMap.find("DiffusionTensor");
     if(it != fieldMap.end()){
       int dimTensor = std::sqrt(it->second->size()/(refEl->getNumNodes()));
@@ -45,7 +45,7 @@ void LaplaceModel::computeLocalMatrix(){
       ((Diffusion*)operatorMap["Diffusion"])->setDiffTensor(diffTensors);
     }
     for(std::map<std::string, Operator*>::iterator it = operatorMap.begin(); it != operatorMap.end(); it++){
-      (it->second)->assemble(detJacobians, invJacobians);
+      (it->second)->assemble(dV, invJacobians);
     }
     localMatrix = *(operatorMap["Diffusion"]->getMatrix());
   } else {

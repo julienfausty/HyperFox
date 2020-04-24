@@ -2,7 +2,7 @@
 
 namespace hfox{
 
-void Diffusion::assemble(const std::vector< double > & detJacobians, 
+void Diffusion::assemble(const std::vector< double > & dV, 
     const std::vector< EMatrix > & invJacobians){
   if(!allocated){
     throw(ErrorHandle("Diffusion", "assemble", "cannot assemble before allocating."));
@@ -13,7 +13,7 @@ void Diffusion::assemble(const std::vector< double > & detJacobians,
   const std::vector<double> * ipWeights = refEl->getIPWeights();
   int elDim = refEl->getDimension();
   int nNodes = refEl->getNumNodes();
-  // w(ip)(det(J)(invJ^T invJ):(\partial\phi_i (\partial \phi_j)^T))(ip)
+  // dV(invJ^T invJ):(\partial\phi_i (\partial \phi_j)^T))(ip)
   std::vector<EVector> invJTinvJs(refEl->getNumIPs(), EVector(elDim*(elDim+1)/2));
   if(diffTensor.size() == 0){
     std::transform(invJacobians.begin(), invJacobians.end(), invJTinvJs.begin(), 
@@ -37,19 +37,11 @@ void Diffusion::assemble(const std::vector< double > & detJacobians,
         bufferMat = pPhi_k * pPhi_j.transpose();
         pPhipPhiT.col(k) = (symMat2Vec(bufferMat + bufferMat.transpose()))/2.0;
       }
-      op.block(j, 0, 1, nNodes) += ((*ipWeights)[i])*detJacobians[i]*(invJTinvJs[i].transpose() * pPhipPhiT);
+      op.block(j, 0, 1, nNodes) += dV[i]*(invJTinvJs[i].transpose() * pPhipPhiT);
     }
   }
   if(nDOFsPerNode > 1){
-    EMatrix buff = op.block(0, 0, nNodes, nNodes);
-    op.block(0,0,nNodes,nNodes) = EMatrix::Zero(nNodes, nNodes);
-    for(int i = 0; i < nNodes; i++){
-      for(int j = 0; j < nNodes; j++){
-        for(int k = 0; k < nDOFsPerNode; k++){
-          op(i*nDOFsPerNode + k, j*nDOFsPerNode + k) = buff(i, j);
-        }
-      }
-    }
+    multiplyDOFs();
   }
 };//assemble
 
