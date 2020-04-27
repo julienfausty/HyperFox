@@ -77,6 +77,10 @@ class Solver{
     virtual void solve()=0;
   protected:
     /*!
+     * \brief calculate the sparsity pattern of the matrix based on the mesh connectivity
+     */
+    virtual void calcSparsityPattern()=0;
+    /*!
      * \brief a helper method to create a local field map with a given field type
      *
      * @param ft the field type the fieldMap is adhereing to
@@ -109,6 +113,14 @@ class Solver{
      * \brief a pointer to the mesh
      */
     Mesh * myMesh = NULL;
+    /*!
+     * \brief the diagonal number of non zero entries in the fe matrix per row
+     */
+    std::vector<int> diagSparsePattern;
+    /*!
+     * \brief the off-diagonal number of non zero entries in the fe matrix per row
+     */
+    std::vector<int> offSparsePattern;
     /*!
      * \brief the number of degrees of freedom per node
      */

@@ -29,6 +29,11 @@ class CGSolver : public Solver{
      * \brief a method to solve the linear system
      */
     void solve();
+  protected:
+    /*!
+     * \brief calculate the sparsity pattern of the matrix based on the mesh connectivity
+     */
+    void calcSparsityPattern();
 };//CGSolver
 
 }//hfox

@@ -44,8 +44,13 @@ class PetscInterface : public LinAlgebraInterface{
      * \brief allocate both the matrix and rhs
      *
      * @param ndofs number of degrees of freedom (i.e. M = ndofs x ndofs, b = ndofs)
+     * @param diagSparsePattern a pointer to a vector of the number of non zero diagonal entries of the matrix per row
+     * @param offSparsePattern a pointer to a vector of the number of non zero off-diagonal entries of the matrix per row
+     *
+     * diagSparsePattern and offSparsePattern must be passed together (ie both NULL or both valid).
      */
-    void allocate(int ndofs);
+    void allocate(int ndofs, const std::vector<int> * diagSparsePattern = NULL, 
+        const std::vector<int> * offSparsePattern = NULL);
     /*!
      * \brief add an element to the matrix
      *

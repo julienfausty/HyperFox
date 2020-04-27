@@ -61,6 +61,8 @@ void PetscInterface::configure(){
   if(initialized){
     pErr = VecSetFromOptions(b);
     CHKERRXX(pErr);
+    pErr = MatSetType(M, MATMPIAIJ);
+    CHKERRXX(pErr);
     pErr = MatSetFromOptions(M);
     CHKERRXX(pErr);
     pErr = KSPGetPC(kspSolver, &preCond);
@@ -84,13 +86,21 @@ void PetscInterface::configure(){
 };//configure
 
 
-void PetscInterface::allocate(int ndofs){
+void PetscInterface::allocate(int ndofs, const std::vector<int> * diagSparsePattern, 
+        const std::vector<int> * offSparsePattern){
   if(initialized and configured){
     nDOFs = ndofs;
     pErr = MatSetSizes(M, nDOFs, nDOFs, PETSC_DETERMINE, PETSC_DETERMINE);
     CHKERRXX(pErr);
-    pErr = MatSetUp(M);
-    CHKERRXX(pErr);
+    if(diagSparsePattern == NULL){
+      pErr = MatSetUp(M);
+      CHKERRXX(pErr);
+    } else {
+      pErr = MatMPIAIJSetPreallocation(M, 0, diagSparsePattern->data(), 0, offSparsePattern->data());
+      CHKERRXX(pErr);
+      pErr = MatSetOption(M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+      CHKERRXX(pErr);
+    }
     pErr = VecSetSizes(b, nDOFs, PETSC_DETERMINE);
     CHKERRXX(pErr);
     pErr = VecSet(b, 0.0);

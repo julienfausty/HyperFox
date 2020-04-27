@@ -29,8 +29,9 @@ void CGSolver::allocate(){
     throw(ErrorHandle("CGSolver", "allocate", "the Solution field must be a nodal field."));
   }
   nDOFsPerNode = (*(it->second->getNumObjPerEnt()))*(*(it->second->getNumValsPerObj()));
+  calcSparsityPattern();
   int nNodes = myMesh->getNumberPoints();
-  linSystem->allocate(nNodes*nDOFsPerNode);
+  linSystem->allocate(nNodes*nDOFsPerNode, &diagSparsePattern, &offSparsePattern);
   model->allocate(nDOFsPerNode);
   boundaryModel->allocate(nDOFsPerNode);
   allocated = 1;
@@ -163,9 +164,32 @@ void CGSolver::assemble(){
 
 void CGSolver::solve(){
   if(!assembled){
-    throw(ErrorHandle("CGSolver", "solve", "system must be solved before assembling"));
+    throw(ErrorHandle("CGSolver", "solve", "system must be assembled before solving"));
   }
   linSystem->solve((*fieldMap)["Solution"]->getValues());
 };//solve
+
+void CGSolver::calcSparsityPattern(){
+  diagSparsePattern.resize(myMesh->getNumberPoints()*nDOFsPerNode, 0);
+  offSparsePattern.resize(myMesh->getNumberPoints()*nDOFsPerNode, 0);
+  std::vector< std::set<int> > sparsity(myMesh->getNumberPoints());
+  int nNodesEl = myMesh->getReferenceElement()->getNumNodes();
+  std::vector<int> cell(nNodesEl, 0);
+  for(int iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
+    myMesh->getCell(iEl, &cell);
+    for(int iCell = 0; iCell < nNodesEl; iCell++){
+      std::set<int> * nodeSet = &(sparsity[cell[iCell]]);
+      for(int i = 0; i < nNodesEl; i++){
+        nodeSet->insert(cell[i]);
+      }
+    }
+  }
+  for(int iRow = 0; iRow < sparsity.size(); iRow++){
+    for(int kDof = 0; kDof < nDOFsPerNode; kDof++){
+      diagSparsePattern[iRow*nDOFsPerNode + kDof] = sparsity[iRow].size();
+    }
+    //in parallel we have to divide the set into diagonal and off diagonal parts
+  }
+};//calcSparsityPattern
 
 }//hfox

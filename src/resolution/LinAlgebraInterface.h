@@ -35,8 +35,14 @@ class LinAlgebraInterface{
      * \brief allocate for the size of the linear system
      *
      * @param local ndofs number of degrees of freedom (i.e. A = ndofs x ndofs, b = ndofs) locally on partition
+     * @param diagSparsePattern a pointer to a vector of the number of non zero diagonal entries of the matrix per row
+     * @param offSparsePattern a pointer to a vector of the number of non zero off-diagonal entries of the matrix per row
+     *
+     * diagSparsePattern and offSparsePattern must be passed together (ie both NULL or both valid).
      */
-    virtual void allocate(int ndofs)=0;
+    virtual void allocate(int ndofs, 
+        const std::vector<int> * diagSparsePattern = NULL, 
+        const std::vector<int> * offSparsePattern = NULL)=0;
     /*!
      * \brief add an element to the matrix
      *
