@@ -11,7 +11,9 @@ namespace hfox{
 /*!
  * \brief The operator for diffusional terms
  *
+ * \f[
  * \int_{Omega} \partial u \cdot \partial \varphi
+ * \f]
  *
  */
 
@@ -32,7 +34,7 @@ class Diffusion : public Operator{
     /*!
      * \brief method for setting the diffusion coefficient tensor
      *
-     * @param diffCoeff a pointer to a list of diffusion tensors per node
+     * @param diffCoeff a list of diffusion tensors per node
      */
     void setDiffTensor(const std::vector<EMatrix> & diffCoeff);
   protected:

@@ -2,19 +2,10 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
+#include "TestUtils.h"
 #include "Mass.h"
 
 using namespace hfox;
-
-double intx2n(int dim, int ord){
-  double res = 0;
-  if(dim < 3){
-    res = 2.0/(2.0*ord + 1);
-  } else if(dim == 3){
-    res = 1.0/(2.0*ord+3.0) + 1.0/(2.0*ord + 1.0);
-  }
-  return res;
-};
 
 TEST_CASE("Testing Mass operator", "[unit][operator][Mass]"){
 
@@ -46,7 +37,7 @@ TEST_CASE("Testing Mass operator", "[unit][operator][Mass]"){
             [j](const std::vector<double> & node){return std::pow(node[0], j+1);});
         EMap<EVector> xnVec(xn.data(), xn.size());
         integral = xnVec.transpose()*(*(massOp.getMatrix()))*xnVec;
-        CHECK(integral == Approx(intx2n(i+1, j+1)));
+        CHECK(integral == Approx(TestUtils::intx2n(i+1, j+1)));
       };
 
       if(i != 0){
@@ -76,7 +67,7 @@ TEST_CASE("Testing Mass operator", "[unit][operator][Mass]"){
               [j](const std::vector<double> & node){return std::pow(node[0], j+1);});
           EMap<EVector> xnVec(xn.data(), xn.size());
           integral = xnVec.transpose()*(*(massOp.getMatrix()))*xnVec;
-          CHECK(integral == Approx(intx2n(i+1, j+1)));
+          CHECK(integral == Approx(TestUtils::intx2n(i+1, j+1)));
         };
       }
     }
