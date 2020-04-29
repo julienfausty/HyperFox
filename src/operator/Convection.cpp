@@ -24,6 +24,7 @@ void Convection::assemble(const std::vector<double> & dV, const std::vector<EMat
   if(vels.size() == 0){
     throw(ErrorHandle("Convection", "assemble", "the velocity must be set before assembling"));
   }
+  op = EMatrix::Zero(op.rows(), op.cols());
   const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
   const std::vector< std::vector< std::vector<double> > > * ipDerivShapes = refEl->getIPDerivShapeFunctions();
   EVector locMeasure(refEl->getDimension());

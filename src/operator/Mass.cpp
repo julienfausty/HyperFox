@@ -21,7 +21,7 @@ void Mass::assemble(const std::vector< double > & dV, const std::vector< EMatrix
       }
     }
   }
-  EVector buff = phiphi.transpose() * EMap<const EVector>(dV.data(), dV.size());
+  EVector buff = phiphi.transpose() * EMap<const EVector>(dV.data(), refEl->getNumIPs());
   index = 0;
   for(int j = 0; j < nNodes; j++){
     for(int k = j; k < nNodes; k++){

@@ -35,6 +35,12 @@ class HDGBase : public HDGOperator{
      */
     ~HDGBase();
     /*!
+     * \brief a method for allocating the operator
+     *
+     * @param nDOFsPerNode the number of degrees of freedom per node
+     */
+    void allocate(int nDOFsPerNodeUser);
+    /*!
      * \brief a virtual method for assembling the operator
      *
      * @param invJacobians the values of the inverse jacobian matrices at the integration points
@@ -47,7 +53,14 @@ class HDGBase : public HDGOperator{
      *
      * @param tauUser a list of stabilization terms per node
      */
-    void setTau(const std::vector<double> & tauUser);
+    void setTau(const std::vector<double> & userTaus);
+    /*!
+     * \brief method for calculating normals at the IPs
+     *
+     * @param the nodes of the element
+     * @param the jacobians at the IPs of the element and all the face elements
+     */
+    void calcNormals(const std::vector< std::vector<double> > & nodes, const std::vector<EMatrix> & jacobians);
     /*!
      * \brief get method for bulk mass operator
      */
@@ -65,6 +78,10 @@ class HDGBase : public HDGOperator{
      * \brief the stabilization term list at the IPs
      */
     std::vector<double> taus;
+    /*!
+     * \brief the normals list at the IPs
+     */
+    std::vector<EVector> normals;
     /*!
      * \brief a face mass operator
      */

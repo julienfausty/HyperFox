@@ -29,17 +29,17 @@ TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
     CHECK_NOTHROW(HDGBase(&refEl));
     HDGBase baseOp(&refEl);
     std::vector<double> tau(refEl.getFaceElement()->getNumNodes() * refEl.getNumFaces(), 0.0);
-    std::vector<double> dummydV(refEl.getNumIPs(), 0.0);
-    std::vector<EMatrix> dummyJac(refEl.getNumIPs(), EMatrix::Identity(1,1));
+    std::vector<double> dummydV(refEl.getNumIPs()+refEl.getNumFaces()*refEl.getFaceElement()->getNumIPs(), 0.0);
+    std::vector<EMatrix> dummyJac(refEl.getNumIPs()+refEl.getNumFaces()*refEl.getFaceElement()->getNumIPs(), EMatrix::Identity(1,1));
     CHECK_THROWS(baseOp.assemble(dummydV, dummyJac));
     CHECK_NOTHROW(baseOp.allocate(1));
     CHECK_THROWS(baseOp.assemble(dummydV, dummyJac));
     CHECK_NOTHROW(baseOp.setTau(tau));
+    CHECK_THROWS(baseOp.assemble(dummydV, dummyJac));
   };
 
-  int maxDim = 3;
-  int maxOrder = 5;
-
+  int maxDim = 2;
+  int maxOrder = 1;
   for(int i = 1; i < maxDim; i++){
     for(int j = 0; j < maxOrder; j++){
       ReferenceElement refEl(i+1, j+1, "simplex");
@@ -47,15 +47,37 @@ TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
       baseOp.allocate(1);
       std::vector<double> taus(refEl.getFaceElement()->getNumNodes() * refEl.getNumFaces(), 1.0);
       baseOp.setTau(taus);
-      std::vector<EMatrix> invJacs(refEl.getNumIPs(), EMatrix::Identity(i+1, i+1));
-      baseOp.assemble(*(refEl.getIPWeights()), invJacs);
+      std::vector<EMatrix> elJacs(refEl.getNumIPs(), EMatrix::Identity(i+1, i+1));
+      std::vector<EMatrix> jacs(refEl.getNumIPs()+refEl.getNumFaces()*refEl.getFaceElement()->getNumIPs());
+      std::vector<EMatrix> invJacs(refEl.getNumIPs()+refEl.getNumFaces()*refEl.getFaceElement()->getNumIPs());
+      std::vector<double> dV(refEl.getNumIPs()+refEl.getNumFaces()*refEl.getFaceElement()->getNumIPs(), 0.0);
+      std::copy(elJacs.begin(), elJacs.end(), jacs.begin());
+      std::copy(elJacs.begin(), elJacs.end(), invJacs.begin());
+      std::copy(refEl.getIPWeights()->begin(), refEl.getIPWeights()->end(), dV.begin());
+      std::vector<EMatrix> faceJacs(refEl.getFaceElement()->getNumIPs(), EMatrix::Zero(i, i+1));
+      std::vector<double> facedV(refEl.getFaceElement()->getNumIPs(), 0.0);
+      std::vector< std::vector<double> > faceNodes(refEl.getFaceElement()->getNumNodes(), std::vector<double>(i+1, 0.0));
+      for(int k = 0; k < refEl.getNumFaces(); k++){
+        for(int l = 0; l < refEl.getFaceElement()->getNumNodes(); l++){
+          faceNodes[l] = refEl.getNodes()->at(refEl.getFaceNodes()->at(k)[l]);
+        }
+        int offset = refEl.getNumIPs() + k*(refEl.getFaceElement()->getNumIPs());
+        faceJacs = Operator::calcJacobians(faceNodes, refEl.getFaceElement());
+        std::copy(faceJacs.begin(), faceJacs.end(), jacs.begin() + offset);
+        facedV = Operator::calcMeasure(Operator::calcDetJacobians(faceJacs), refEl.getFaceElement());
+        std::copy(facedV.begin(), facedV.end(), dV.begin() + offset);
+        faceJacs = Operator::calcInvJacobians(faceJacs);
+        std::copy(faceJacs.begin(), faceJacs.end(), invJacs.begin() + offset);
+      }
+      CHECK_NOTHROW(baseOp.calcNormals(*(refEl.getNodes()), jacs));
+      baseOp.assemble(dV, invJacs);
       SECTION("Testing bulk operator parts of base in reference element (dim=" + std::to_string(i+1)+ ", ord=" + std::to_string(j+1) + ")"){
         int nNodes = refEl.getNumNodes();
         Mass bulkMassOp(&refEl);
         //Sqq
         bulkMassOp.allocate(i+1);
         bulkMassOp.assemble(*(refEl.getIPWeights()), invJacs);
-        CHECK(baseOp.getMatrix()->block(nNodes, nNodes, (i+1)*nNodes, (i+1)*nNodes) == *(bulkMassOp.getMatrix()));
+        CHECK(std::abs((baseOp.getMatrix()->block(nNodes, nNodes, (i+1)*nNodes, (i+1)*nNodes) - *(bulkMassOp.getMatrix())).sum()) < 1e-12);
         //Squ
         Convection convOp(&refEl);
         convOp.allocate(1);
@@ -70,7 +92,7 @@ TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
             Squ.row(l*(i+1) + k) = (convOp.getMatrix()->col(l)).transpose();
           }
         }
-        CHECK(baseOp.getMatrix()->block(nNodes, 0, nNodes*(i+2), nNodes) == Squ);
+        CHECK(std::abs((baseOp.getMatrix()->block(nNodes, 0, nNodes*(i+1), nNodes) - Squ).sum()) < 1e-12);
       };
       SECTION("Testing surface operator parts of base in reference element (dim=" + std::to_string(i+1)+ ", ord=" + std::to_string(j+1) + ")"){
         const ReferenceElement * fEl = refEl.getFaceElement();
@@ -79,34 +101,27 @@ TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
         int nNodes = refEl.getNumNodes();
         int nNodesFace = fEl->getNumNodes();
         std::vector<EMatrix> faceOps(refEl.getNumFaces(), EMatrix::Zero(nNodesFace, nNodesFace));
-        std::vector<EMatrix> jacs(fEl->getNumIPs(), EMatrix::Zero(i, i+1));
-        std::vector<EMatrix> invJacs(fEl->getNumIPs(), EMatrix::Zero(i+1, i));
-        std::vector<double> dV(fEl->getNumIPs(), 0.0);
         const std::vector< std::vector<int> > * faceNodeMap = refEl.getFaceNodes();
-        std::vector< std::vector<double> > faceNodes(fEl->getNumNodes(), std::vector<double>(i+1, 0.0));
         for(int iface = 0; iface < refEl.getNumFaces(); iface++){
-          for(int k = 0; k < fEl->getNumNodes(); k++){
-            faceNodes[k] = refEl.getNodes()->at((faceNodeMap->at(iface))[k]);
-          }
-          jacs = Operator::calcJacobians(faceNodes, fEl);
-          invJacs = Operator::calcInvJacobians(jacs);
-          dV = Operator::calcMeasure(Operator::calcDetJacobians(jacs), fEl);
-          faceMassOp.assemble(dV, invJacs);
+          int offset = refEl.getNumIPs() + iface*(refEl.getFaceElement()->getNumIPs());
+          std::copy(invJacs.begin() + offset, invJacs.begin() + offset + refEl.getFaceElement()->getNumIPs(), faceJacs.begin());
+          std::copy(dV.begin() + offset, dV.begin() + offset + refEl.getFaceElement()->getNumIPs(), facedV.begin());
+          faceMassOp.assemble(facedV, faceJacs);
           faceOps[iface] = *(faceMassOp.getMatrix());
           int startDiag = nNodes*(i+2) + nNodesFace*iface;
-          //Sll
-          CHECK(baseOp.getMatrix()->block(startDiag, startDiag, nNodesFace, nNodesFace) == -faceOps[iface]);
+          //Sll 
+          CHECK(std::abs((baseOp.getMatrix()->block(startDiag, startDiag, nNodesFace, nNodesFace) + faceOps[iface]).sum()) < 1e-12);
         }
         //Slu
         EMatrix Slu = EMatrix::Zero(nNodesFace*refEl.getNumFaces(), nNodes);
         for(int iface = 0; iface < refEl.getNumFaces(); iface++){
           for(int k = 0; k < nNodesFace; k++){
-            Slu.col((faceNodeMap->at(iface))[k]) += (faceOps[iface]).col(k);
+            Slu.block(iface*nNodesFace, (faceNodeMap->at(iface))[k], nNodesFace, 1) += (faceOps[iface]).col(k);
           }
         }
-        CHECK(baseOp.getMatrix()->block(nNodes*(i+2), 0, nNodesFace*refEl.getNumFaces(), nNodes) == Slu);
+        CHECK(std::abs((baseOp.getMatrix()->block(nNodes*(i+2), 0, nNodesFace*refEl.getNumFaces(), nNodes) - Slu).sum()) < 1e-12);
         //Sul
-        CHECK(baseOp.getMatrix()->block(0, nNodes*(i+2), nNodes, nNodesFace*refEl.getNumFaces()) == Slu.transpose());
+        CHECK(std::abs((baseOp.getMatrix()->block(0, nNodes*(i+2), nNodes, nNodesFace*refEl.getNumFaces()) - Slu.transpose()).sum()) < 1e-12);
         //Suu
         EMatrix Suu = EMatrix::Zero(nNodes, nNodes);
         for(int iface = 0; iface < refEl.getNumFaces(); iface++){
@@ -114,22 +129,22 @@ TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
             Suu.row((faceNodeMap->at(iface))[k]) += Slu.row(iface*nNodesFace + k);
           }
         }
-        CHECK(baseOp.getMatrix()->block(0, 0, nNodes, nNodes) == -Suu);
+        CHECK(std::abs((baseOp.getMatrix()->block(0, 0, nNodes, nNodes) + Suu).sum()) < 1e-12);
         //Slq
         std::vector< std::vector<double> > normals = getRefNormals(i+1);
         EMatrix Slq = EMatrix::Zero(nNodesFace*refEl.getNumFaces(), nNodes*(i+1));
         for(int iface = 0; iface < refEl.getNumFaces(); iface++){
           for(int k = 0; k < nNodesFace; k++){
             for(int d = 0; d < (i+1); d++){
-              Slq.col(faceNodeMap->at(iface)[k]*(i+1)+d) = faceOps[iface].col(k)*normals[iface][d];
+              Slq.block(iface*nNodesFace, faceNodeMap->at(iface)[k]*(i+1)+d, nNodesFace, 1) = faceOps[iface].col(k)*normals[iface][d];
             }
           }
         }
-        CHECK(baseOp.getMatrix()->block(nNodes*(i+2), nNodes, Slq.rows(), Slq.cols()) == Slq);
+        CHECK(std::abs((baseOp.getMatrix()->block(nNodes*(i+2), nNodes, Slq.rows(), Slq.cols()) - Slq).sum()) < 1e-12);
         //Sql
-        CHECK(baseOp.getMatrix()->block(nNodes, nNodes*(i+2), Slq.cols(), Slq.rows()) == -Slq.transpose());
+        CHECK(std::abs((baseOp.getMatrix()->block(nNodes, nNodes*(i+2), Slq.cols(), Slq.rows()) + Slq.transpose()).sum()) < 1e-12);
         //Suq
-        CHECK(baseOp.getMatrix()->block(0, nNodes, nNodes, nNodes*(i+1)) == EMatrix::Zero(nNodes, nNodes*(i+1)));
+        CHECK(std::abs((baseOp.getMatrix()->block(0, nNodes, nNodes, nNodes*(i+1)) - EMatrix::Zero(nNodes, nNodes*(i+1))).sum()) < 1e-12);
       };
     }
   }
