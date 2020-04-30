@@ -149,6 +149,9 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
   op.block(startQblock, startLblock, lenQblock, lenLblock) -= op.block(startLblock, startQblock, lenLblock, lenQblock).transpose();
   //Sul
   op.block(startUblock, startLblock, lenUblock, lenLblock) += op.block(startLblock, startUblock, lenLblock, lenUblock).transpose();
+  if(nDOFsPerNode > 1){
+    multiplyDOFs();
+  }
 };//assemble
 
 }//hfox
