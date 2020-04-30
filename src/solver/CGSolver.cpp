@@ -186,7 +186,7 @@ void CGSolver::calcSparsityPattern(){
   }
   for(int iRow = 0; iRow < sparsity.size(); iRow++){
     for(int kDof = 0; kDof < nDOFsPerNode; kDof++){
-      diagSparsePattern[iRow*nDOFsPerNode + kDof] = sparsity[iRow].size();
+      diagSparsePattern[iRow*nDOFsPerNode + kDof] = sparsity[iRow].size()*nDOFsPerNode;
     }
     //in parallel we have to divide the set into diagonal and off diagonal parts
   }
