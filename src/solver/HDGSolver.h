@@ -1,6 +1,7 @@
 #ifndef HDGSOLVER_H
 #define HDGSOLVER_H
 
+#include <algorithm>
 #include "Solver.h"
 #include "ErrorHandle.h"
 #include "ProgressBar.h"
