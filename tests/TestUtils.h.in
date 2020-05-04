@@ -5,7 +5,11 @@
 #include <fstream>
 #include <cstring>
 #include <vector>
+#include <chrono>
 #include "DenseEigen.h"
+#include "Field.h"
+#include "Mesh.h"
+#include "Operator.h"
 
 
 namespace hfox{
@@ -86,8 +90,70 @@ class TestUtils{
     }
     return res;
   };
+  
+  static double l2ProjectionNodeField(Field * field1, Field * field2, Mesh * mesh){
+    double integral = 0;
+    const ReferenceElement * refEl = mesh->getReferenceElement();
+    std::vector<int> cell(refEl->getNumNodes(), 0);
+    std::vector< std::vector<double> > nodes(cell.size(), 
+        std::vector<double>(mesh->getNodeSpaceDimension(), 0.0));
+    const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
+    const std::vector<double> * ipWeights = refEl->getIPWeights();
+    std::vector<double> detJacs(refEl->getNumIPs(), 0.0);
+    for(int i = 0; i < mesh->getNumberCells(); i++){
+      mesh->getCell(i, &cell);
+      mesh->getSlicePoints(cell, &nodes);
+      detJacs = Operator::calcDetJacobians(Operator::calcJacobians(nodes, refEl));
+      for(int j = 0; j < refEl->getNumIPs(); j++){
+        double dV = detJacs[j]*ipWeights->at(j);
+        for(int k = 0; k < cell.size(); k++){
+          for(int l = 0; l < cell.size(); l++){
+            integral += ipShapes->at(j)[l]*(ipShapes->at(j)[k])*(field1->getValues()->at(cell[k]))*(field2->getValues()->at(cell[l]))*dV;
+          }
+        }
+      }
+    }
+    return integral;
+  };
+
+  static double l2ProjectionCellField(Field * field1, Field * field2, Mesh * mesh){
+    double integral = 0;
+    const ReferenceElement * refEl = mesh->getReferenceElement();
+    std::vector<int> cell(refEl->getNumNodes(), 0);
+    std::vector< std::vector<double> > nodes(cell.size(), 
+        std::vector<double>(mesh->getNodeSpaceDimension(), 0.0));
+    const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
+    const std::vector<double> * ipWeights = refEl->getIPWeights();
+    std::vector<double> detJacs(refEl->getNumIPs(), 0.0);
+    for(int i = 0; i < mesh->getNumberCells(); i++){
+      mesh->getCell(i, &cell);
+      mesh->getSlicePoints(cell, &nodes);
+      detJacs = Operator::calcDetJacobians(Operator::calcJacobians(nodes, refEl));
+      for(int j = 0; j < refEl->getNumIPs(); j++){
+        double dV = detJacs[j]*ipWeights->at(j);
+        for(int k = 0; k < cell.size(); k++){
+          for(int l = 0; l < cell.size(); l++){
+            integral += ipShapes->at(j)[l]*(ipShapes->at(j)[k])*(field1->getValues()->at(i*(refEl->getNumNodes()) + k))*(field2->getValues()->at(i*(refEl->getNumNodes()) + l))*dV;
+          }
+        }
+      }
+    }
+    return integral;
+  };
 
 };//TestUtils
+
+
+struct SimRun{
+  std::string dim;
+  std::string meshSize;
+  std::string order;
+  std::string meshLocation;
+  double linAlgErr;
+  double l2Err;
+  double dL2Err;
+  std::chrono::duration<double> runtime;
+};
 
 }
 

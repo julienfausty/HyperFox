@@ -9,15 +9,15 @@
 #include "Field.h"
 #include "HDF5Io.h"
 #include "Operator.h"
-#include "LaplaceModel.h"
+#include "HDGLaplaceModel.h"
 #include "DirichletModel.h"
 #include "PetscInterface.h"
-#include "CGSolver.h"
+#include "HDGSolver.h"
 #include "TestUtils.h"
 
 using namespace hfox;
 
-double analyticalSolution(const std::vector<double> & point){
+double sinExp(const std::vector<double> & point){
   if(point.size() == 2){
     return (std::sin(point[0]) * std::exp(point[1]));
   } else if(point.size() == 3){
@@ -27,7 +27,7 @@ double analyticalSolution(const std::vector<double> & point){
   }
 };
 
-void runSimulation(SimRun * thisRun){
+void runHDGSimulation(SimRun * thisRun){
   thisRun->meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/";
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
   meshName += "_ord-" + thisRun->order + ".h5";
@@ -45,29 +45,37 @@ void runSimulation(SimRun * thisRun){
     myMesh.getFace(*it, &cell);
     myMesh.getSlicePoints(cell, &nodes);
     for(int j = 0; j < nNodesPerFace; j++){
-      dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalSolution(nodes[j]);
+      dirichlet.getValues()->at((*it)*nNodesPerFace+j) = sinExp(nodes[j]);
     }
   }
-  Field sol(&myMesh, Node, 1, 1);
+  int nNodes = myMesh.getReferenceElement()->getNumNodes();
+  Field sol(&myMesh, Cell, nNodes, 1);
+  Field flux(&myMesh, Cell, nNodes, myMesh.getNodeSpaceDimension());
+  Field trace(&myMesh, Face, nNodesPerFace, 1);
+  Field tau(&myMesh, Face, nNodesPerFace, 1);
+  std::fill(tau.getValues()->begin(), tau.getValues()->end(), 1.0);
   Field anaSol(&myMesh, Node, 1, 1);
   //calculate analytical solution
   std::vector<double> node(myMesh.getNodeSpaceDimension());
   for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
     myMesh.getPoint(iNode, &node);
-    anaSol.getValues()->at(iNode) = analyticalSolution(node);
+    anaSol.getValues()->at(iNode) = sinExp(node);
   }
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
+  fieldMap["Flux"] = &flux;
+  fieldMap["Trace"] = &trace;
+  fieldMap["Tau"] = &tau;
   fieldMap["Dirichlet"] = &dirichlet;
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
-  LaplaceModel lapMod(myMesh.getReferenceElement());
+  HDGLaplaceModel lapMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-16;
-  myOpts.verbose = false;
+  myOpts.verbose = true;
   PetscInterface petsciface(myOpts);
-  CGSolver mySolver;
-  mySolver.setVerbosity(0);
+  HDGSolver mySolver;
+  mySolver.setVerbosity(1);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
@@ -81,18 +89,22 @@ void runSimulation(SimRun * thisRun){
   const KSP * ksp = petsciface.getKSP();
   KSPGetResidualNorm(*ksp, &(thisRun->linAlgErr));
   //calculate l2 err
-  Field residual(&myMesh, Node, 1, 1);
+  Field residual(&myMesh, Cell, nNodes, 1);
+  cell.resize(nNodes);
   double sumRes = 0, sumAna = 0;
-  for(int i = 0; i < myMesh.getNumberPoints(); i++){
-    residual.getValues()->at(i) = anaSol.getValues()->at(i) - sol.getValues()->at(i);
-    sumRes += std::pow(residual.getValues()->at(i), 2);
-    sumAna += std::pow(anaSol.getValues()->at(i), 2);
+  for(int i = 0; i < myMesh.getNumberCells(); i++){
+    myMesh.getCell(i, &cell);
+    for(int j = 0; j < nNodes; j++){
+      residual.getValues()->at(i*nNodes + j) = anaSol.getValues()->at(cell[j]) - sol.getValues()->at(i*nNodes + j);
+      sumRes += std::pow(residual.getValues()->at(i*nNodes + j), 2);
+      sumAna += std::pow(anaSol.getValues()->at(cell[j]), 2);
+    }
   }
-  thisRun->l2Err = std::sqrt(TestUtils::l2ProjectionNodeField(&residual, &residual, &myMesh));
+  thisRun->l2Err = std::sqrt(TestUtils::l2ProjectionCellField(&residual, &residual, &myMesh));
   thisRun->dL2Err = std::sqrt(sumRes/sumAna);
 };
 
-TEST_CASE("Testing regression CGLaplace", "[regression][CG][Laplace]"){
+TEST_CASE("Testing regression HDGLaplace", "[regression][HDG][Laplace]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
@@ -114,10 +126,10 @@ TEST_CASE("Testing regression CGLaplace", "[regression][CG][Laplace]"){
 
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
-    runSimulation(&(*it));
+    runHDGSimulation(&(*it));
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
-    CHECK(it->l2Err < 1e-2);
+    CHECK(it->l2Err < 3e-2);
   }
 
 };
