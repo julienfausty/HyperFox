@@ -5,7 +5,7 @@ find_package(MPI REQUIRED)
 if (MPI_FOUND)
   set (CMAKE_C_COMPILER "${MPI_C_COMPILER}")
   set (CMAKE_CXX_COMPILER "${MPI_CXX_COMPILER}")
-  add_definitions(-DOMPI_SKIP_MPICXX)
+  add_definitions("-DOMPI_SKIP_MPICXX")
 endif()
 
 find_package(OpenMP REQUIRED)
