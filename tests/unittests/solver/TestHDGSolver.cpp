@@ -14,9 +14,9 @@ using namespace hfox;
 TEST_CASE("Testing the HDGSolver", "[unit][solver][HDGSolver]"){
 
   HDF5Io hdfio;
-  Mesh m(2, 1, "simplex");
+  Mesh m(2, 2, "simplex");
   hdfio.setMesh(&m);
-  hdfio.load(TestUtils::getRessourcePath() + std::string("/meshes/lightTri.h5"));
+  hdfio.load(TestUtils::getRessourcePath() + std::string("/meshes/lightTri2.h5"));
   std::map<std::string, Field* > fieldMap;
   Field sol(&m, Cell, m.getReferenceElement()->getNumNodes(), 1);
   Field flux(&m, Cell, m.getReferenceElement()->getNumNodes(), 2);
@@ -28,12 +28,13 @@ TEST_CASE("Testing the HDGSolver", "[unit][solver][HDGSolver]"){
   DirichletModel dirMod(m.getReferenceElement()->getFaceElement());
   HDGLaplaceModel hdgLapMod(m.getReferenceElement());
   PetscOpts myOpts;
-  myOpts.verbose = true;
+  myOpts.rtol = 1e-12;
+  myOpts.verbose = false;
   PetscInterface petscIFace(myOpts);
   SECTION("Testing setup"){
     HDGSolver hdgSolve;
 
-    CHECK_NOTHROW(hdgSolve.setVerbosity(1));
+    CHECK_NOTHROW(hdgSolve.setVerbosity(0));
 
     CHECK_THROWS(hdgSolve.solve());
     CHECK_THROWS(hdgSolve.assemble());
@@ -84,20 +85,6 @@ TEST_CASE("Testing the HDGSolver", "[unit][solver][HDGSolver]"){
     traceVals = lambda.getValues();
     int nNodesPerEl = m.getReferenceElement()->getNumNodes();
     int nNodesPerFc = m.getReferenceElement()->getFaceElement()->getNumNodes();
-    const Mat * M = petscIFace.getMatrix();
-    EMatrix EM(nNodesPerFc * m.getNumberFaces(), nNodesPerFc*m.getNumberFaces());
-    std::vector<int> rowCols(nNodesPerFc * m.getNumberFaces());
-    std::iota(rowCols.begin(), rowCols.end(), 0);
-    MatGetValues(*M, nNodesPerFc * m.getNumberFaces(), rowCols.data(), nNodesPerFc*m.getNumberFaces(), rowCols.data(), EM.data());
-    std::cout << "Matrix" << std::endl;
-    std::cout << EM.transpose() << std::endl;
-    const Vec * V = petscIFace.getRHS();
-    EVector EV(nNodesPerFc*m.getNumberFaces());
-    VecGetValues(*V, nNodesPerFc * m.getNumberFaces(), rowCols.data(), EV.data());
-    //std::cout << "RHS" << std::endl;
-    //std::cout << EV << std::endl;
-    std::cout << "Solution" << std::endl;
-    std::cout << EM.transpose().householderQr().solve(EV) << std::endl;
     for(int i = 0; i < m.getNumberCells(); i++){
       for(int j = 0; j < nNodesPerEl; j++){
         CHECK((*solVals)[i*nNodesPerEl + j] == Approx(3.0).margin(1e-12));

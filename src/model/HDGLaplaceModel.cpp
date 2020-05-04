@@ -75,11 +75,18 @@ void HDGLaplaceModel::computeLocalMatrix(){
   ((HDGBase*)operatorMap["Base"])->calcNormals(*elementNodes, jacobians);
   operatorMap["Base"]->assemble(dV, invJacobians);
   localMatrix = *(operatorMap["Base"]->getMatrix());
+  int dim = refEl->getDimension();
   int lenU = refEl->getNumNodes() * nDOFsPNode;
   int startQ = lenU;
-  int lenQ = lenU * (refEl->getDimension());
+  int lenQ = lenU * dim;
 
-  localMatrix.block(0, startQ, lenU, lenQ) += localMatrix.block(startQ, 0, lenQ, lenU).transpose();
+  for(int i = 0; i < lenU; i++){
+    for(int j = 0; j < lenU; j++){
+      for(int k = 0; k < dim; k++){
+        localMatrix(i, startQ + j*dim + k) += localMatrix(startQ + i*dim + k, j);
+      }
+    }
+  }
 
   int nNodesFace = refEl->getFaceElement()->getNumNodes();
   int nFaces = refEl->getNumFaces();

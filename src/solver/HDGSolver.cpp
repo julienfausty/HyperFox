@@ -159,7 +159,6 @@ void HDGSolver::assemble(){
   std::vector< std::vector<double> > nodes(nNodesPEl, std::vector<double>(dim, 0.0));
   std::vector<int> cell(nNodesPEl, 0);
   std::vector<int> face(nNodesPFc, 0);
-  std::vector<int> locfaceOrdering(nNodesPFc, 0);
   std::vector<int> facesInCell(nFacesPEl, 0);
   std::vector<int> face2Cells(2, 0);
   std::vector<int> unitCell(1, 0);
@@ -193,20 +192,36 @@ void HDGSolver::assemble(){
     constructLocalFields(unitCell, &cellFieldMap);
     constructLocalFields(cell, &nodalFieldMap);
     for(itfm = nodalFieldMap.begin(); itfm != nodalFieldMap.end(); itfm++){locFieldMap[itfm->first] = itfm->second;}
-    for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){locFieldMap[itfm->first] = itfm->second;}
     for(itfm = cellFieldMap.begin(); itfm != cellFieldMap.end(); itfm++){locFieldMap[itfm->first] = itfm->second;}
+    for(int i = 0; i < nFacesPEl; i++){
+      myMesh->getFace(facesInCell[i], &face);
+      for(int j = 0; j < nNodesPFc; j++){
+        matRowCols[i*nNodesPFc + j] = facesInCell[i] * nNodesPFc + std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]));
+      }
+      myMesh->getFace2Cell(facesInCell[i], &face2Cells);
+    }
+    //re order the face fields correctly for local ordering
+    for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){
+      locFieldMap[itfm->first].resize((itfm->second).size());
+      for(int i = 0; i < nFacesPEl; i++){
+        offset = i*nNodesPFc;
+        for(int j = 0; j <nNodesPFc; j++){
+          locFieldMap[itfm->first][offset + j] = itfm->second[matRowCols[offset + j] - facesInCell[i] * nNodesPFc];
+        }
+      }
+    }
     //orienting faces here using the sign of tau
-    //for(int i = 0; i < nFacesPEl; i++){
-      //myMesh->getFace2Cell(facesInCell[i], &face2Cells);
-      //sgn = 1;
-      //if(iEl == face2Cells[1]){
-        //sgn = -1;
-      //}
-      //offset = i*nNodesPFc;
-      //for(int j = 0; j < nNodesPFc; j++){
-        //locFieldMap["Tau"][offset + j] *= sgn;
-      //}
-    //}
+    for(int i = 0; i < nFacesPEl; i++){
+      myMesh->getFace2Cell(facesInCell[i], &face2Cells);
+      sgn = 1;
+      if(iEl == face2Cells[1]){
+        sgn = -1;
+      }
+      offset = i*nNodesPFc;
+      for(int j = 0; j < nNodesPFc; j++){
+        locFieldMap["Tau"][offset + j] *= sgn;
+      }
+    }
     model->setFieldMap(&locFieldMap);
     model->compute();
     locMat = model->getLocalMatrix();
@@ -226,16 +241,6 @@ void HDGSolver::assemble(){
     locQ0 = -invSqqSqu*locU0;
     locS = locMat->block(startL, startU, lenL, lenU)*locU + locMat->block(startL, startQ, lenL, lenQ)*locQ + locMat->block(startL, startL, lenL, lenL);
     locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*locU0 - locMat->block(startL, startQ, lenL, lenQ)*locQ0;
-    std::cout << "locS" << std::endl;
-    std::cout << locS << std::endl;
-    std::cout << "locS0" << std::endl;
-    std::cout << locS0 << std::endl;
-    for(int i = 0; i < nFacesPEl; i++){
-      myMesh->getFace(facesInCell[i], &face);
-      for(int j = 0; j < nNodesPFc; j++){
-        matRowCols[i*nNodesPFc + j] = facesInCell[i] * nNodesPFc + std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]));
-      }
-    }
     switch(modAssembly->matrix){
       case Add:{
                  linSystem->addValsMatrix(matRowCols, matRowCols, locS.transpose().data());
@@ -337,6 +342,7 @@ void HDGSolver::solve(){
   }
   linSystem->solve((*fieldMap)["Trace"]->getValues());
   const ReferenceElement * refEl = myMesh->getReferenceElement();
+  const std::vector< std::vector<int> > * nodeMap = refEl->getFaceNodes();
   const ReferenceElement * fEl = refEl->getFaceElement();
   int dim = myMesh->getNodeSpaceDimension();
   int nFacesPEl = refEl->getNumFaces();
@@ -347,6 +353,8 @@ void HDGSolver::solve(){
   int lenT = nNodesPFc * nDOFsPerNode;
   int lenL = lenT * nFacesPEl;
   std::vector<int> facesInCell(nFacesPEl, 0);
+  std::vector<int> cell(nNodesPEl, 0);
+  std::vector<int> face(nNodesPFc, 0);
   EVector locL(lenL);
   int iEl = 0;
   ProgressBar pb;
@@ -357,22 +365,21 @@ void HDGSolver::solve(){
     pb.update();
   }
   for(iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
+    myMesh->getCell(iEl, &cell);
     myMesh->getCell2Face(iEl, &facesInCell);
     EMap<EMatrix> locU(U->getValues()->data() + iEl*lenU*lenL, lenU, lenL);
     EMap<EMatrix> locQ(Q->getValues()->data() + iEl*lenQ*lenL, lenQ, lenL);
     EMap<EVector> locU0(U0->getValues()->data() + iEl*lenU, lenU);
     EMap<EVector> locQ0(Q0->getValues()->data() + iEl*lenQ, lenQ);
     for(int i = 0; i < nFacesPEl; i++){
-      locL.segment(i*lenT, lenT) = EMap<EVector>(fieldMap->at("Trace")->getValues()->data()+facesInCell[i]*lenT, lenT);
+      EMap<EVector> buff(fieldMap->at("Trace")->getValues()->data()+facesInCell[i]*lenT, lenT);
+      myMesh->getFace(facesInCell[i], &face);
+      for(int j = 0; j < nNodesPFc; j++){
+        locL[i*lenT + j] = buff[std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]))];
+      }
     }
     EMap<EVector> locSol(fieldMap->at("Solution")->getValues()->data()+iEl*lenU, lenU);
     EMap<EVector> locFlux(fieldMap->at("Flux")->getValues()->data()+iEl*lenQ, lenQ);
-    std::cout << "locU" << std::endl;
-    std::cout << locU << std::endl;
-    std::cout << "locQ" << std::endl;
-    std::cout << locQ << std::endl;
-    std::cout << "locL" << std::endl;
-    std::cout << locL << std::endl;
     locSol = locU*locL + locU0;
     locFlux = locQ*locL + locQ0;
     if(verbose){

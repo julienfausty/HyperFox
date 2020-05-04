@@ -93,8 +93,19 @@ TEST_CASE("Testing the HDGLaplaceModel", "[unit][model][HDGLaplaceModel]"){
         //Sll
         CHECK(std::abs((hdgLapMod.getLocalMatrix()->block(startL, startL, lenL, lenL) - baseOp.getMatrix()->block(startL, startL, lenL, lenL)).sum()) < tol);
         //Suq
+        Convection convOp(&refEl);
+        convOp.allocate(1);
         EMatrix Suq(lenU, lenQ);
-        Suq = (baseOp.getMatrix()->block(startQ, startU, lenQ, lenU)).transpose();
+        for(int k = 0; k < i+1; k++){
+          EVector unitBase = EVector::Zero(i+1);
+          unitBase[k] = 1.0;
+          std::vector<EVector> velocity(lenU, unitBase);
+          convOp.setVelocity(velocity);
+          convOp.assemble(*(refEl.getIPWeights()), invJacs);
+          for(int l = 0 ; l < lenU; l++){
+            Suq.col(l*(i+1) + k) = (convOp.getMatrix()->row(l)).transpose();
+          }
+        }
         for(int iFace = 0; iFace < refEl.getNumFaces(); iFace++){
           for(int k = 0; k < refEl.getFaceElement()->getNumNodes(); k++){
             int rowInd = (refEl.getFaceNodes()->at(iFace))[k];
