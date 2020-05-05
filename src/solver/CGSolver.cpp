@@ -118,7 +118,7 @@ void CGSolver::assemble(){
         pb.update();
       }
     }
-    linSystem->assemble();
+    linSystem->assembleFlush();
   }
   if(verbose){
     index = 0;

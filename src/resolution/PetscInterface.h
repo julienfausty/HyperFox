@@ -127,6 +127,10 @@ class PetscInterface : public LinAlgebraInterface{
      * \brief assemble the system
      */
     void assemble();
+   /*!
+     * \brief assemble an intermediate system
+     */
+    void assembleFlush();
     /*!
      * \brief clear the values set in the system but keep the structure if possible
      */

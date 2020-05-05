@@ -67,7 +67,7 @@ void runSimulation(SimRun * thisRun){
   myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   CGSolver mySolver;
-  mySolver.setVerbosity(0);
+  mySolver.setVerbosity(false);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
@@ -90,6 +90,9 @@ void runSimulation(SimRun * thisRun){
   }
   thisRun->l2Err = std::sqrt(TestUtils::l2ProjectionNodeField(&residual, &residual, &myMesh));
   thisRun->dL2Err = std::sqrt(sumRes/sumAna);
+  //hdfio.setField("Solution", &sol);
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/LaplaceConvergence/CG/";
+  //hdfio.write(writePath + meshName);
 };
 
 TEST_CASE("Testing regression CGLaplace", "[regression][CG][Laplace]"){
@@ -111,13 +114,24 @@ TEST_CASE("Testing regression CGLaplace", "[regression][CG][Laplace]"){
       }
     }
   }
-
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/LaplaceConvergence/";
+  //std::string writeFile = "CG/CGLaplace.csv";
+  //std::ofstream f; f.open(writePath + writeFile);
+  //f << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runSimulation(&(*it));
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
     CHECK(it->l2Err < 1e-2);
+    //f << it->dim << ", ";
+    //f << it->order << ", ";
+    //f << it->meshSize << ", ";
+    //f << it->linAlgErr << ", ";
+    //f << it->l2Err << ", ";
+    //f << it->dL2Err << ", ";
+    //f << it->runtime.count() << "\n";
   }
+  //f.close();
 
 };

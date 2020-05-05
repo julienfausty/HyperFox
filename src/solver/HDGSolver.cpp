@@ -210,18 +210,6 @@ void HDGSolver::assemble(){
         }
       }
     }
-    //orienting faces here using the sign of tau
-    for(int i = 0; i < nFacesPEl; i++){
-      myMesh->getFace2Cell(facesInCell[i], &face2Cells);
-      sgn = 1;
-      if(iEl == face2Cells[1]){
-        sgn = -1;
-      }
-      offset = i*nNodesPFc;
-      for(int j = 0; j < nNodesPFc; j++){
-        locFieldMap["Tau"][offset + j] *= sgn;
-      }
-    }
     model->setFieldMap(&locFieldMap);
     model->compute();
     locMat = model->getLocalMatrix();
@@ -291,7 +279,7 @@ void HDGSolver::assemble(){
         pb.update();
       }
     }
-    linSystem->assemble();
+    //linSystem->assembleFlush();
   }
   if(verbose){
     index = 0;

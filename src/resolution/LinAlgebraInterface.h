@@ -112,6 +112,10 @@ class LinAlgebraInterface{
      */
     virtual void assemble()=0;
     /*!
+     * \brief assemble an intermediate system
+     */
+    virtual void assembleFlush()=0;
+    /*!
      * \brief command to have the package solve the assembled system
      *
      * @param solution vector to insert the solution into

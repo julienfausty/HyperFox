@@ -100,6 +100,8 @@ void PetscInterface::allocate(int ndofs, const std::vector<int> * diagSparsePatt
       CHKERRXX(pErr);
       pErr = MatSetOption(M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
       CHKERRXX(pErr);
+      pErr = MatSetOption(M,MAT_KEEP_NONZERO_PATTERN,PETSC_TRUE);
+      CHKERRXX(pErr);
     }
     pErr = VecSetSizes(b, nDOFs, PETSC_DETERMINE);
     CHKERRXX(pErr);
@@ -199,6 +201,18 @@ void PetscInterface::assemble(){
     VecAssemblyBegin(b);
     VecAssemblyEnd(b);
     MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY);
+    assembled = 1;
+  } else {
+    throw(ErrorHandle("PetscInterface", "assemble", "the matrix should at least be allocated before assembling."));
+  }
+};//assemble
+
+void PetscInterface::assembleFlush(){
+  if(allocated){
+    MatAssemblyBegin(M, MAT_FLUSH_ASSEMBLY);
+    VecAssemblyBegin(b);
+    VecAssemblyEnd(b);
+    MatAssemblyEnd(M, MAT_FLUSH_ASSEMBLY);
     assembled = 1;
   } else {
     throw(ErrorHandle("PetscInterface", "assemble", "the matrix should at least be allocated before assembling."));
