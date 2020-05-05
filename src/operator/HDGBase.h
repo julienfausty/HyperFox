@@ -70,9 +70,13 @@ class HDGBase : public HDGOperator{
      */
     const Mass * getFaceMass() const{return faceMass;};
     /*!
-     * \brief get method for face mass operator
+     * \brief get method for convection operator
      */
     const Convection * getConvection() const{return convection;};
+    /*!
+     * \brief get method for the normals list at the IPs
+     */
+    const std::vector<EVector> * getNormals() const{return &normals;};
   protected:
     /*!
      * \brief the stabilization term list at the IPs

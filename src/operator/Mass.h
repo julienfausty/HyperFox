@@ -1,3 +1,6 @@
+#ifndef MASS_H
+#define MASS_H
+
 #include <vector>
 #include "Operator.h"
 #include "ReferenceElement.h"
@@ -28,3 +31,5 @@ class Mass : public Operator{
 };//Mass
 
 }//hfox
+
+#endif //MASS_H
