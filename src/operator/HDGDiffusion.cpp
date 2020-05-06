@@ -109,6 +109,9 @@ void HDGDiffusion::assemble(const std::vector<double> & dV, const std::vector<EM
       }
     }
   }
+  if(nDOFsPerNode > 1){
+    multiplyDOFs();
+  }
 };//assemble
 
 }//hfox

@@ -1,0 +1,38 @@
+#include "Euler.h"
+
+namespace hfox{
+
+Euler::Euler(const ReferenceElement * re, bool isExplicitUser) : TimeScheme(re){
+  isExplicit = isExplicitUser;
+};//constructor
+
+void Euler::setFieldMap(std::map<std::string, const std::vector<double> * > * fm){
+  std::map<std::string, const std::vector<double>* >::const_iterator it;
+  it = fm->find("Solution");
+  if(it == fm->end()){
+    throw(ErrorHandle("Euler", "setFieldMap", "the field map must have a Solution field"));
+  }
+  fieldMap = fm;
+};//setFieldMap
+
+void Euler::apply(EMatrix * stiffness, EVector * rhs){
+  if(!allocated){
+    throw(ErrorHandle("Euler", "apply", "the Euler time scheme should at least be allocated (and hopefully assembled) before being applied"));
+  }
+  if(fieldMap == NULL){
+    throw(ErrorHandle("Euler", "apply", "the fieldMap must be set before attempting to apply the time scheme"));
+  }
+  if(deltat == 0.0){
+    throw(ErrorHandle("Euler", "apply", "the time step needs to be set before applying and it should not be 0"));
+  }
+  op *= (1/deltat);
+  if(!isExplicit){
+    *stiffness = op + (*stiffness);
+    *rhs += op*EMap<const EVector>(fieldMap->at("Solution")->data(), op.cols());
+  } else {
+    *rhs += (op - (*stiffness))*EMap<const EVector>(fieldMap->at("Solution")->data(), op.cols());
+    *stiffness = op;
+  }
+};//apply
+
+}//hfox
