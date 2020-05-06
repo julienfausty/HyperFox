@@ -60,9 +60,13 @@ class HDGDiffusion : public HDGOperator{
 
   protected:
     /*!
-     * \brief list of diffusion tensors at the IPs
+     * \brief list of diffusion tensors at the face IPs
      */
     std::vector<EMatrix> Ds;
+    /*!
+     * \brief list of diffusion tensors at the element nodes
+     */
+    std::vector<EMatrix> myDiffTensor;
     /*!
      * \brief a pointer to a convection operator
      */

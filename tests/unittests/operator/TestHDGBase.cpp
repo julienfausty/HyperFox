@@ -7,21 +7,6 @@
 
 using namespace hfox;
 
-std::vector< std::vector<double> > getRefNormals(int dim){
-  std::vector< std::vector<double> > normals;
-  if(dim == 2){
-    normals.push_back(std::vector<double>({0, -1}));
-    normals.push_back(std::vector<double>({1.0/std::sqrt(2.0), 1.0/std::sqrt(2.0)}));
-    normals.push_back(std::vector<double>({-1, 0}));
-  } else if(dim == 3){
-    normals.push_back(std::vector<double>({0, -1, 0}));
-    normals.push_back(std::vector<double>({1.0/std::sqrt(3.0), 1.0/std::sqrt(3.0), 1.0/std::sqrt(3.0)}));
-    normals.push_back(std::vector<double>({-1, 0, 0}));
-    normals.push_back(std::vector<double>({0, 0, -1}));
-  }
-  return normals;
-};//getRefNormals
-
 TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
 
   SECTION("Testing allocation necessary"){
@@ -131,7 +116,7 @@ TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
         }
         CHECK(std::abs((baseOp.getMatrix()->block(0, 0, nNodes, nNodes) + Suu).sum()) < 1e-12);
         //Slq
-        std::vector< std::vector<double> > normals = getRefNormals(i+1);
+        std::vector< std::vector<double> > normals = TestUtils::getRefNormals(i+1);
         EMatrix Slq = EMatrix::Zero(nNodesFace*refEl.getNumFaces(), nNodes*(i+1));
         for(int iface = 0; iface < refEl.getNumFaces(); iface++){
           for(int k = 0; k < nNodesFace; k++){

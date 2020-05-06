@@ -141,6 +141,21 @@ class TestUtils{
     return integral;
   };
 
+  static std::vector< std::vector<double> > getRefNormals(int dim){
+    std::vector< std::vector<double> > normals;
+    if(dim == 2){
+      normals.push_back(std::vector<double>({0, -1}));
+      normals.push_back(std::vector<double>({1.0/std::sqrt(2.0), 1.0/std::sqrt(2.0)}));
+      normals.push_back(std::vector<double>({-1, 0}));
+    } else if(dim == 3){
+      normals.push_back(std::vector<double>({0, -1, 0}));
+      normals.push_back(std::vector<double>({1.0/std::sqrt(3.0), 1.0/std::sqrt(3.0), 1.0/std::sqrt(3.0)}));
+      normals.push_back(std::vector<double>({-1, 0, 0}));
+      normals.push_back(std::vector<double>({0, 0, -1}));
+    }
+    return normals;
+  };//getRefNormals
+
 };//TestUtils
 
 
