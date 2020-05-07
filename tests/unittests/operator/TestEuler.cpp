@@ -16,10 +16,10 @@ TEST_CASE("Testing the Euler time scheme", "[unit][operator][TimeScheme][Euler]"
     EMatrix * dummyMat;
     EVector * dummyVec;
     CHECK_THROWS(backEuler.apply(dummyMat, dummyVec));
-    std::map<std::string, const std::vector<double>* > fm;
+    std::map<std::string, std::vector<double> > fm;
     CHECK_THROWS(backEuler.setFieldMap(&fm));
     std::vector<double> sol(refEl.getNumNodes(), 1.0);
-    fm["Solution"] = &sol;
+    fm["Solution"] = sol;
     CHECK_NOTHROW(backEuler.setFieldMap(&fm));
   };
 
@@ -54,10 +54,10 @@ TEST_CASE("Testing the Euler time scheme", "[unit][operator][TimeScheme][Euler]"
         conv.assemble(dV, jacs);
         backEuler.assemble(dV, jacs);
         forEuler.assemble(dV, jacs);
-        std::map<std::string, const std::vector<double> * > fm;
+        std::map<std::string, std::vector<double> > fm;
         std::vector<double> sol(refEl.getNumNodes(), 0.0);
         std::iota(sol.begin(), sol.end(), 0.0);
-        fm["Solution"] = &sol;
+        fm["Solution"] = sol;
         backEuler.setFieldMap(&fm);
         forEuler.setFieldMap(&fm);
         double tStep = 1e-1;

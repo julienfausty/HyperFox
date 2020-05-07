@@ -21,7 +21,7 @@ class Euler : public TimeScheme{
      *
      * @param fm the field map
      */
-    void setFieldMap(std::map<std::string, const std::vector<double> * > * fm);
+    void setFieldMap(const std::map<std::string, std::vector<double> > * fm);
     /*!
      * \brief the method that applies the time scheme to the local stiffness matrix and rhs inplace
      *

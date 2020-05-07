@@ -21,7 +21,7 @@ class TimeScheme : public Mass{
      *
      * @param fm the field map
      */
-    virtual void setFieldMap(std::map<std::string, const std::vector<double> * > * fm)=0;
+    virtual void setFieldMap(const std::map<std::string, std::vector<double> > * fm)=0;
     /*!
      * \brief the method that applies the time scheme to the local stiffness matrix and rhs inplace
      *
@@ -40,7 +40,7 @@ class TimeScheme : public Mass{
     /*!
      * \brief a pointer to the field map
      */
-    std::map<std::string, const std::vector<double> * > * fieldMap = NULL;
+    std::map<std::string, const std::vector<double> * > fieldMap;
     /*!
      * \brief time step parameter
      */

@@ -1,59 +1,62 @@
-#ifndef HFGLAPLACEMODEL_H
-#define HDGLAPLACEMODEL_H
+#ifndef HDGMODEL_H
+#define HDGMODEL_H
 
 #include <string>
 #include <map>
 #include <algorithm>
-#include "HDGModel.h"
+#include "FEModel.h"
 #include "HDGBase.h"
 
 namespace hfox{
 
 /*!
- * \brief The model that implements the Laplace equation ($\Delta u = 0$) in an HDG setting
+ * \brief Interface for HDG models
  */
 
-class HDGLaplaceModel : public HDGModel{
-
+class HDGModel : public FEModel{
   public:
     /*!
      * \brief constructor inheritance
      */
-    using HDGModel::HDGModel;
+    using FEModel::FEModel;
     /*!
      * \brief a method to set the local fields
      *
      * @param pointer to a map of names and corresponding local values of fields
      */
-    //void setFieldMap(const std::map<std::string, std::vector<double> > * fm);
+    virtual void setFieldMap(const std::map<std::string, std::vector<double> > * fm);
     /*!
      * \brief allocating the local matrix and rhs
      */
-    void allocate(int nDOFsPerNode);
+    virtual void allocate(int nDOFsPerNode);
+    /*!
+     * \brief the HDG compute method
+     */
+    virtual void compute();
   protected:
     /*!
      * \brief initialize all the operators for the class
      */
-    //void initializeOperators();
+    virtual void initializeOperators();
     /*!
      * \brief compute the local matrix
      */
-    void computeLocalMatrix();
+    virtual void computeLocalMatrix()=0;
     /*!
      * \brief compute the local right hand side
      */
-    void computeLocalRHS();
+    virtual void computeLocalRHS()=0;
     /*!
      * \brief compute the element jacobians, inverse jacobians and measures
      */
-    //void computeElementJacobians();
+    void computeElementJacobians();
     /*!
      * \brief number of DOFs per node
      */
-    //int nDOFsPNode = 1;
+    int nDOFsPNode = 1;
 
-};//HDGLaplaceModel
+};//HDGModel
 
-}
+}//hfox
 
-#endif//HDGLAPLACEMODEL_H
+#endif//HDGMODEL_H

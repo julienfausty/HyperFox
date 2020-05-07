@@ -8,6 +8,7 @@
 #include "DenseEigen.h"
 #include "ErrorHandle.h"
 #include "Operator.h"
+#include "TimeScheme.h"
 #include "AssemblyType.h"
 
 
@@ -46,6 +47,10 @@ class FEModel : public Model{
      * @param pointer to a map of names and corresponding local values of fields
      */
     virtual void setFieldMap(const std::map<std::string, std::vector<double> > * fm) = 0;
+    /*!
+     * \brief set the time scheme
+     */
+    void setTimeScheme(TimeScheme * ts);
     /*!
      * \brief compute the local matrix
      */
@@ -87,6 +92,10 @@ class FEModel : public Model{
      * \brief a map containing the local operators relevant to the model with their names
      */
     std::map<std::string, Operator*> operatorMap;
+    /*!
+     * \brief pointer to the time scheme
+     */
+    TimeScheme * timeScheme = NULL;
     /*!
      * \brief a vector of jacobians at IPs
      */

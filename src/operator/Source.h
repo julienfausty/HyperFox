@@ -9,9 +9,9 @@ namespace hfox{
 /*!
  * \brief the operator implementing the source term from an analytical function
  *
- * \[\
+ * \[
  * \int_{\Omega} f \varphi
- * ]
+ * \]
  */
 
 class Source : public RHSOperator{
