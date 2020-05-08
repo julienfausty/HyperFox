@@ -163,11 +163,16 @@ struct SimRun{
   std::string dim;
   std::string meshSize;
   std::string order;
+  std::string timeStep;
   std::string meshLocation;
-  double linAlgErr;
-  double l2Err;
-  double dL2Err;
-  std::chrono::duration<double> runtime;
+  double linAlgErr = 0;
+  double l2Err = 0;
+  double dL2Err = 0;
+  std::chrono::duration<double> runtime = std::chrono::duration<double>::zero();
+  std::chrono::duration<double> setup= std::chrono::duration<double>::zero();
+  std::chrono::duration<double> assembly= std::chrono::duration<double>::zero();
+  std::chrono::duration<double> resolution= std::chrono::duration<double>::zero();
+  std::chrono::duration<double> post= std::chrono::duration<double>::zero();
 };
 
 }

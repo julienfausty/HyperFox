@@ -13,7 +13,7 @@ namespace hfox{
  * \brief A model implementing the diffusion with a source term equation in an HDG setting
  *
  * \[
- * \partial_{t} u - \Delta u + f = 0
+ * \partial_{t} u - \Delta u = f
  * \]
  */
 
