@@ -53,7 +53,12 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit){
   meshName += "_ord-" + thisRun->order;
   thisRun->meshLocation += meshName + ".h5";
   std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
-  std::string writeDir = writePath + "ImpExp/";
+  std::string writeDir = writePath;
+  if(!isExplicit){
+    writeDir += "ImpImp/";
+  } else{
+    writeDir += "ImpExp/";
+  }
   writeDir += meshName + "_dt-" + thisRun->timeStep;
   boost::filesystem::create_directory(writeDir);
   Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
@@ -110,7 +115,7 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit){
     }
   }
   hdfio.write(writeDir + "/res_0.h5");
-  double timeEnd = 1.0;
+  double timeEnd = 1;
   int nIters = timeEnd / timeStep;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
@@ -173,11 +178,11 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit){
 TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][DiffusionSource]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
-  //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
+  meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"7e-2"};
-  std::vector<std::string> timeSteps = {"5e-2"};
-  std::vector<std::string> orders = {"3"};
+  //meshSizes["2"] = {"5e-2"};
+  std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3"};
+  std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -195,11 +200,16 @@ TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][
   }
 
   std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
-  std::string writeFile = "ImpExp/Breakdown.csv";
+  bool isExplicit = 0;
+  std::string writeFile;
+  if(isExplicit){
+    writeFile = "ImpExp/Breakdown.csv";
+  } else {
+    writeFile = "ImpImp/Breakdown.csv";
+  }
   std::ofstream f; f.open(writePath + writeFile);
   f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
-    bool isExplicit = 0;
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runHDGDiffSrc(&(*it), isExplicit);
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();

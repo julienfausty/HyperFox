@@ -27,7 +27,7 @@ void Euler::apply(EMatrix * stiffness, EVector * rhs){
   }
   op *= (1/deltat);
   if(!isExplicit){
-    *stiffness = op + (*stiffness);
+    *stiffness += op;
     *rhs += op*EMap<const EVector>(fieldMap["Solution"]->data(), op.cols());
   } else {
     *rhs += (op - (*stiffness))*EMap<const EVector>(fieldMap["Solution"]->data(), op.cols());
