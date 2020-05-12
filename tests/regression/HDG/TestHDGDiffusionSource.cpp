@@ -52,15 +52,15 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit){
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
   meshName += "_ord-" + thisRun->order;
   thisRun->meshLocation += meshName + ".h5";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
-  std::string writeDir = writePath;
-  if(!isExplicit){
-    writeDir += "ImpImp/";
-  } else{
-    writeDir += "ImpExp/";
-  }
-  writeDir += meshName + "_dt-" + thisRun->timeStep;
-  boost::filesystem::create_directory(writeDir);
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
+  //std::string writeDir = writePath;
+  //if(!isExplicit){
+    //writeDir += "ImpImp/";
+  //} else{
+    //writeDir += "ImpExp/";
+  //}
+  //writeDir += meshName + "_dt-" + thisRun->timeStep;
+  //boost::filesystem::create_directory(writeDir);
   Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
   HDF5Io hdfio(&myMesh);
   hdfio.load(thisRun->meshLocation);
@@ -88,11 +88,11 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit){
   diffMod.setTimeScheme(&ts);
   PetscOpts myOpts;
   myOpts.maxits = 20000;
-  myOpts.rtol = 1e-16;
-  myOpts.verbose = true;
+  myOpts.rtol = 1e-6;
+  myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   HDGSolver mySolver;
-  mySolver.setVerbosity(true);
+  mySolver.setVerbosity(false);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
@@ -106,7 +106,7 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit){
   std::vector<double> node(myMesh.getNodeSpaceDimension());
   std::vector<int> cell(nNodesPerFace, 0);
   std::vector< std::vector<double> > nodes(nNodesPerFace, std::vector<double>(myMesh.getNodeSpaceDimension(), 0.0));
-  double t = 0.0;
+  double t = 0;
   for(int i = 0; i < myMesh.getNumberCells(); i++){
     myMesh.getCell(i, &cell);
     for(int j = 0; j < nNodes; j++){
@@ -114,8 +114,9 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit){
       sol.getValues()->at(i*nNodes + j) = analyticalDiffSrc(t, node);
     }
   }
-  hdfio.write(writeDir + "/res_0.h5");
-  double timeEnd = 1;
+  //hdfio.write(writeDir + "/res_0.h5");
+  //double timeEnd = 100*timeStep;
+  double timeEnd = 1.0;
   int nIters = timeEnd / timeStep;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
@@ -159,7 +160,7 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit){
     }
     double l2Err = std::sqrt(TestUtils::l2ProjectionCellField(&residual, &residual, &myMesh));
     double dL2Err = std::sqrt(sumRes/sumAna);
-    std::cout << "l2Err at time " << t << ": " << l2Err << std::endl;
+    //std::cout << "l2Err at time " << t << ": " << l2Err << std::endl;
     if(i != (nIters-1)){
       thisRun->linAlgErr += linAlgErr*timeStep;
       thisRun->l2Err += l2Err*timeStep;
@@ -169,20 +170,27 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit){
       thisRun->l2Err += l2Err*timeStep/2;
       thisRun->dL2Err += dL2Err*timeStep/2;
     }
-    hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
-    end = std::chrono::high_resolution_clock::now();
-    thisRun->post += end - start;
+    //double quot = t/(5e-3);
+    //double rem = quot - ((int)quot);
+    //std::cout << "rem: " << rem << std::endl;
+    //if(rem < timeStep/(5e-3)){
+      //hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+      //end = std::chrono::high_resolution_clock::now();
+      //thisRun->post += end - start;
+    //}
   }
 };
 
 TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][DiffusionSource]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
-  meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
+  //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  //meshSizes["2"] = {"5e-2"};
-  std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3"};
+  std::vector<std::string> timeSteps = {"1e-1"};
   std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
+  //std::vector<std::string> orders = {"3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -199,34 +207,34 @@ TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][
     }
   }
 
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
   bool isExplicit = 0;
-  std::string writeFile;
-  if(isExplicit){
-    writeFile = "ImpExp/Breakdown.csv";
-  } else {
-    writeFile = "ImpImp/Breakdown.csv";
-  }
-  std::ofstream f; f.open(writePath + writeFile);
-  f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
+  //std::string writeFile;
+  //if(isExplicit){
+    //writeFile = "ImpExp/Breakdown.csv";
+  //} else {
+    //writeFile = "ImpImp/Breakdown.csv";
+  //}
+  //std::ofstream f; f.open(writePath + writeFile);
+  //f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runHDGDiffSrc(&(*it), isExplicit);
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
-    //CHECK(it->l2Err < 1e-2);
-    f << it->dim << ",";
-    f << it->order << ",";
-    f << it->meshSize << ",";
-    f << it->timeStep << ",";
-    f << it->linAlgErr << ",";
-    f << it->l2Err << ",";
-    f << it->dL2Err << ",";
-    f << it->runtime.count() << ",";
-    f << it->setup.count() << ",";
-    f << it->assembly.count() << ",";
-    f << it->resolution.count() << ",";
-    f << it->post.count() << "\n";
+    CHECK(it->l2Err < 1e-2);
+    //f << it->dim << ",";
+    //f << it->order << ",";
+    //f << it->meshSize << ",";
+    //f << it->timeStep << ",";
+    //f << it->linAlgErr << ",";
+    //f << it->l2Err << ",";
+    //f << it->dL2Err << ",";
+    //f << it->runtime.count() << ",";
+    //f << it->setup.count() << ",";
+    //f << it->assembly.count() << ",";
+    //f << it->resolution.count() << ",";
+    //f << it->post.count() << "\n";
   }
-  f.close();
+  //f.close();
 };
