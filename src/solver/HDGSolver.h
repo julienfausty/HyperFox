@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include "Solver.h"
+#include "HDGSolverOpts.h"
 #include "ErrorHandle.h"
 #include "ProgressBar.h"
 
@@ -34,6 +35,10 @@ class HDGSolver : public Solver{
      * \brief a method to solve the linear system
      */
     void solve();
+    /*!
+     * \brief a method to set the options of the solver
+     */
+    void setOptions(HDGSolverOpts opts);
   protected:
     /*!
      * \brief calculate the sparsity pattern of the matrix based on the mesh connectivity
@@ -55,6 +60,10 @@ class HDGSolver : public Solver{
      * \brief a pointer to a field holding the values of the face to bulk offset for the flux
      */
     Field * Q0 = NULL;
+    /*!
+     * \brief structure for setting options of solver
+     */
+    HDGSolverOpts myOpts;
 };//HDGSolver
 
 }//hfox

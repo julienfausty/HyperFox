@@ -227,8 +227,26 @@ void HDGSolver::assemble(){
     locU0 = invSuuMinSuqinvSqqSqu.solve(locVec->segment(startU, lenU));
     locQ = -invSqqSqu*locU - invSqqSql;
     locQ0 = -invSqqSqu*locU0;
-    locS = locMat->block(startL, startU, lenL, lenU)*locU + locMat->block(startL, startQ, lenL, lenQ)*locQ + locMat->block(startL, startL, lenL, lenL);
-    locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*locU0 - locMat->block(startL, startQ, lenL, lenQ)*locQ0;
+    switch(myOpts.type){
+      case IMPLICIT:
+        {
+          locS = locMat->block(startL, startU, lenL, lenU)*locU + locMat->block(startL, startQ, lenL, lenQ)*locQ + locMat->block(startL, startL, lenL, lenL);
+          locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*locU0 - locMat->block(startL, startQ, lenL, lenQ)*locQ0;
+          break;
+        }
+      case WEXPLICIT:
+        {
+          EMap<const EVector> sol(locFieldMap["Solution"].data(), locFieldMap["Solution"].size());
+          EMap<const EVector> flux(locFieldMap["Flux"].data(), locFieldMap["Flux"].size());
+          locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*sol - locMat->block(startL, startQ, lenL, lenQ)*flux;
+          locS = locMat->block(startL, startL, lenL, lenL);
+          break;
+        }
+      case SEXPLICIT:
+        {
+          break;
+        }
+    }
     switch(modAssembly->matrix){
       case Add:{
                  linSystem->addValsMatrix(matRowCols, matRowCols, locS.transpose().data());
@@ -375,5 +393,10 @@ void HDGSolver::solve(){
     }
   }
 };//solve
+
+void HDGSolver::setOptions(HDGSolverOpts opts){
+  myOpts = opts;
+  setVerbosity(myOpts.verbosity);
+};//setOptions
 
 }//hfox

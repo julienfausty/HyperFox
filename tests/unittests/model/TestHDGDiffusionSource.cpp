@@ -130,11 +130,12 @@ TEST_CASE("Testing the HDGDiffusionSource model", "[unit][model][HDGDiffusionSou
         CHECK_NOTHROW(mod2.compute());
         EMatrix testMat = *(baseOp.getMatrix());
         testMat.block(startU, startQ, lenU, lenQ) += 3.0*Suq;
-        testMat.block(0, 0, lenU, lenU) += (1.0/timeStep)*(*(mass.getMatrix()));
+        testMat.block(0, 0, lenU, testMat.cols()) *= timeStep;
+        testMat.block(0, 0, lenU, lenU) += (*(mass.getMatrix()));
         testMat -= *(mod2.getLocalMatrix());
         CHECK((testMat.transpose() * testMat).sum() < tol);
-        EVector testVec = ((EVector) *(srcOp.getMatrix()));
-        testVec += (1.0/timeStep)*(*(mass.getMatrix()))*EMap<EVector>(sol.data(), sol.size());
+        EVector testVec = timeStep*((EVector) *(srcOp.getMatrix()));
+        testVec += (*(mass.getMatrix()))*EMap<EVector>(sol.data(), sol.size());
         testVec -= (*(mod2.getLocalRHS()));
         CHECK(testVec.dot(testVec) < tol);
       };

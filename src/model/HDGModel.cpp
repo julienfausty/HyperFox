@@ -38,11 +38,13 @@ void HDGModel::compute(){
     computeLocalRHS();
     if(timeScheme != NULL){
       int lenU = refEl->getNumNodes()*nDOFsPNode;
-      EMatrix Suu = localMatrix.block(0, 0, lenU, lenU);
+      //EMatrix Suu = localMatrix.block(0, 0, lenU, lenU);
+      EMatrix Suu = localMatrix.block(0, 0, lenU, localMatrix.cols());
       EVector Fu = localRHS.segment(0, lenU);
       timeScheme->assemble(dV, invJacobians);
       timeScheme->apply(&Suu, &Fu);
-      localMatrix.block(0, 0, lenU, lenU) = Suu;
+      //localMatrix.block(0, 0, lenU, lenU) = Suu;
+      localMatrix.block(0, 0, lenU, localMatrix.cols()) = Suu;
       localRHS.segment(0, lenU) = Fu;
     }
   } else {
