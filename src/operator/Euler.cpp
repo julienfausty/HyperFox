@@ -25,16 +25,8 @@ void Euler::apply(EMatrix * stiffness, EVector * rhs){
   if(deltat == 0.0){
     throw(ErrorHandle("Euler", "apply", "the time step needs to be set before applying and it should not be 0"));
   }
-  //op *= (1/deltat);
   *stiffness *= deltat;
   *rhs *= deltat;
-  //if(!isExplicit){
-    //*stiffness += op;
-    //*rhs += op*EMap<const EVector>(fieldMap["Solution"]->data(), op.cols());
-  //} else {
-    //*rhs += (op - (*stiffness))*EMap<const EVector>(fieldMap["Solution"]->data(), op.cols());
-    //*stiffness = op;
-  //}
   if(!isExplicit){
     stiffness->block(0, 0, op.rows(), op.cols()) += op;
     rhs->segment(0, op.rows()) += op*EMap<const EVector>(fieldMap["Solution"]->data(), op.cols());
