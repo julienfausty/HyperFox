@@ -3,6 +3,7 @@
 
 #include "TimeScheme.h"
 #include "RKType.h"
+#include "Field.h"
 
 namespace hfox{
 
@@ -21,7 +22,7 @@ class RungeKutta : public TimeScheme{
      * @param re the reference element
      * @param type the Runge-Kutta method type
      */
-    RungeKutta(const ReferenceElement * re, RKType=CrankNicolson);
+    RungeKutta(const ReferenceElement * re, RKType type=CrankNicolson);
     /*!
      * \brief sets the field map for the class
      *
@@ -34,7 +35,7 @@ class RungeKutta : public TimeScheme{
      * @param stiffness pointer to the stiffness matrix that will become the total matrix
      * @param rhs pointer to the right hand side
      */
-    void apply(EMatrix * stiffness, EVector * rhs);
+    void apply(EMatrix * stiffness, EVector * s);
     /*!
      * \brief sets the butcher table for the class
      *
@@ -48,18 +49,26 @@ class RungeKutta : public TimeScheme{
      */
     void setButcherTable(RKType type);
     /*!
+     * \brief compute the current stage from the solution of the system
+     */
+    void computeStage(std::map<std::string, Field*> * fm);
+    /*!
+     * \brief compute the solution from the stages of the system
+     */
+    void computeSolution(std::map<std::string, Field*> * fm);
+    /*!
      * \brief a method for getting the current stage
      */
-    int getStage() const;
+    int getStage() const{return stageCounter;};
+    /*!
+     * \brief get number of stages
+     */
+    int getNumStages() const;
   protected:
     /*!
      * \brief the Butcher table of the method
      */
     EMatrix bTable;
-    /*!
-     * \brief boolean tracking if the Butcher table is currently set
-     */
-    bool bset = 0;
     /*!
      * \brief a stage counter for the multi-stage process
      */
@@ -77,4 +86,4 @@ class RungeKutta : public TimeScheme{
 
 }//hfox
 
-#endif//RUNEGKUTTA_H
+#endif//RUNGEKUTTA_H

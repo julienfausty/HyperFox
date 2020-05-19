@@ -2,6 +2,125 @@
 
 namespace hfox{
 
+RungeKutta::RungeKutta(const ReferenceElement * re, RKType type) : TimeScheme(re){
+  setButcherTable(type);
+  stageCounter = 0;
+};//constructor
+
+
+void RungeKutta::setButcherTable(RKType type){
+  if(butcherDB.empty()){
+    setUpDB();
+  };
+  bTable = butcherDB[type];
+};//setButcherTable type
+
+void RungeKutta::setButcherTable(EMatrix butchTable){
+  if(butchTable.cols() != butchTable.rows()){
+    throw(ErrorHandle("RungeKutta", "setButcherTable", "the Butcher table should be square"));
+  }
+  for(int i = 0; i < butchTable.rows(); i++){
+    for(int j = i+1; j < butchTable.cols(); j++){
+      if(butchTable(i, j) != 0){
+        throw(ErrorHandle("RungeKutta", "setButcherTable", "the upper triangular part of the Butcher" 
+             " table should be null (no fully implicit implementation as of yet)"));
+      }
+    }
+  }
+  bTable = butchTable;
+};//setButcherTable
+
+int RungeKutta::getNumStages() const{
+  return (bTable.cols() - 1);
+};//getNumStages
+
+void RungeKutta::setFieldMap(const std::map<std::string, std::vector<double> > * fm){
+  std::map<std::string, std::vector<double> >::const_iterator it;
+  it = fm->find("Solution");
+  if(it == fm->end()){
+    throw(ErrorHandle("RungeKutta", "setFieldMap", "the field map must have a Solution field"));
+  }
+  fieldMap["Solution"] = &(it->second);
+  it = fm->find("OldSolution");
+  if(it == fm->end()){
+    throw(ErrorHandle("RungeKutta", "setFieldMap", "the field map must have a OldSolution field"));
+  }
+  fieldMap["OldSolution"] = &(it->second);
+  int nStages = getNumStages();
+  for(int k = 0; k < nStages; k++){
+    std::string nameField = "RKStage_" + std::to_string(k);
+    it = fm->find(nameField);
+    if(it == fm->end()){
+      throw(ErrorHandle("RungeKutta", "setFieldMap", "the field map must have the same number of RKStage fields as stages"));
+    }
+    fieldMap[nameField] = &(it->second);
+  }
+};//setFieldMap
+
+void RungeKutta::apply(EMatrix * stiffness, EVector * s){
+  if(!allocated){
+    throw(ErrorHandle("RungeKutta", "apply", "the time scheme should at least be allocated (and hopefully assembled) before being applied"));
+  }
+  if(fieldMap.empty()){
+    throw(ErrorHandle("RungeKutta", "apply", "the fieldMap must be set before attempting to apply the time scheme"));
+  }
+  if(deltat == 0.0){
+    throw(ErrorHandle("RungeKutta", "apply", "the time step needs to be set before applying and it should not be 0"));
+  }
+  EMatrix thisStage = bTable.block(stageCounter, 1, 1, getNumStages());
+  EVector uj = EVector::Zero(fieldMap["OldSolution"]->size());
+  std::string nameField;
+  for(int i = 0; i < stageCounter-1; i++){
+    nameField = "RKStage_" + std::to_string(i);
+    uj += thisStage(0, i)*EMap<const EVector>(fieldMap[nameField]->data(), fieldMap[nameField]->size());
+  }
+  uj *= deltat;
+  EMap<const EVector> ut(fieldMap["OldSolution"]->data(), fieldMap["OldSolution"]->size());
+  uj += ut;
+  (*stiffness) *= deltat;
+  s->segment(0, op.rows()) *= deltat;
+  s->segment(0, op.rows()) += op*ut - stiffness->block(0, 0, op.rows(), op.cols())*uj;//explicit part
+  stiffness->block(0, 0, op.rows(), op.cols()) *= thisStage(1, stageCounter);//implicit part
+  stiffness->block(0, 0, op.rows(), op.cols()) += op;
+};//apply
+
+void RungeKutta::computeStage(std::map<std::string, Field*> * fm){
+  if(stageCounter >= getNumStages()){
+    throw(ErrorHandle("RungeKutta", "computeStage", "cannot compute more stages than the method allows, think about computing the solution"));
+  }
+  std::string nameField = "RKStage_" + std::to_string(stageCounter);
+  double invdt = 1.0/(deltat);
+  for(int i = 0; i < fm->at("Solution")->getLength(); i++){
+    fm->at(nameField)->getValues()->at(i) = invdt*(fm->at("Solution")->getValues()->at(i) - fm->at("OldSolution")->getValues()->at(i));
+  }
+  stageCounter += 1;
+};//computeStage
+
+void RungeKutta::computeSolution(std::map<std::string, Field*> * fm){
+  if(stageCounter != getNumStages()){
+    throw(ErrorHandle("RungeKutta", "computeSolution", "all stages must be computed before computing the solution"));
+  }
+  std::cout << "getting bs" << std::endl;
+  EMatrix bs = bTable.block(stageCounter, 1, 1, getNumStages());
+  std::cout << "iterating over solution" << std::endl;
+  for(int i = 0; i < fm->at("Solution")->getLength(); i++){
+    fm->at("Solution")->getValues()->at(i) = fm->at("OldSolution")->getValues()->at(i);
+  }
+  double bkdt = 0.0;
+  std::cout << "iterating over stages" << std::endl;
+  for(int k = 0; k < getNumStages(); k++){
+    bkdt = bs(0, k)*deltat;
+    std::string nameField = "RKStage_" + std::to_string(k);
+    std::cout << "iterating over components of stage " << nameField << std::endl;
+    for(int i = 0; i < fm->at(nameField)->getLength(); i++){
+      std::cout << "val " << i << std::endl;
+      std::cout << "Solution: " << fm->at("Solution")->getValues()->at(i) << std::endl;
+      std::cout << "Stage: " << fm->at(nameField)->getLength() << std::endl;
+      fm->at("Solution")->getValues()->at(i) += bkdt*(fm->at(nameField)->getValues()->at(i));
+    }
+  }
+  stageCounter = 0;
+};//computeSolution
 
 void RungeKutta::setUpDB(){
   butcherDB[FEuler].resize(2,2);

@@ -31,7 +31,7 @@ void Euler::apply(EMatrix * stiffness, EVector * rhs){
     stiffness->block(0, 0, op.rows(), op.cols()) += op;
     rhs->segment(0, op.rows()) += op*EMap<const EVector>(fieldMap["Solution"]->data(), op.cols());
   } else {
-    rhs->segment(0, op.rows()) += (op - (*stiffness))*EMap<const EVector>(fieldMap["Solution"]->data(), op.cols());
+    rhs->segment(0, op.rows()) += (op - stiffness->block(0, 0, op.rows(), op.cols()))*EMap<const EVector>(fieldMap["Solution"]->data(), op.cols());
     stiffness->block(0, 0, op.rows(), op.cols()) = op;
   }
 };//apply

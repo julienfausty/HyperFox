@@ -66,9 +66,6 @@ TEST_CASE("Testing the Euler time scheme", "[unit][operator][TimeScheme][Euler]"
         buffMat = *(conv.getMatrix());
         buffVec = EVector::Constant(refEl.getNumNodes(), 1.0);
         backEuler.apply(&buffMat, &buffVec);
-        //anaMat = (1.0/tStep)*(*(mass.getMatrix())) + (*(conv.getMatrix()));
-        //anaVec = (1.0/tStep)*(*(mass.getMatrix()))*EMap<const EVector>(sol.data(), sol.size());
-        //anaVec += EVector::Constant(refEl.getNumNodes(), 1.0);
         anaMat = (*(mass.getMatrix())) + tStep*(*(conv.getMatrix()));
         anaVec = (*(mass.getMatrix()))*EMap<const EVector>(sol.data(), sol.size());
         anaVec += tStep*EVector::Constant(refEl.getNumNodes(), 1.0);
@@ -79,11 +76,9 @@ TEST_CASE("Testing the Euler time scheme", "[unit][operator][TimeScheme][Euler]"
         buffMat = *(conv.getMatrix());
         buffVec = EVector::Constant(refEl.getNumNodes(), 1.0);
         forEuler.apply(&buffMat, &buffVec);
-        //anaMat = (1.0/tStep)*(*(mass.getMatrix()));
-        //anaVec = ((1.0/tStep)*(*(mass.getMatrix())) - (*(conv.getMatrix())))*EMap<const EVector>(sol.data(), sol.size());
-        //anaVec += EVector::Constant(refEl.getNumNodes(), 1.0);
         anaMat = (*(mass.getMatrix()));
-        anaVec = ((*(mass.getMatrix())) - tStep*(*(conv.getMatrix())))*EMap<const EVector>(sol.data(), sol.size());        anaVec += tStep*EVector::Constant(refEl.getNumNodes(), 1.0);
+        anaVec = ((*(mass.getMatrix())) - tStep*(*(conv.getMatrix())))*EMap<const EVector>(sol.data(), sol.size());        
+        anaVec += tStep*EVector::Constant(refEl.getNumNodes(), 1.0);
         testMat = anaMat-buffMat;
         testVec = anaVec-buffVec;
         CHECK((testMat.transpose()*testMat).sum() < tol);
