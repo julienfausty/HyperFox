@@ -52,8 +52,8 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
   meshName += "_ord-" + thisRun->order;
   thisRun->meshLocation += meshName + ".h5";
-  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
-  std::string writePath = "/home/julien.fausty/workspace/M2P2/Postprocess/results/Diffusion/HDG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
+  //std::string writePath = "/home/julien.fausty/workspace/M2P2/Postprocess/results/Diffusion/HDG/";
   std::string writeDir = writePath;
   if(!isExplicit){
     switch(globType){
@@ -125,9 +125,9 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
     }
   }
   hdfio.write(writeDir + "/res_0.h5");
-  double timeEnd = 50*timeStep;
-  //double timeEnd = 1.0;
-  int nIters = timeEnd / timeStep;
+  double timeEnd = 1.0;
+  //int nIters = timeEnd / timeStep;
+  int nIters = 50;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   for(int i = 0; i < nIters; i++){
@@ -219,8 +219,8 @@ TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][
     }
   }
 
-  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvrgence/";
-  std::string writePath = "/home/julien.fausty/workspace/M2P2/Postprocess/results/Diffusion/HDG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvrgence/";
+  //std::string writePath = "/home/julien.fausty/workspace/M2P2/Postprocess/results/Diffusion/HDG/";
   bool isExplicit = 0;
   HDGSolverType globType = WEXPLICIT;
   //HDGSolverType globType = IMPLICIT;

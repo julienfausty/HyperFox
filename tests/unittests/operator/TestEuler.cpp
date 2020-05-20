@@ -46,7 +46,7 @@ TEST_CASE("Testing the Euler time scheme", "[unit][operator][TimeScheme][Euler]"
         EMatrix buffMat(refEl.getNumNodes(), refEl.getNumNodes());
         EMatrix anaMat = buffMat;
         EVector buffVec(refEl.getNumNodes());
-        EVector anaVec = buffMat;
+        EVector anaVec = buffVec;
         std::vector<double> dV(refEl.getNumIPs(), 0.0);
         std::copy(refEl.getIPWeights()->begin(), refEl.getIPWeights()->end(), dV.begin());
         std::vector<EMatrix> jacs(refEl.getNumIPs(), EMatrix::Identity(i+1, i+1));

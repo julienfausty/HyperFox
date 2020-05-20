@@ -12,7 +12,7 @@ TEST_CASE("Testing HDGDiffusion operator", "[unit][operator][HDGDiffusion]"){
     ReferenceElement refEl(2, 1, "simplex");
     HDGDiffusion diff(&refEl);
     std::vector<double> dummydV(refEl.getNumIPs(), 0.0);
-    std::vector<EMatrix> dummyJac(refEl.getNumIPs(), EMatrix::Identity(1,1));
+    std::vector<EMatrix> dummyJac(refEl.getNumIPs(), EMatrix::Identity(2,2));
     CHECK_THROWS(diff.assemble(dummydV, dummyJac));
     CHECK_NOTHROW(diff.allocate(1));
     CHECK_THROWS(diff.assemble(dummydV, dummyJac));

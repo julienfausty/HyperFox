@@ -84,25 +84,23 @@ TEST_CASE("Testing RungeKutta class", "[unit][operator][TimeScheme][RungeKutta]"
         sol.resize(refEl.getNumNodes(), 2.0);
         Field oldSolF; *(oldSolF.getValues()) = sol;
         fieldMap["OldSolution"] = &oldSolF;
-        std::vector<Field> rkStages;
+        std::vector<Field*> rkStages(ts.getNumStages());
         for(int k = 0; k < ts.getNumStages(); k++){
           sol.resize(0);
           sol.resize(refEl.getNumNodes(), 3.0+k);
-          Field rkStep; *(rkStep.getValues()) = sol;
-          rkStages.push_back(rkStep);
-          fieldMap["RKStage_"+std::to_string(k)] = &(rkStages[k]);
+          rkStages[k] = new Field();
+          *(rkStages[k]->getValues()) = sol;
+          fieldMap["RKStage_"+std::to_string(k)] = rkStages[k];
         }
         double tStep = 1e-1;
         ts.setTimeStep(tStep);
-        EMatrix buffMat(refEl.getNumNodes(), refEl.getNumNodes());
+        EMatrix buffMat = EMatrix::Zero(refEl.getNumNodes(), refEl.getNumNodes());
         EMatrix anaMat = buffMat;
-        EVector buffVec(refEl.getNumNodes());
-        EVector anaVec = buffMat;
+        EVector buffVec = EVector::Zero(refEl.getNumNodes());
+        EVector anaVec = buffVec;
         //0th step
-        std::cout << "0th step" << std::endl;
         buffMat = *(conv.getMatrix());
         buffVec = EVector::Constant(refEl.getNumNodes(), 1.0);
-        std::cout << "applying" << std::endl;
         ts.apply(&buffMat, &buffVec);
         anaMat = (*(mass.getMatrix()));
         anaVec = ((*(mass.getMatrix())) - tStep*(*(conv.getMatrix())))*EMap<const EVector>(fm["OldSolution"].data(), refEl.getNumNodes());        
@@ -112,48 +110,38 @@ TEST_CASE("Testing RungeKutta class", "[unit][operator][TimeScheme][RungeKutta]"
         CHECK((testMat.transpose()*testMat).sum() < tol);
         CHECK(testVec.dot(testVec) < tol);
         CHECK(ts.getStage() == 0);
-        std::cout << "computing stage" << std::endl;
         ts.computeStage(&fieldMap);
         CHECK(ts.getStage() == 1);
         double RKStageVal = (1.0-2.0)/tStep;
-        std::cout << "RKStage_0 len: " << fieldMap["RKStage_0"]->getLength() << std::endl;
         for(int k = 0; k < refEl.getNumNodes(); k++){
           CHECK(fieldMap["RKStage_0"]->getValues()->at(k) == RKStageVal);
         }
         //1st step
-        std::cout << "1th step" << std::endl;
         buffMat = *(conv.getMatrix());
         buffVec = EVector::Constant(refEl.getNumNodes(), 1.0);
-        std::cout << "applying" << std::endl;
         ts.apply(&buffMat, &buffVec);
-        anaMat = (*(mass.getMatrix()) + (tStep/2.0)*(*(conv.getMatrix())));
-        anaVec = (*(mass.getMatrix()) - tStep*(*(conv.getMatrix())))*EMap<const EVector>(fm["OldSolution"].data(), refEl.getNumNodes()) - ((tStep*tStep)/2.0)*(*(conv.getMatrix()))*(EMap<const EVector>(fm["RKStage_0"].data(), refEl.getNumNodes()));
-        std::cout << "RKStage_0 len: " << fieldMap["RKStage_0"]->getLength() << std::endl;
+        anaMat = (*(mass.getMatrix())) + (tStep/2.0)*(*(conv.getMatrix()));
+        anaVec = EMap<const EVector>(fm["OldSolution"].data(), refEl.getNumNodes()) + (tStep/2.0)*(EMap<const EVector>(fm["RKStage_0"].data(), refEl.getNumNodes()));
+        anaVec = (*(mass.getMatrix()))*EMap<const EVector>(fm["OldSolution"].data(), refEl.getNumNodes()) - tStep*(*(conv.getMatrix()))*anaVec;
         anaVec += tStep*EVector::Constant(refEl.getNumNodes(), 1.0);
         testMat = anaMat-buffMat;
         testVec = anaVec-buffVec;
-        std::cout << "RKStage_0 len: " << fieldMap["RKStage_0"]->getLength() << std::endl;
         CHECK((testMat.transpose()*testMat).sum() < tol);
-      std::cout << "RKStage_0 len: " << fieldMap["RKStage_0"]->getLength() << std::endl;
         CHECK(testVec.dot(testVec) < tol);
-      std::cout << "RKStage_0 len: " << fieldMap["RKStage_0"]->getLength() << std::endl;
         CHECK(ts.getStage() == 1);
-        std::cout << "computing stage" << std::endl;
-        std::cout << "RKStage_0 len: " << fieldMap["RKStage_0"]->getLength() << std::endl;
         ts.computeStage(&fieldMap);
-        std::cout << "RKStage_0 len: " << fieldMap["RKStage_0"]->getLength() << std::endl;
         CHECK(ts.getStage() == 2);
         for(int k = 0; k < refEl.getNumNodes(); k++){
           CHECK(fieldMap["RKStage_1"]->getValues()->at(k) == RKStageVal);
         }
         //compute solution
-        std::cout << "compute solution" << std::endl;
-        std::cout << "RKStage_0 len: " << fieldMap["RKStage_0"]->getLength() << std::endl;
         ts.computeSolution(&fieldMap);
-        std::cout << "computed solution" << std::endl;
         CHECK(ts.getStage() == 0);
         for(int k = 0; k < refEl.getNumNodes(); k++){
           CHECK(fieldMap["Solution"]->getValues()->at(k) == (fieldMap["OldSolution"]->getValues()->at(k) + tStep*RKStageVal));
+        }
+        for(int k = 0; k < ts.getNumStages(); k++){
+          delete rkStages[k];
         }
       };
     }

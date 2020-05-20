@@ -70,7 +70,7 @@ void RungeKutta::apply(EMatrix * stiffness, EVector * s){
   EMatrix thisStage = bTable.block(stageCounter, 1, 1, getNumStages());
   EVector uj = EVector::Zero(fieldMap["OldSolution"]->size());
   std::string nameField;
-  for(int i = 0; i < stageCounter-1; i++){
+  for(int i = 0; i < stageCounter; i++){
     nameField = "RKStage_" + std::to_string(i);
     uj += thisStage(0, i)*EMap<const EVector>(fieldMap[nameField]->data(), fieldMap[nameField]->size());
   }
@@ -80,7 +80,7 @@ void RungeKutta::apply(EMatrix * stiffness, EVector * s){
   (*stiffness) *= deltat;
   s->segment(0, op.rows()) *= deltat;
   s->segment(0, op.rows()) += op*ut - stiffness->block(0, 0, op.rows(), op.cols())*uj;//explicit part
-  stiffness->block(0, 0, op.rows(), op.cols()) *= thisStage(1, stageCounter);//implicit part
+  stiffness->block(0, 0, op.rows(), op.cols()) *= thisStage(0, stageCounter);//implicit part
   stiffness->block(0, 0, op.rows(), op.cols()) += op;
 };//apply
 
@@ -88,10 +88,12 @@ void RungeKutta::computeStage(std::map<std::string, Field*> * fm){
   if(stageCounter >= getNumStages()){
     throw(ErrorHandle("RungeKutta", "computeStage", "cannot compute more stages than the method allows, think about computing the solution"));
   }
-  std::string nameField = "RKStage_" + std::to_string(stageCounter);
   double invdt = 1.0/(deltat);
-  for(int i = 0; i < fm->at("Solution")->getLength(); i++){
-    fm->at(nameField)->getValues()->at(i) = invdt*(fm->at("Solution")->getValues()->at(i) - fm->at("OldSolution")->getValues()->at(i));
+  Field * rkF = fm->at("RKStage_" + std::to_string(stageCounter));
+  Field * solF = fm->at("Solution");
+  Field * oldSolF = fm->at("OldSolution");
+  for(int i = 0; i < solF->getLength(); i++){
+    rkF->getValues()->at(i) = invdt*(solF->getValues()->at(i) - oldSolF->getValues()->at(i));
   }
   stageCounter += 1;
 };//computeStage
@@ -100,23 +102,19 @@ void RungeKutta::computeSolution(std::map<std::string, Field*> * fm){
   if(stageCounter != getNumStages()){
     throw(ErrorHandle("RungeKutta", "computeSolution", "all stages must be computed before computing the solution"));
   }
-  std::cout << "getting bs" << std::endl;
   EMatrix bs = bTable.block(stageCounter, 1, 1, getNumStages());
-  std::cout << "iterating over solution" << std::endl;
-  for(int i = 0; i < fm->at("Solution")->getLength(); i++){
-    fm->at("Solution")->getValues()->at(i) = fm->at("OldSolution")->getValues()->at(i);
+  Field * solF = fm->at("Solution");
+  Field * oldSolF = fm->at("OldSolution");
+  for(int i = 0; i < solF->getLength(); i++){
+    solF->getValues()->at(i) = oldSolF->getValues()->at(i);
   }
   double bkdt = 0.0;
-  std::cout << "iterating over stages" << std::endl;
+  Field * rkF;
   for(int k = 0; k < getNumStages(); k++){
     bkdt = bs(0, k)*deltat;
-    std::string nameField = "RKStage_" + std::to_string(k);
-    std::cout << "iterating over components of stage " << nameField << std::endl;
-    for(int i = 0; i < fm->at(nameField)->getLength(); i++){
-      std::cout << "val " << i << std::endl;
-      std::cout << "Solution: " << fm->at("Solution")->getValues()->at(i) << std::endl;
-      std::cout << "Stage: " << fm->at(nameField)->getLength() << std::endl;
-      fm->at("Solution")->getValues()->at(i) += bkdt*(fm->at(nameField)->getValues()->at(i));
+    rkF = fm->at("RKStage_" + std::to_string(k));
+    for(int i = 0; i < rkF->getLength(); i++){
+      solF->getValues()->at(i) += bkdt*(rkF->getValues()->at(i));
     }
   }
   stageCounter = 0;

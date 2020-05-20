@@ -134,8 +134,9 @@ TEST_CASE("Testing the HDGDiffusionSource model", "[unit][model][HDGDiffusionSou
         testMat.block(0, 0, lenU, lenU) += (*(mass.getMatrix()));
         testMat -= *(mod2.getLocalMatrix());
         CHECK((testMat.transpose() * testMat).sum() < tol);
-        EVector testVec = timeStep*((EVector) *(srcOp.getMatrix()));
-        testVec += (*(mass.getMatrix()))*EMap<EVector>(sol.data(), sol.size());
+        EVector testVec(testMat.rows());
+        testVec.segment(0, lenU) = timeStep*((EVector) srcOp.getMatrix()->block(0, 0, lenU, 1));
+        testVec.segment(0, lenU) += (*(mass.getMatrix()))*EMap<EVector>(sol.data(), sol.size());
         testVec -= (*(mod2.getLocalRHS()));
         CHECK(testVec.dot(testVec) < tol);
       };

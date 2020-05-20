@@ -32,7 +32,7 @@ void Convection::assemble(const std::vector<double> & dV, const std::vector<EMat
   const std::vector< std::vector<double> > * derivShapes;
   const std::vector<double> * partialPhi;
   for(int i = 0; i < refEl->getNumIPs(); i++){
-    locMeasure = (((vels[i]).transpose() * invJacobians[i])*(dV[i])).transpose();
+    locMeasure = (dV[i]*((vels[i]).transpose() * invJacobians[i])).transpose();
     shapes = &(ipShapes->at(i));
     derivShapes = &(ipDerivShapes->at(i));
     for(int k = 0; k < refEl->getNumNodes(); k++){
