@@ -78,10 +78,11 @@ void RungeKutta::apply(EMatrix * stiffness, EVector * s){
   EMap<const EVector> ut(fieldMap["OldSolution"]->data(), fieldMap["OldSolution"]->size());
   uj += ut;
   (*stiffness) *= deltat;
-  s->segment(0, op.rows()) *= deltat;
-  s->segment(0, op.rows()) += op*ut - stiffness->block(0, 0, op.rows(), op.cols())*uj;//explicit part
+  (*s) *= deltat;
+  s->segment(0, op.rows()) -= stiffness->block(0, 0, op.rows(), op.cols())*uj;//explicit part
   stiffness->block(0, 0, op.rows(), op.cols()) *= thisStage(0, stageCounter);//implicit part
   stiffness->block(0, 0, op.rows(), op.cols()) += op;
+  s->segment(0, op.rows()) += stiffness->block(0, 0, op.rows(), op.cols())*ut;
 };//apply
 
 void RungeKutta::computeStage(std::map<std::string, Field*> * fm){
@@ -94,6 +95,7 @@ void RungeKutta::computeStage(std::map<std::string, Field*> * fm){
   Field * oldSolF = fm->at("OldSolution");
   for(int i = 0; i < solF->getLength(); i++){
     rkF->getValues()->at(i) = invdt*(solF->getValues()->at(i) - oldSolF->getValues()->at(i));
+    //rkF->getValues()->at(i) = (solF->getValues()->at(i) - oldSolF->getValues()->at(i));
   }
   stageCounter += 1;
 };//computeStage
@@ -112,6 +114,7 @@ void RungeKutta::computeSolution(std::map<std::string, Field*> * fm){
   Field * rkF;
   for(int k = 0; k < getNumStages(); k++){
     bkdt = bs(0, k)*deltat;
+    //bkdt = bs(0, k);
     rkF = fm->at("RKStage_" + std::to_string(k));
     for(int i = 0; i < rkF->getLength(); i++){
       solF->getValues()->at(i) += bkdt*(rkF->getValues()->at(i));
@@ -160,8 +163,8 @@ void RungeKutta::setUpDB(){
     0.0, 1.0/6.0, 1.0/3.0, 1.0/3.0, 1.0/6.0;
   butcherDB[BEuler].resize(2,2);
   butcherDB[BEuler] << 1, 1, 0, 1;
-  butcherDB[BEuler].resize(2,2);
-  butcherDB[BEuler] << 1.0/2.0, 1.0/2.0, 0, 1;
+  butcherDB[IMidpoint].resize(2,2);
+  butcherDB[IMidpoint] << 1.0/2.0, 1.0/2.0, 0, 1;
   butcherDB[CrankNicolson].resize(3,3);
   butcherDB[CrankNicolson] << 
     0.0, 0.0, 0.0,
