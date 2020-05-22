@@ -89,13 +89,19 @@ void RungeKutta::computeStage(std::map<std::string, Field*> * fm){
   if(stageCounter >= getNumStages()){
     throw(ErrorHandle("RungeKutta", "computeStage", "cannot compute more stages than the method allows, think about computing the solution"));
   }
+  EMatrix thisStage = bTable.block(stageCounter, 1, 1, getNumStages());
   double invdt = 1.0/(deltat);
+  double buffer;
   Field * rkF = fm->at("RKStage_" + std::to_string(stageCounter));
   Field * solF = fm->at("Solution");
   Field * oldSolF = fm->at("OldSolution");
   for(int i = 0; i < solF->getLength(); i++){
     rkF->getValues()->at(i) = invdt*(solF->getValues()->at(i) - oldSolF->getValues()->at(i));
-    //rkF->getValues()->at(i) = (solF->getValues()->at(i) - oldSolF->getValues()->at(i));
+    buffer = 0.0;
+    for(int j = 0; j < stageCounter+1; j++){
+      buffer += thisStage(0, j) * (fm->at("RKStage_" + std::to_string(j))->getValues()->at(i));
+    }
+    solF->getValues()->at(i) = oldSolF->getValues()->at(i) + deltat * buffer;
   }
   stageCounter += 1;
 };//computeStage
@@ -114,7 +120,6 @@ void RungeKutta::computeSolution(std::map<std::string, Field*> * fm){
   Field * rkF;
   for(int k = 0; k < getNumStages(); k++){
     bkdt = bs(0, k)*deltat;
-    //bkdt = bs(0, k);
     rkF = fm->at("RKStage_" + std::to_string(k));
     for(int i = 0; i < rkF->getLength(); i++){
       solF->getValues()->at(i) += bkdt*(rkF->getValues()->at(i));
@@ -180,8 +185,14 @@ void RungeKutta::setUpDB(){
     1.0/4.0, 1.0/4.0, 0.0,
     3.0/4.0, 1.0/2.0, 1.0/4.0,
     0.0, 1.0/2.0, 1.0/2.0;
-  butcherDB[QZ2].resize(5,5);
-  butcherDB[QZ2] << 
+  butcherDB[ALX2].resize(3,3);
+  double gamma = 1.0 - std::sqrt(2.0)/2.0;
+  butcherDB[ALX2] << 
+    gamma, gamma, 0.0,
+    1.0, 1.0-gamma, gamma,
+    0.0, 1.0-gamma, gamma;
+  butcherDB[RK43].resize(5,5);
+  butcherDB[RK43] << 
     1.0/2.0, 1.0/2.0, 0.0, 0.0, 0.0,
     2.0/3.0, 1.0/6.0, 1.0/2.0, 0.0, 0.0,
     1.0/2.0, -1.0/2.0, 1.0/2.0, 1.0/2.0, 0.0,

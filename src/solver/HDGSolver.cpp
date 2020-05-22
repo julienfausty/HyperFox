@@ -55,8 +55,8 @@ void HDGSolver::allocate(){
   if(*(it->second->getNumObjPerEnt()) != myMesh->getReferenceElement()->getFaceElement()->getNumNodes()){
     throw(ErrorHandle("HDGSolver", "allocate", "the Tau field must have an object per element node."));
   }
-  if(*(it->second->getNumValsPerObj()) != nDOFsPerNode){
-    throw(ErrorHandle("HDGSolver", "allocate", "the Tau field must have the same number of values per object as the Solution field."));
+  if(((*(it->second->getNumValsPerObj()) != nDOFsPerNode) and (*(it->second->getNumValsPerObj()) != 2*nDOFsPerNode))){
+    throw(ErrorHandle("HDGSolver", "allocate", "the Tau field must have the same or twice the number of values per object as the Solution field."));
   }
   it = fieldMap->find("Trace");
   if(it == fieldMap->end()){
@@ -163,7 +163,8 @@ void HDGSolver::assemble(){
   std::vector<int> face2Cells(2, 0);
   std::vector<int> unitCell(1, 0);
   std::vector<int> matRowCols(lenL, 0);
-  int sgn = 1;
+  std::vector<double> fieldBuffer;
+  int buff = 0;
   int offset = 0;
   EMatrix locS(lenL, lenL);
   EVector locS0(lenL);
@@ -196,9 +197,30 @@ void HDGSolver::assemble(){
     for(int i = 0; i < nFacesPEl; i++){
       myMesh->getFace(facesInCell[i], &face);
       for(int j = 0; j < nNodesPFc; j++){
-        matRowCols[i*nNodesPFc + j] = facesInCell[i] * nNodesPFc + std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]));
+        for(int k = 0; k < nDOFsPerNode; k++){
+          matRowCols[i*nNodesPFc + j*nDOFsPerNode + k] = (facesInCell[i] * nNodesPFc + std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]])))*nDOFsPerNode + k;
+        }
       }
-      myMesh->getFace2Cell(facesInCell[i], &face2Cells);
+    }
+    //check if face field is double valued and deal with it
+    for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){
+      if(*(fieldMap->at(itfm->first)->getNumValsPerObj()) == 2*nDOFsPerNode){
+        fieldBuffer.resize(lenL, 0.0);
+        for(int i = 0; i < nFacesPEl; i++){
+          myMesh->getFace2Cell(facesInCell[i], &face2Cells);
+          offset = 0;
+          if(iEl == face2Cells[1]){
+            offset = 1;
+          }
+          for(int j = 0; j < nNodesPFc; j++){
+            for(int k = 0; k < nDOFsPerNode; k++){
+              buff = i*nNodesPFc + j*nDOFsPerNode + k;
+              fieldBuffer[buff] = itfm->second[buff*2 + offset];
+            }
+          }
+        }
+        itfm->second = fieldBuffer;
+      }
     }
     //re order the face fields correctly for local ordering
     for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){
@@ -206,7 +228,9 @@ void HDGSolver::assemble(){
       for(int i = 0; i < nFacesPEl; i++){
         offset = i*nNodesPFc;
         for(int j = 0; j <nNodesPFc; j++){
-          locFieldMap[itfm->first][offset + j] = itfm->second[matRowCols[offset + j] - facesInCell[i] * nNodesPFc];
+          for(int k = 0; k < nDOFsPerNode; k++){
+            locFieldMap[itfm->first][offset + j*nDOFsPerNode + k] = itfm->second[matRowCols[offset + j*nDOFsPerNode + k] - facesInCell[i] * nNodesPFc * nDOFsPerNode];
+          }
         }
       }
     }

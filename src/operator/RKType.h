@@ -18,6 +18,7 @@ enum RKType{
   CrankNicolson,
   KS2, //Kraaijevanger and Spijker
   QZ2, //Qin and Zhang
+  ALX2, //Alexander 1977
   RK43 //four stage, 3rd order
 };
 

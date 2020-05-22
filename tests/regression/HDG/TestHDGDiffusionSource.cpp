@@ -12,6 +12,7 @@
 #include "Operator.h"
 #include "HDGDiffusionSource.h"
 #include "Euler.h"
+#include "RungeKutta.h"
 #include "DirichletModel.h"
 #include "PetscInterface.h"
 #include "HDGSolver.h"
@@ -75,32 +76,54 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
   int nNodesPerFace = myMesh.getReferenceElement()->getFaceElement()->getNumNodes();
   Field dirichlet(&myMesh, Face, nNodesPerFace, 1);
   Field sol(&myMesh, Cell, nNodes, 1);
+  Field oldSol(&myMesh, Cell, nNodes, 1);
+  Field rk0(&myMesh, Cell, nNodes, 1);
+  Field rk1(&myMesh, Cell, nNodes, 1);
+  Field rk2(&myMesh, Cell, nNodes, 1);
+  Field rk3(&myMesh, Cell, nNodes, 1);
   Field flux(&myMesh, Cell, nNodes, myMesh.getNodeSpaceDimension());
   Field trace(&myMesh, Face, nNodesPerFace, 1);
-  Field tau(&myMesh, Face, nNodesPerFace, 1);
-  std::fill(tau.getValues()->begin(), tau.getValues()->end(), 100.0);
+  Field tau(&myMesh, Face, nNodesPerFace, 2);
+  std::fill(tau.getValues()->begin(), tau.getValues()->end(), 1e-3);
+  //double multiplier = 1e-3;
+  //for(int i = 0; i < tau.getLength(); i++){
+    //tau.getValues()->at(i) = 1.0 - (i % 2);
+    //tau.getValues()->at(i) *= multiplier;
+  //}
   Field anaSol(&myMesh, Node, 1, 1);
   Field residual(&myMesh, Cell, nNodes, 1);
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
+  fieldMap["OldSolution"] = &oldSol;
+  fieldMap["RKStage_0"] = &rk0;
+  fieldMap["RKStage_1"] = &rk1;
+  fieldMap["RKStage_2"] = &rk2;
+  fieldMap["RKStage_3"] = &rk3;
   fieldMap["Flux"] = &flux;
   fieldMap["Trace"] = &trace;
   fieldMap["Tau"] = &tau;
   fieldMap["Dirichlet"] = &dirichlet;
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   HDGDiffusionSource diffMod(myMesh.getReferenceElement());
-  Euler ts(myMesh.getReferenceElement(), isExplicit);
+  //Euler ts(myMesh.getReferenceElement(), isExplicit);
+  //RungeKutta ts(myMesh.getReferenceElement(), SSPRK3);
+  //RungeKutta ts(myMesh.getReferenceElement(), FEuler);
+  RungeKutta ts(myMesh.getReferenceElement(), BEuler);
+  //RungeKutta ts(myMesh.getReferenceElement(), RK4);
+  //RungeKutta ts(myMesh.getReferenceElement(), IMidpoint);
+  //RungeKutta ts(myMesh.getReferenceElement(), ALX2);
+  //RungeKutta ts(myMesh.getReferenceElement(), QZ2);
   double timeStep = std::stod(thisRun->timeStep);
   ts.setTimeStep(timeStep);
   diffMod.setTimeScheme(&ts);
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-6;
-  myOpts.verbose = true;
+  myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
-  solveOpts.verbosity = true;
+  solveOpts.verbosity = false;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);
@@ -112,6 +135,10 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
   mySolver.allocate();
   diffMod.setSourceFunction(gaussianSrc);
   hdfio.setField("Solution", &sol);
+  hdfio.setField("OldSolution", &oldSol);
+  hdfio.setField("RKStage_0", &rk0);
+  hdfio.setField("RKStage_1", &rk1);
+  hdfio.setField("RKStage_2", &rk2);
   const std::set<int> * boundary = myMesh.getBoundaryFaces();
   std::vector<double> node(myMesh.getNodeSpaceDimension());
   std::vector<int> cell(nNodesPerFace, 0);
@@ -124,13 +151,26 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
       sol.getValues()->at(i*nNodes + j) = analyticalDiffSrc(t, node);
     }
   }
+  for(int i = 0; i < myMesh.getNumberFaces(); i++){
+    myMesh.getFace(i, &cell);
+    for(int j = 0; j < nNodesPerFace; j++){
+      myMesh.getPoint(cell[j], &node);
+      trace.getValues()->at(i*nNodesPerFace + j) = analyticalDiffSrc(t, node);
+    }
+  }
   hdfio.write(writeDir + "/res_0.h5");
   double timeEnd = 1.0;
-  //int nIters = timeEnd / timeStep;
-  int nIters = 50;
+  int nIters = timeEnd / timeStep;
+  //int nIters = 5;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
-  for(int i = 0; i < nIters; i++){
+  int i = 0;
+  ProgressBar pbar;
+  pbar.setIterIndex(&i);
+  pbar.setNumIterations(nIters);
+  std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
+  pbar.update();
+  for(i = 0; i < nIters; i++){
     t += timeStep;
     //analytical sol
     for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
@@ -144,12 +184,25 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
         dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalDiffSrc(t, nodes[j]);
       }
     }
+    //copy sol into oldsol
+    for(int iEl = 0; iEl < myMesh.getNumberCells(); iEl++){
+      for(int iN = 0; iN < nNodes; iN++){
+        oldSol.getValues()->at(iEl*nNodes + iN) = sol.getValues()->at(iEl*nNodes + iN);
+      }
+    }
+    for(int k = 0; k < ts.getNumStages(); k++){
+      start = std::chrono::high_resolution_clock::now();
+      mySolver.assemble();
+      end = std::chrono::high_resolution_clock::now();
+      thisRun->assembly += end - start;
+      start = std::chrono::high_resolution_clock::now();
+      mySolver.solve();
+      ts.computeStage(&fieldMap);
+      end = std::chrono::high_resolution_clock::now();
+      thisRun->resolution += end - start;
+    }
     start = std::chrono::high_resolution_clock::now();
-    mySolver.assemble();
-    end = std::chrono::high_resolution_clock::now();
-    thisRun->assembly += end - start;
-    start = std::chrono::high_resolution_clock::now();
-    mySolver.solve();
+    ts.computeSolution(&fieldMap);
     end = std::chrono::high_resolution_clock::now();
     thisRun->resolution += end - start;
     start = std::chrono::high_resolution_clock::now();
@@ -170,7 +223,7 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
     }
     double l2Err = std::sqrt(TestUtils::l2ProjectionCellField(&residual, &residual, &myMesh));
     double dL2Err = std::sqrt(sumRes/sumAna);
-    std::cout << "l2Err at time " << t << ": " << l2Err << std::endl;
+    //std::cout << "l2Err at time " << t << ": " << l2Err << std::endl;
     if(i != (nIters-1)){
       thisRun->linAlgErr += linAlgErr*timeStep;
       thisRun->l2Err += l2Err*timeStep;
@@ -183,12 +236,13 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
     //double quot = t/(5e-3);
     double quot = 0.0;
     double rem = quot - ((int)quot);
-    std::cout << "rem: " << rem << std::endl;
+    //std::cout << "rem: " << rem << std::endl;
     if(rem < timeStep/(5e-3)){
       hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
       end = std::chrono::high_resolution_clock::now();
       thisRun->post += end - start;
     }
+    pbar.update();
   }
 };
 
@@ -197,12 +251,12 @@ TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
-  meshSizes["2"] = {"1e-1"};
-  //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3"};
-  std::vector<std::string> timeSteps = {"1e-5"};
-  //std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
-  std::vector<std::string> orders = {"1"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  //meshSizes["2"] = {"5e-2"};
+  std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
+  //std::vector<std::string> timeSteps = {"1e-2"};
+  std::vector<std::string> orders = {"1", "2", "3"};
+  //std::vector<std::string> orders = {"3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -219,11 +273,11 @@ TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][
     }
   }
 
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvrgence/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
   //std::string writePath = "/home/julien.fausty/workspace/M2P2/Postprocess/results/Diffusion/HDG/";
   bool isExplicit = 0;
-  HDGSolverType globType = WEXPLICIT;
-  //HDGSolverType globType = IMPLICIT;
+  //HDGSolverType globType = WEXPLICIT;
+  HDGSolverType globType = IMPLICIT;
   std::string writeFile = "Breakdown.csv";
   if(!isExplicit){
     switch(globType){
