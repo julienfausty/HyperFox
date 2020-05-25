@@ -165,6 +165,7 @@ struct SimRun{
   std::string order;
   std::string timeStep;
   std::string meshLocation;
+  std::string rk;
   double linAlgErr = 0;
   double l2Err = 0;
   double dL2Err = 0;
