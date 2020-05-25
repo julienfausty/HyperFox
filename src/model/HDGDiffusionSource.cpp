@@ -28,7 +28,7 @@ void HDGDiffusionSource::setSourceFunction(std::function<double(const std::vecto
     throw(ErrorHandle("HDGDiffusionSource", "setSourceFunction", "the model must be allocated before setting the source function"));
   }
   ((Source*)operatorMap["Source"])->setSourceFunction(s); 
-}//setSourceFunction
+};//setSourceFunction
 
 void HDGDiffusionSource::initializeOperators(){
   if(operatorMap.find("Source") == operatorMap.end()){
@@ -82,6 +82,6 @@ void HDGDiffusionSource::computeLocalRHS(){
   ((Source*)operatorMap["Source"])->calcSource(*elementNodes);
   operatorMap["Source"]->assemble(dV, invJacobians);
   localRHS.segment(0, operatorMap["Source"]->getMatrix()->rows()) = (EVector) *(operatorMap["Source"]->getMatrix());
-};//computeLocalMatrix
+};//computeLocalRHS
 
 }//hfox

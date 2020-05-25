@@ -24,6 +24,7 @@ void FEModel::compute(){
     computeLocalMatrix();
     computeLocalRHS();
     if(timeScheme != NULL){
+      timeScheme->assemble(dV, invJacobians);
       timeScheme->apply(&localMatrix, &localRHS);
     }
   } else {
