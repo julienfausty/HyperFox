@@ -46,46 +46,86 @@ double analyticalDiffSrc(const double t, const std::vector<double> & v){
   return res;
 };
 
-void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
+double analyticalDiffSrcGrad(const double t, const std::vector<double> & v, int comp){
+  double res = 0.0;
+  std::vector<std::complex<double> > w(v.size(), std::complex<double>(0.0, M_PI/2.0));
+  double sqrtPi = std::sqrt(M_PI);
+  std::complex<double> spaceArg(0.0, 0.0);
+  double timePre = 0.0;
+  double alpha = 0.0;
+  for(int i = 0; i < v.size(); i++){
+    spaceArg += w[i]*v[i];
+    timePre += std::real(std::pow(w[i], 2));
+    alpha = v[i] - 0.5;
+    res += std::erf(alpha);
+  }
+  res += std::exp(timePre * t)*std::real(w[comp]*std::exp(spaceArg));
+  return res;
+};
+
+void runHDGDiffSrc(SimRun * thisRun, HDGSolverType globType){
   //setup
   std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
   thisRun->meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/";
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
   meshName += "_ord-" + thisRun->order;
   thisRun->meshLocation += meshName + ".h5";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/HDG/";
   //std::string writePath = "/home/julien.fausty/workspace/M2P2/Postprocess/results/Diffusion/HDG/";
   std::string writeDir = writePath;
-  if(!isExplicit){
-    switch(globType){
-      case IMPLICIT:{writeDir += "ImpImp/";break;}
-      case WEXPLICIT:{writeDir += "WExpImp/";break;}
-    }
+  if(globType == WEXPLICIT){
+    writeDir += "WExp/";
+  } else {
+    writeDir += "Imp/";
+  }
+  RKType rkType;
+  std::string rkStr = thisRun->rk;
+  if(rkStr == "BEuler"){
+    writeDir += "BEuler/";
+    rkType = BEuler;
+  }else if(rkStr == "ALX2"){
+    writeDir += "ALX2/";
+    rkType = ALX2;
+  }else if(rkStr == "IMidpoint"){
+    writeDir += "IMidpoint/";
+    rkType = IMidpoint;
+  }else if(rkStr == "RK43"){
+    writeDir += "RK43/";
+    rkType = RK43;
+  }else if(rkStr == "FEuler"){
+    writeDir += "FEuler/";
+    rkType = FEuler;
+  }else if(rkStr == "SSPRK3"){
+    writeDir += "SSPRK3/";
+    rkType = SSPRK3;
   } else{
-    switch(globType){
-      case IMPLICIT:{writeDir += "ImpExp/";break;}
-      case WEXPLICIT:{writeDir += "WExpExp/";break;}
-    }
+    writeDir += "Misc/";
+    rkType = BEuler;
   }
   writeDir += meshName + "_dt-" + thisRun->timeStep;
   boost::filesystem::create_directory(writeDir);
   Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
   HDF5Io hdfio(&myMesh);
   hdfio.load(thisRun->meshLocation);
+  std::vector<std::string> auxiliaries = {"Flux", "Trace"};
+  RungeKutta ts(myMesh.getReferenceElement(), rkType, auxiliaries);
+  int nStages = ts.getNumStages();
   int nNodes = myMesh.getReferenceElement()->getNumNodes();
   int nNodesPerFace = myMesh.getReferenceElement()->getFaceElement()->getNumNodes();
+  int nodeDim = myMesh.getNodeSpaceDimension();
   Field dirichlet(&myMesh, Face, nNodesPerFace, 1);
   Field sol(&myMesh, Cell, nNodes, 1);
   Field oldSol(&myMesh, Cell, nNodes, 1);
-  Field rk0(&myMesh, Cell, nNodes, 1);
-  Field rk1(&myMesh, Cell, nNodes, 1);
-  Field rk2(&myMesh, Cell, nNodes, 1);
-  Field rk3(&myMesh, Cell, nNodes, 1);
-  Field flux(&myMesh, Cell, nNodes, myMesh.getNodeSpaceDimension());
+  std::vector<Field> rkStages(nStages, Field(&myMesh, Cell, nNodes, 1));
+  Field flux(&myMesh, Cell, nNodes, nodeDim);
+  Field oldFlux(&myMesh, Cell, nNodes, nodeDim);
+  std::vector<Field> rkFluxStages(nStages, Field(&myMesh, Cell, nNodes, nodeDim));
   Field trace(&myMesh, Face, nNodesPerFace, 1);
+  Field oldTrace(&myMesh, Face, nNodesPerFace, 1);
+  std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, 1));
   Field tau(&myMesh, Face, nNodesPerFace, 2);
-  std::fill(tau.getValues()->begin(), tau.getValues()->end(), 1e-3);
-  //double multiplier = 1e-3;
+  std::fill(tau.getValues()->begin(), tau.getValues()->end(), 0.0);
+  //double multiplier = 1.0;
   //for(int i = 0; i < tau.getLength(); i++){
     //tau.getValues()->at(i) = 1.0 - (i % 2);
     //tau.getValues()->at(i) *= multiplier;
@@ -95,30 +135,25 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
   fieldMap["OldSolution"] = &oldSol;
-  fieldMap["RKStage_0"] = &rk0;
-  fieldMap["RKStage_1"] = &rk1;
-  fieldMap["RKStage_2"] = &rk2;
-  fieldMap["RKStage_3"] = &rk3;
   fieldMap["Flux"] = &flux;
+  fieldMap["OldFlux"] = &oldFlux;
   fieldMap["Trace"] = &trace;
+  fieldMap["OldTrace"] = &oldTrace;
+  for(int i = 0; i < nStages; i++){
+    fieldMap["RKStage_" + std::to_string(i)] = &(rkStages[i]);
+    fieldMap["RKStage_Flux_" + std::to_string(i)] = &(rkFluxStages[i]);
+    fieldMap["RKStage_Trace_" + std::to_string(i)] = &(rkTraceStages[i]);
+  }
   fieldMap["Tau"] = &tau;
   fieldMap["Dirichlet"] = &dirichlet;
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   HDGDiffusionSource diffMod(myMesh.getReferenceElement());
-  //Euler ts(myMesh.getReferenceElement(), isExplicit);
-  //RungeKutta ts(myMesh.getReferenceElement(), SSPRK3);
-  //RungeKutta ts(myMesh.getReferenceElement(), FEuler);
-  RungeKutta ts(myMesh.getReferenceElement(), BEuler);
-  //RungeKutta ts(myMesh.getReferenceElement(), RK4);
-  //RungeKutta ts(myMesh.getReferenceElement(), IMidpoint);
-  //RungeKutta ts(myMesh.getReferenceElement(), ALX2);
-  //RungeKutta ts(myMesh.getReferenceElement(), QZ2);
   double timeStep = std::stod(thisRun->timeStep);
   ts.setTimeStep(timeStep);
   diffMod.setTimeScheme(&ts);
   PetscOpts myOpts;
   myOpts.maxits = 20000;
-  myOpts.rtol = 1e-6;
+  myOpts.rtol = 1e-12;
   myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   HDGSolverOpts solveOpts;
@@ -135,10 +170,8 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
   mySolver.allocate();
   diffMod.setSourceFunction(gaussianSrc);
   hdfio.setField("Solution", &sol);
-  hdfio.setField("OldSolution", &oldSol);
-  hdfio.setField("RKStage_0", &rk0);
-  hdfio.setField("RKStage_1", &rk1);
-  hdfio.setField("RKStage_2", &rk2);
+  //hdfio.setField("Flux", &flux);
+  //hdfio.setField("Trace", &trace);
   const std::set<int> * boundary = myMesh.getBoundaryFaces();
   std::vector<double> node(myMesh.getNodeSpaceDimension());
   std::vector<int> cell(nNodesPerFace, 0);
@@ -149,6 +182,9 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
     for(int j = 0; j < nNodes; j++){
       myMesh.getPoint(cell[j], &node);
       sol.getValues()->at(i*nNodes + j) = analyticalDiffSrc(t, node);
+      for(int k = 0; k < nodeDim; k++){
+        flux.getValues()->at((i*nNodes + j)*nodeDim + k) = analyticalDiffSrcGrad(t, node, k);
+      }
     }
   }
   for(int i = 0; i < myMesh.getNumberFaces(); i++){
@@ -185,10 +221,14 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
       }
     }
     //copy sol into oldsol
-    for(int iEl = 0; iEl < myMesh.getNumberCells(); iEl++){
-      for(int iN = 0; iN < nNodes; iN++){
-        oldSol.getValues()->at(iEl*nNodes + iN) = sol.getValues()->at(iEl*nNodes + iN);
-      }
+    for(int iSol = 0; iSol < sol.getLength(); iSol++){
+      oldSol.getValues()->at(iSol) = sol.getValues()->at(iSol);
+    }
+    for(int iSol = 0; iSol < flux.getLength(); iSol++){
+      oldFlux.getValues()->at(iSol) = flux.getValues()->at(iSol);
+    }
+    for(int iSol = 0; iSol < trace.getLength(); iSol++){
+      oldTrace.getValues()->at(iSol) = trace.getValues()->at(iSol);
     }
     for(int k = 0; k < ts.getNumStages(); k++){
       start = std::chrono::high_resolution_clock::now();
@@ -233,8 +273,8 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
       thisRun->l2Err += l2Err*timeStep/2;
       thisRun->dL2Err += dL2Err*timeStep/2;
     }
-    //double quot = t/(5e-3);
-    double quot = 0.0;
+    double quot = t/(5e-3);
+    //double quot = 0.0;
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
     if(rem < timeStep/(5e-3)){
@@ -243,6 +283,9 @@ void runHDGDiffSrc(SimRun * thisRun, bool isExplicit, HDGSolverType globType){
       thisRun->post += end - start;
     }
     pbar.update();
+    if(thisRun->l2Err > 1.0){
+      break;
+    }
   }
 };
 
@@ -251,50 +294,63 @@ TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
-  meshSizes["2"] = {"1e-1"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  //meshSizes["2"] = {"1e-1"};
   //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
-  std::vector<std::string> timeSteps = {"1e-2"};
-  //std::vector<std::string> orders = {"1", "2", "3"};
-  std::vector<std::string> orders = {"3"};
+  //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3"};
+  std::vector<std::string> timeSteps = {"2e-4", "1e-4", "5e-5", "2e-5", "1e-5"};
+  std::vector<std::string> orders = {"1", "2", "3"};
+  //std::vector<std::string> orders = {"2"};
+  std::vector<std::string> rkTypes = {"FEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
       for(int o = 0; o < orders.size(); o++){
         for(int dt = 0; dt < timeSteps.size(); dt++){
-          SimRun thisRun;
-          thisRun.dim = it->first;
-          thisRun.meshSize = *itMs;
-          thisRun.order = orders[o];
-          thisRun.timeStep = timeSteps[dt];
-          simRuns.push_back(thisRun);
+          for(int rki = 0; rki < rkTypes.size(); rki++){
+            SimRun thisRun;
+            thisRun.dim = it->first;
+            thisRun.meshSize = *itMs;
+            thisRun.order = orders[o];
+            thisRun.timeStep = timeSteps[dt];
+            thisRun.rk = rkTypes[rki];
+            simRuns.push_back(thisRun);
+          }
         }
       }
     }
   }
 
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/HDG/";
   //std::string writePath = "/home/julien.fausty/workspace/M2P2/Postprocess/results/Diffusion/HDG/";
-  bool isExplicit = 0;
   //HDGSolverType globType = WEXPLICIT;
   HDGSolverType globType = IMPLICIT;
   std::string writeFile = "Breakdown.csv";
-  if(!isExplicit){
-    switch(globType){
-      case IMPLICIT:{writePath += "ImpImp/";break;}
-      case WEXPLICIT:{writePath += "WExpImp/";break;}
-    }
+  if(globType == WEXPLICIT){
+    writePath += "WExp/";
+  } else {
+    writePath += "Imp/";
+  }
+  if(rkTypes[0] == "BEuler"){
+    writePath += "BEuler/";
+  }else if(rkTypes[0] == "ALX2"){
+    writePath += "ALX2/";
+  }else if(rkTypes[0] == "IMidpoint"){
+    writePath += "IMidpoint/";
+  }else if(rkTypes[0] == "RK43"){
+    writePath += "RK43/";
+  }else if(rkTypes[0] == "FEuler"){
+    writePath += "FEuler/";
+  }else if(rkTypes[0] == "SSPRK3"){
+    writePath += "SSPRK3/";
   } else{
-    switch(globType){
-      case IMPLICIT:{writePath += "ImpExp/";break;}
-      case WEXPLICIT:{writePath += "WExpExp/";break;}
-    }
+    writePath += "Misc/";
   }
   std::ofstream f; f.open(writePath + writeFile);
   f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
-    runHDGDiffSrc(&(*it), isExplicit, globType);
+    runHDGDiffSrc(&(*it), globType);
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
     //CHECK(it->l2Err < 1e-2);

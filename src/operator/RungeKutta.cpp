@@ -2,8 +2,9 @@
 
 namespace hfox{
 
-RungeKutta::RungeKutta(const ReferenceElement * re, RKType type) : TimeScheme(re){
+RungeKutta::RungeKutta(const ReferenceElement * re, RKType type, std::vector<std::string> fields) : TimeScheme(re){
   setButcherTable(type);
+  setAuxiliaryFields(fields);
   stageCounter = 0;
 };//constructor
 
@@ -30,6 +31,13 @@ void RungeKutta::setButcherTable(EMatrix butchTable){
   bTable = butchTable;
 };//setButcherTable
 
+void RungeKutta::setAuxiliaryFields(std::vector<std::string> fields){
+  if(!fieldMap.empty()){
+    throw(ErrorHandle("RungeKutta", "setAuxiliaryField", "the auxiliary fields must be specified before the field map"));
+  }
+  auxiliaryFields = fields;
+};//setButcherTable type
+
 int RungeKutta::getNumStages() const{
   return (bTable.cols() - 1);
 };//getNumStages
@@ -41,11 +49,25 @@ void RungeKutta::setFieldMap(const std::map<std::string, std::vector<double> > *
     throw(ErrorHandle("RungeKutta", "setFieldMap", "the field map must have a Solution field"));
   }
   fieldMap["Solution"] = &(it->second);
+  for(int i = 0; i < auxiliaryFields.size(); i++){
+    it = fm->find(auxiliaryFields[i]);
+    if(it == fm->end()){
+      throw(ErrorHandle("RungeKutta", "setFieldMap", "the field map must provide the auxiliary fields. Failure to find: " + auxiliaryFields[i]));
+    }
+    fieldMap[auxiliaryFields[i]] = &(it->second);
+  }
   it = fm->find("OldSolution");
   if(it == fm->end()){
     throw(ErrorHandle("RungeKutta", "setFieldMap", "the field map must have a OldSolution field"));
   }
   fieldMap["OldSolution"] = &(it->second);
+  for(int i = 0; i < auxiliaryFields.size(); i++){
+    it = fm->find("Old" + auxiliaryFields[i]);
+    if(it == fm->end()){
+      throw(ErrorHandle("RungeKutta", "setFieldMap", "the field map must provide the 'Old' auxiliary fields. Failure to find: Old" + auxiliaryFields[i]));
+    }
+    fieldMap["Old" + auxiliaryFields[i]] = &(it->second);
+  }
   int nStages = getNumStages();
   for(int k = 0; k < nStages; k++){
     std::string nameField = "RKStage_" + std::to_string(k);
@@ -54,6 +76,14 @@ void RungeKutta::setFieldMap(const std::map<std::string, std::vector<double> > *
       throw(ErrorHandle("RungeKutta", "setFieldMap", "the field map must have the same number of RKStage fields as stages"));
     }
     fieldMap[nameField] = &(it->second);
+    for(int i = 0; i < auxiliaryFields.size(); i++){
+      nameField = "RKStage_" + auxiliaryFields[i] + "_" + std::to_string(k);
+      it = fm->find(nameField);
+      if(it == fm->end()){
+        throw(ErrorHandle("RungeKutta", "setFieldMap", "the field map must provide all the 'RKStage' auxiliary fields. Failure to find: " + nameField));
+      }
+      fieldMap[nameField] = &(it->second);
+    }
   }
 };//setFieldMap
 
@@ -67,22 +97,50 @@ void RungeKutta::apply(EMatrix * stiffness, EVector * s){
   if(deltat == 0.0){
     throw(ErrorHandle("RungeKutta", "apply", "the time step needs to be set before applying and it should not be 0"));
   }
+  int lenRows = fieldMap["Solution"]->size();
+  int lenCols = lenRows;
+  for(int i = 0; i < auxiliaryFields.size(); i++){
+    lenCols += fieldMap[auxiliaryFields[i]]->size();
+  }
+  if((stiffness->rows() != lenRows) or (stiffness->cols() != lenCols)){
+    throw(ErrorHandle("RungeKutta", "apply", "the stiffness matrix does not have the correct dimensions, it should be (" + std::to_string(lenRows) + ", " + std::to_string(lenCols) + ")"));
+  }
+  if(s->size() != lenRows){
+    throw(ErrorHandle("RungeKutta", "apply", "the right hand side matrix does not have the correct length, it should be " + std::to_string(lenRows)));
+  }
   EMatrix thisStage = bTable.block(stageCounter, 1, 1, getNumStages());
-  EVector uj = EVector::Zero(fieldMap["OldSolution"]->size());
+  EVector uj = EVector::Zero(lenCols);
   std::string nameField;
+  int start = 0;
   for(int i = 0; i < stageCounter; i++){
     nameField = "RKStage_" + std::to_string(i);
-    uj += thisStage(0, i)*EMap<const EVector>(fieldMap[nameField]->data(), fieldMap[nameField]->size());
+    uj.segment(start, lenRows) += thisStage(0, i)*EMap<const EVector>(fieldMap[nameField]->data(), lenRows);
+    start += lenRows;
+    for(int j = 0; j < auxiliaryFields.size(); j++){
+      nameField = "RKStage_" + auxiliaryFields[j] + "_" + std::to_string(i);
+      uj.segment(start, fieldMap[nameField]->size()) += thisStage(0, i)*EMap<const EVector>(fieldMap[nameField]->data(), fieldMap[nameField]->size());
+      start += fieldMap[nameField]->size();
+    }
   }
   uj *= deltat;
-  EMap<const EVector> ut(fieldMap["OldSolution"]->data(), fieldMap["OldSolution"]->size());
+  EVector ut = EVector::Zero(lenCols);
+  start = 0;
+  ut.segment(start, lenRows) = EMap<const EVector>(fieldMap["OldSolution"]->data(), fieldMap["OldSolution"]->size());
+  start += lenRows;
+  for(int j = 0; j < auxiliaryFields.size(); j++){
+    nameField = "Old" + auxiliaryFields[j];
+    ut.segment(start, fieldMap[nameField]->size()) = EMap<const EVector>(fieldMap[nameField]->data(), fieldMap[nameField]->size());
+    start += fieldMap[nameField]->size();
+  }
   uj += ut;
   (*stiffness) *= deltat;
   (*s) *= deltat;
-  s->segment(0, op.rows()) -= stiffness->block(0, 0, op.rows(), op.cols())*uj;//explicit part
-  stiffness->block(0, 0, op.rows(), op.cols()) *= thisStage(0, stageCounter);//implicit part
-  stiffness->block(0, 0, op.rows(), op.cols()) += op;
-  s->segment(0, op.rows()) += stiffness->block(0, 0, op.rows(), op.cols())*ut;
+  //s->segment(0, op.rows()) -= stiffness->block(0, 0, op.rows(), op.cols())*uj;//explicit part
+  (*s) -= (*stiffness)*uj;//explicit part
+  //stiffness->block(0, 0, op.rows(), op.cols()) *= thisStage(0, stageCounter);//implicit part
+  (*stiffness) *= thisStage(0, stageCounter);//implicit part
+  stiffness->block(0, 0, lenRows, lenRows) += op;
+  (*s) += (*stiffness)*ut;
 };//apply
 
 void RungeKutta::computeStage(std::map<std::string, Field*> * fm){
@@ -103,6 +161,19 @@ void RungeKutta::computeStage(std::map<std::string, Field*> * fm){
     }
     solF->getValues()->at(i) = oldSolF->getValues()->at(i) + deltat * buffer;
   }
+  for(int k = 0; k < auxiliaryFields.size(); k++){
+    rkF = fm->at("RKStage_"+ auxiliaryFields[k] + "_" + std::to_string(stageCounter));
+    solF = fm->at(auxiliaryFields[k]);
+    oldSolF = fm->at("Old"+auxiliaryFields[k]);
+    for(int i = 0; i < solF->getLength(); i++){
+      rkF->getValues()->at(i) = invdt*(solF->getValues()->at(i) - oldSolF->getValues()->at(i));
+      buffer = 0.0;
+      for(int j = 0; j < stageCounter+1; j++){
+        buffer += thisStage(0, j) * (fm->at("RKStage_" + auxiliaryFields[k] + "_" + std::to_string(j))->getValues()->at(i));
+      }
+      solF->getValues()->at(i) = oldSolF->getValues()->at(i) + deltat * buffer;
+    }
+  }
   stageCounter += 1;
 };//computeStage
 
@@ -113,16 +184,30 @@ void RungeKutta::computeSolution(std::map<std::string, Field*> * fm){
   EMatrix bs = bTable.block(stageCounter, 1, 1, getNumStages());
   Field * solF = fm->at("Solution");
   Field * oldSolF = fm->at("OldSolution");
+  double bkdt = 0.0;
+  Field * rkF;
   for(int i = 0; i < solF->getLength(); i++){
     solF->getValues()->at(i) = oldSolF->getValues()->at(i);
   }
-  double bkdt = 0.0;
-  Field * rkF;
   for(int k = 0; k < getNumStages(); k++){
     bkdt = bs(0, k)*deltat;
     rkF = fm->at("RKStage_" + std::to_string(k));
     for(int i = 0; i < rkF->getLength(); i++){
       solF->getValues()->at(i) += bkdt*(rkF->getValues()->at(i));
+    }
+  }
+  for(int j = 0; j < auxiliaryFields.size(); j++){
+    solF = fm->at(auxiliaryFields[j]);
+    oldSolF = fm->at("Old"+auxiliaryFields[j]);
+    for(int i = 0; i < solF->getLength(); i++){
+      solF->getValues()->at(i) = oldSolF->getValues()->at(i);
+    }
+    for(int k = 0; k < getNumStages(); k++){
+      bkdt = bs(0, k)*deltat;
+      rkF = fm->at("RKStage_" + auxiliaryFields[j] + "_" + std::to_string(k));
+      for(int i = 0; i < rkF->getLength(); i++){
+        solF->getValues()->at(i) += bkdt*(rkF->getValues()->at(i));
+      }
     }
   }
   stageCounter = 0;

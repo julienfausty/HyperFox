@@ -21,8 +21,9 @@ class RungeKutta : public TimeScheme{
      *
      * @param re the reference element
      * @param type the Runge-Kutta method type
+     * @param field a list of auxiliary field names
      */
-    RungeKutta(const ReferenceElement * re, RKType type=CrankNicolson);
+    RungeKutta(const ReferenceElement * re, RKType type=CrankNicolson, std::vector<std::string> fields=std::vector<std::string>());
     /*!
      * \brief sets the field map for the class
      *
@@ -49,6 +50,12 @@ class RungeKutta : public TimeScheme{
      */
     void setButcherTable(RKType type);
     /*!
+     * \brief set the auxiliary field names
+     *
+     * @param fields a list of auxiliary field names
+     */
+    void setAuxiliaryFields(std::vector<std::string> fields);
+    /*!
      * \brief compute the current stage from the solution of the system
      */
     void computeStage(std::map<std::string, Field*> * fm);
@@ -69,6 +76,10 @@ class RungeKutta : public TimeScheme{
      * \brief the Butcher table of the method
      */
     EMatrix bTable;
+    /*!
+     * \brief names of the auxiliary fields that need to be considered
+     */
+    std::vector<std::string> auxiliaryFields;
     /*!
      * \brief a stage counter for the multi-stage process
      */
