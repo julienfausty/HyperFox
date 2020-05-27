@@ -125,7 +125,7 @@ void runHDGDiffSrc(SimRun * thisRun, HDGSolverType globType){
   std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, 1));
   Field tau(&myMesh, Face, nNodesPerFace, 2);
   std::fill(tau.getValues()->begin(), tau.getValues()->end(), 0.0);
-  //double multiplier = 1.0;
+  //double multiplier = 100.0;
   //for(int i = 0; i < tau.getLength(); i++){
     //tau.getValues()->at(i) = 1.0 - (i % 2);
     //tau.getValues()->at(i) *= multiplier;
@@ -283,7 +283,7 @@ void runHDGDiffSrc(SimRun * thisRun, HDGSolverType globType){
       thisRun->post += end - start;
     }
     pbar.update();
-    if(thisRun->l2Err > 1.0){
+    if((thisRun->l2Err) > 1.0){
       break;
     }
   }
@@ -299,9 +299,10 @@ TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][
   //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
   //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3"};
   std::vector<std::string> timeSteps = {"2e-4", "1e-4", "5e-5", "2e-5", "1e-5"};
+  //std::vector<std::string> timeSteps = {"1e-7"};
   std::vector<std::string> orders = {"1", "2", "3"};
-  //std::vector<std::string> orders = {"2"};
-  std::vector<std::string> rkTypes = {"FEuler"};
+  //std::vector<std::string> orders = {"1"};
+  std::vector<std::string> rkTypes = {"SSPRK3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){

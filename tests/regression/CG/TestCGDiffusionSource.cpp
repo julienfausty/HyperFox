@@ -217,6 +217,9 @@ void runCGDiffSrc(SimRun * thisRun){
       thisRun->post += end - start;
     }
     pbar.update();
+    if(thisRun->l2Err > 1.0){
+      break;
+    }
   }
 };
 
@@ -225,12 +228,12 @@ TEST_CASE("Testing regression cases for DiffusionSource", "[regression][CG][Diff
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
-  //meshSizes["2"] = {"1e-1"};
-  std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
-  //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3"};
-  std::vector<std::string> orders = {"1", "2", "3"};
-  //std::vector<std::string> orders = {"3"};
+  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  meshSizes["2"] = {"1e-1"};
+  //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
+  std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3"};
+  //std::vector<std::string> orders = {"1", "2", "3"};
+  std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"SSPRK3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){

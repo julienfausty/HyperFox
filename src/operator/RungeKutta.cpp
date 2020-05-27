@@ -113,6 +113,7 @@ void RungeKutta::apply(EMatrix * stiffness, EVector * s){
   std::string nameField;
   int start = 0;
   for(int i = 0; i < stageCounter; i++){
+    start = 0;
     nameField = "RKStage_" + std::to_string(i);
     uj.segment(start, lenRows) += thisStage(0, i)*EMap<const EVector>(fieldMap[nameField]->data(), lenRows);
     start += lenRows;
@@ -135,9 +136,7 @@ void RungeKutta::apply(EMatrix * stiffness, EVector * s){
   uj += ut;
   (*stiffness) *= deltat;
   (*s) *= deltat;
-  //s->segment(0, op.rows()) -= stiffness->block(0, 0, op.rows(), op.cols())*uj;//explicit part
   (*s) -= (*stiffness)*uj;//explicit part
-  //stiffness->block(0, 0, op.rows(), op.cols()) *= thisStage(0, stageCounter);//implicit part
   (*stiffness) *= thisStage(0, stageCounter);//implicit part
   stiffness->block(0, 0, lenRows, lenRows) += op;
   (*s) += (*stiffness)*ut;
