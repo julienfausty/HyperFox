@@ -10,8 +10,9 @@
 #include "Field.h"
 #include "HDF5Io.h"
 #include "Operator.h"
-#include "DiffusionSource.h"
+#include "Transport.h"
 #include "RungeKutta.h"
+#include "Euler.h"
 #include "DirichletModel.h"
 #include "PetscInterface.h"
 #include "CGSolver.h"
@@ -19,41 +20,36 @@
 
 using namespace hfox;
 
-double gaussianSrcCG(const std::vector<double> & v){
-  double res = 0.0;
-  double pre = 2.0/std::sqrt(M_PI);
-  for(int i = 0; i < v.size(); i++){
-    res -= pre*std::exp(-std::pow(v[i] - 0.5, 2));
-  }
-  return res;
+double morelet(const std::vector<double> & x, const std::vector<double> & c, double freq, double dev){
+  double r = (EMap<const EVector>(x.data(), x.size()) - EMap<const EVector>(c.data(), c.size())).norm();
+  return (0.5*std::exp(-0.5*std::pow((r/dev), 2.0))*std::cos(freq*r));
 };
 
-double analyticalDiffSrcCG(const double t, const std::vector<double> & v){
-  double res = 0.0;
-  std::vector<std::complex<double> > w(v.size(), std::complex<double>(0.0, M_PI/2.0));
-  double sqrtPi = std::sqrt(M_PI);
-  std::complex<double> spaceArg(0.0, 0.0);
-  double timePre = 0.0;
-  double alpha = 0.0;
-  for(int i = 0; i < v.size(); i++){
-    spaceArg += w[i]*v[i];
-    timePre += std::real(std::pow(w[i], 2));
-    alpha = v[i] - 0.5;
-    res += alpha*std::erf(alpha) + std::exp(-std::pow(alpha, 2))/sqrtPi;
-  }
-  res += std::exp(timePre * t)*std::real(std::exp(spaceArg));
-  return res;
+double linear(const std::vector<double> & x, const std::vector<double> & c, double a, double b){
+  double r = (EMap<const EVector>(x.data(), x.size()) - EMap<const EVector>(c.data(), c.size())).norm();
+  return (a*r + b);
 };
 
-void runCGDiffSrc(SimRun * thisRun){
+double analyticalTransportCG(const double t, const std::vector<double> & x, const std::vector<double> & v){
+  std::vector<double> c(x.size(), 0.3);
+  double dev = 1.0/12.0;
+  double freq = 8.0*M_PI;
+  //double a = 1.0;
+  //double b = 1.0;
+  std::vector<double> p(x.size(), 0.0);
+  EMap<EVector>(p.data(), p.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(v.data(), v.size());
+  return morelet(p, c, freq, dev);
+  //return linear(p, c, a, b);
+};
+
+void runCGTransport(SimRun * thisRun){
   //setup
   std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
   thisRun->meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/";
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
   meshName += "_ord-" + thisRun->order;
   thisRun->meshLocation += meshName + ".h5";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/CG/";
-  std::string writeDir = writePath;
+  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Transport/CG/";
   RKType rkType;
   std::string rkStr = thisRun->rk;
   if(rkStr == "BEuler"){
@@ -79,35 +75,38 @@ void runCGDiffSrc(SimRun * thisRun){
     rkType = BEuler;
   }
   writeDir += meshName + "_dt-" + thisRun->timeStep;
-  //boost::filesystem::create_directory(writeDir);
+  boost::filesystem::create_directory(writeDir);
   Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
   HDF5Io hdfio(&myMesh);
   hdfio.load(thisRun->meshLocation);
+  RungeKutta ts(myMesh.getReferenceElement(), rkType);
+  int nStages = ts.getNumStages();
   int nNodes = myMesh.getReferenceElement()->getNumNodes();
   int nNodesPerFace = myMesh.getReferenceElement()->getFaceElement()->getNumNodes();
   Field dirichlet(&myMesh, Face, nNodesPerFace, 1);
   Field sol(&myMesh, Node, 1, 1);
   Field oldSol(&myMesh, Node, 1, 1);
-  Field rk0(&myMesh, Node, 1, 1);
-  Field rk1(&myMesh, Node, 1, 1);
-  Field rk2(&myMesh, Node, 1, 1);
-  Field rk3(&myMesh, Node, 1, 1);
+  std::vector<Field> rkStages(nStages, Field(&myMesh, Node, 1, 1));
+  Field vel(&myMesh, Node, 1, std::stoi(thisRun->dim));
+  double invSqrt2 = 1.0/std::sqrt(2.0);
+  for(int i = 0; i < vel.getLength(); i++){
+    vel.getValues()->at(i) = invSqrt2;
+  }
   Field anaSol(&myMesh, Node, 1, 1);
   Field residual(&myMesh, Node, 1, 1);
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
   fieldMap["OldSolution"] = &oldSol;
-  fieldMap["RKStage_0"] = &rk0;
-  fieldMap["RKStage_1"] = &rk1;
-  fieldMap["RKStage_2"] = &rk2;
-  fieldMap["RKStage_3"] = &rk3;
+  for(int i = 0; i < nStages; i++){
+    fieldMap["RKStage_" + std::to_string(i)] = &(rkStages[i]);
+  }
+  fieldMap["Velocity"] = &vel;
   fieldMap["Dirichlet"] = &dirichlet;
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
-  DiffusionSource diffMod(myMesh.getReferenceElement());
-  RungeKutta ts(myMesh.getReferenceElement(), rkType);
+  Transport transportMod(myMesh.getReferenceElement());
   double timeStep = std::stod(thisRun->timeStep);
   ts.setTimeStep(timeStep);
-  diffMod.setTimeScheme(&ts);
+  transportMod.setTimeScheme(&ts);
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-12;
@@ -118,49 +117,50 @@ void runCGDiffSrc(SimRun * thisRun){
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
-  mySolver.setModel(&diffMod);
+  mySolver.setModel(&transportMod);
   mySolver.setBoundaryModel(&dirMod);
   mySolver.initialize();
   mySolver.allocate();
-  diffMod.setSourceFunction(gaussianSrcCG);
   hdfio.setField("Solution", &sol);
-  hdfio.setField("OldSolution", &oldSol);
-  hdfio.setField("RKStage_0", &rk0);
-  hdfio.setField("RKStage_1", &rk1);
-  hdfio.setField("RKStage_2", &rk2);
+  hdfio.setField("Velocity", &vel);
   const std::set<int> * boundary = myMesh.getBoundaryFaces();
   std::vector<double> node(myMesh.getNodeSpaceDimension());
   std::vector<int> cell(nNodesPerFace, 0);
   std::vector< std::vector<double> > nodes(nNodesPerFace, std::vector<double>(myMesh.getNodeSpaceDimension(), 0.0));
   double t = 0;
+  int dimSpace = myMesh.getNodeSpaceDimension();
+  std::vector<double> v(dimSpace, 0.0);
   for(int i = 0; i < myMesh.getNumberPoints(); i++){
     myMesh.getPoint(i, &node);
-    sol.getValues()->at(i) = analyticalDiffSrcCG(t, node);
+    vel.getValues(i, &v);
+    sol.getValues()->at(i) = analyticalTransportCG(t, node, v);
   }
-  //hdfio.write(writeDir + "/res_0.h5");
+  hdfio.write(writeDir + "/res_0.h5");
   double timeEnd = 1.0;
   int nIters = timeEnd / timeStep;
   //int nIters = 5;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   int i = 0;
-  //ProgressBar pbar;
-  //pbar.setIterIndex(&i);
-  //pbar.setNumIterations(nIters);
-  //std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
-  //pbar.update();
+  ProgressBar pbar;
+  pbar.setIterIndex(&i);
+  pbar.setNumIterations(nIters);
+  std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
+  pbar.update();
   for(i = 0; i < nIters; i++){
     t += timeStep;
     //analytical sol
     for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
       myMesh.getPoint(iNode, &node);
-      anaSol.getValues()->at(iNode) = analyticalDiffSrcCG(t, node);
+      vel.getValues(iNode, &v);
+      anaSol.getValues()->at(iNode) = analyticalTransportCG(t, node, v);
     }
     for(auto it = boundary->begin(); it != boundary->end(); it++){
       myMesh.getFace(*it, &cell);
       myMesh.getSlicePoints(cell, &nodes);
       for(int j = 0; j < nNodesPerFace; j++){
-        dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalDiffSrcCG(t, nodes[j]);
+        vel.getValues(cell[j], &v);
+        dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalTransportCG(t, nodes[j], v);
       }
     }
     //copy sol into oldsol
@@ -212,29 +212,29 @@ void runCGDiffSrc(SimRun * thisRun){
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
     if(rem < timeStep/(5e-3)){
-      //hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+      hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
     }
     end = std::chrono::high_resolution_clock::now();
     thisRun->post += end - start;
-    //pbar.update();
+    pbar.update();
     if(thisRun->l2Err > 1.0){
       break;
     }
   }
 };
 
-TEST_CASE("Testing regression cases for DiffusionSource", "[regression][CG][DiffusionSource]"){
+TEST_CASE("Testing regression cases for Transport", "[regression][CG][Transport]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"2e-1", "1e-1"};
-  //meshSizes["2"] = {"1e-1"};
-  //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
-  std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  //meshSizes["2"] = {"7e-2"};
+  std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
+  //std::vector<std::string> timeSteps = {"1e-3"};
   std::vector<std::string> orders = {"1", "2", "3"};
-  //std::vector<std::string> orders = {"3"};
-  std::vector<std::string> rkTypes = {"BEuler"};
+  //std::vector<std::string> orders = {"1"};
+  std::vector<std::string> rkTypes = {"SSPRK3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -254,7 +254,7 @@ TEST_CASE("Testing regression cases for DiffusionSource", "[regression][CG][Diff
     }
   }
 
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/CG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Transport/CG/";
   std::string writeFile = "Breakdown.csv";
   if(rkTypes[0] == "BEuler"){
     writePath += "BEuler/";
@@ -271,26 +271,26 @@ TEST_CASE("Testing regression cases for DiffusionSource", "[regression][CG][Diff
   } else{
     writePath += "Misc/";
   }
-  //std::ofstream f; f.open(writePath + writeFile);
-  //f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
+  std::ofstream f; f.open(writePath + writeFile);
+  f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
-    runCGDiffSrc(&(*it));
+    runCGTransport(&(*it));
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
-    CHECK(it->l2Err < 1e-2);
-    //f << it->dim << ",";
-    //f << it->order << ",";
-    //f << it->meshSize << ",";
-    //f << it->timeStep << ",";
-    //f << it->linAlgErr << ",";
-    //f << it->l2Err << ",";
-    //f << it->dL2Err << ",";
-    //f << it->runtime.count() << ",";
-    //f << it->setup.count() << ",";
-    //f << it->assembly.count() << ",";
-    //f << it->resolution.count() << ",";
-    //f << it->post.count() << "\n";
+    //CHECK(it->l2Err < 1e-2);
+    f << it->dim << ",";
+    f << it->order << ",";
+    f << it->meshSize << ",";
+    f << it->timeStep << ",";
+    f << it->linAlgErr << ",";
+    f << it->l2Err << ",";
+    f << it->dL2Err << ",";
+    f << it->runtime.count() << ",";
+    f << it->setup.count() << ",";
+    f << it->assembly.count() << ",";
+    f << it->resolution.count() << ",";
+    f << it->post.count() << "\n";
   }
-  //f.close();
+  f.close();
 };

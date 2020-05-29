@@ -271,13 +271,14 @@ void HDGSolver::assemble(){
           break;
         }
     }
+    locS = locS.transpose();
     switch(modAssembly->matrix){
       case Add:{
-                 linSystem->addValsMatrix(matRowCols, matRowCols, locS.transpose().data());
+                 linSystem->addValsMatrix(matRowCols, matRowCols, locS.data());
                  break;
                }
       case Set:{
-                 linSystem->setValsMatrix(matRowCols, matRowCols, locS.transpose().data());
+                 linSystem->setValsMatrix(matRowCols, matRowCols, locS.data());
                  break;
                }
     }
@@ -301,6 +302,7 @@ void HDGSolver::assemble(){
   cell.resize(nNodesPFc);
   nodes.resize(nNodesPFc);
   modAssembly = boundaryModel->getAssemblyType();
+  EMatrix boundaryT(boundaryModel->getLocalMatrix()->rows(), boundaryModel->getLocalMatrix()->cols());
   const std::set<int> * boundaryFaces = myMesh->getBoundaryFaces();
   std::set<int>::const_iterator itFace;
   int index = 0;
@@ -336,14 +338,15 @@ void HDGSolver::assemble(){
     boundaryModel->setElementNodes(&nodes);
     boundaryModel->setFieldMap(&faceFieldMap);
     boundaryModel->compute();
+    boundaryT = boundaryModel->getLocalMatrix()->transpose();
     std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
     switch(modAssembly->matrix){
       case Add:{
-                 linSystem->addValsMatrix(matRowCols, matRowCols, boundaryModel->getLocalMatrix()->transpose().data());
+                 linSystem->addValsMatrix(matRowCols, matRowCols, boundaryT.data());
                  break;
                }
       case Set:{
-                 linSystem->setValsMatrix(matRowCols, matRowCols, boundaryModel->getLocalMatrix()->transpose().data());
+                 linSystem->setValsMatrix(matRowCols, matRowCols, boundaryT.data());
                  break;
                }
     }

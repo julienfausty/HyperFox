@@ -69,7 +69,7 @@ std::vector<EMatrix> DiffusionSource::parseDiffusionVals() const{
 
 void DiffusionSource::computeLocalMatrix(){
   if(!(nodeSet and fieldSet)){
-    throw("DiffusionSource", "computeLocalMatrix", "the nodes and the fields should be set before computing");
+    throw(ErrorHandle("DiffusionSource", "computeLocalMatrix", "the nodes and the fields should be set before computing"));
   }
   jacobians = Operator::calcJacobians(*elementNodes, refEl);
   invJacobians = Operator::calcInvJacobians(jacobians);

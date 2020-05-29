@@ -42,7 +42,7 @@ void HDGDiffusionSource::initializeOperators(){
 
 void HDGDiffusionSource::computeLocalMatrix(){
   if(!(nodeSet and fieldSet)){
-    throw("HDGDiffusionSource", "computeLocalMatrix", "the nodes and the fields should be set before computing");
+    throw(ErrorHandle("HDGDiffusionSource", "computeLocalMatrix", "the nodes and the fields should be set before computing"));
   }
   computeElementJacobians();
   ((HDGBase*)operatorMap["Base"])->setTau(*(fieldMap["Tau"]));

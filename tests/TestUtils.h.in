@@ -6,6 +6,7 @@
 #include <cstring>
 #include <vector>
 #include <chrono>
+#include <functional>
 #include "DenseEigen.h"
 #include "Field.h"
 #include "Mesh.h"
@@ -155,6 +156,12 @@ class TestUtils{
     }
     return normals;
   };//getRefNormals
+
+  static double analyticalAdvectionSolution(std::function<double(std::vector<double>)> initialSol, const std::vector<double> & velocity, const double t, const std::vector<double> & x){
+    std::vector<double> effectiveX(x.size(), 0.0);
+    EMap<EVector>(effectiveX.data(), effectiveX.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(velocity.data(), velocity.size());
+    return initialSol(effectiveX);
+  };
 
 };//TestUtils
 

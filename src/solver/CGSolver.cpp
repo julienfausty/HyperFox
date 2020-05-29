@@ -60,6 +60,7 @@ void CGSolver::assemble(){
     std::cout << "Assembly - Element loop (nElements = " << myMesh->getNumberCells() << ", nNodes/El = " << cell.size() << "):" << std::endl;
     pb.update();
   }
+  EMatrix modelT(model->getLocalMatrix()->rows(), model->getLocalMatrix()->cols());
   for(iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
     myMesh->getCell(iEl, &cell);
     myMesh->getSlicePoints(cell, &nodes);
@@ -67,13 +68,14 @@ void CGSolver::assemble(){
     model->setElementNodes(&nodes);
     model->setFieldMap(&nodalFieldMap);
     model->compute();
+    modelT = model->getLocalMatrix()->transpose();
     switch(modAssemble->matrix){
       case Add:{
-                 linSystem->addValsMatrix(cell, cell, model->getLocalMatrix()->transpose().data());
+                 linSystem->addValsMatrix(cell, cell, modelT.data());
                  break;
                }
       case Set:{
-                 linSystem->setValsMatrix(cell, cell, model->getLocalMatrix()->transpose().data());
+                 linSystem->setValsMatrix(cell, cell, modelT.data());
                  break;
                }
     }
@@ -96,6 +98,7 @@ void CGSolver::assemble(){
   cell.resize(refEl->getFaceElement()->getNumNodes());
   nodes.resize(0);
   nodes.resize(cell.size(), std::vector<double>(myMesh->getNodeSpaceDimension(), 0.0));
+  modelT.resize(boundaryModel->getLocalMatrix()->rows(), boundaryModel->getLocalMatrix()->cols());
   modAssemble = boundaryModel->getAssemblyType();
   std::vector<int> slice(1, 0);
   const std::set<int> * boundaryFaces = myMesh->getBoundaryFaces();
@@ -133,13 +136,14 @@ void CGSolver::assemble(){
     boundaryModel->setElementNodes(&nodes);
     boundaryModel->setFieldMap(&faceFieldMap);
     boundaryModel->compute();
+    modelT = boundaryModel->getLocalMatrix()->transpose();
     switch(modAssemble->matrix){
       case Add:{
-                 linSystem->addValsMatrix(cell, cell, boundaryModel->getLocalMatrix()->transpose().data());
+                 linSystem->addValsMatrix(cell, cell, modelT.data());
                  break;
                }
       case Set:{
-                 linSystem->setValsMatrix(cell, cell, boundaryModel->getLocalMatrix()->transpose().data());
+                 linSystem->setValsMatrix(cell, cell, modelT.data());
                  break;
                }
     }

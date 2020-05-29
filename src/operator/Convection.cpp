@@ -10,8 +10,9 @@ void Convection::setVelocity(const std::vector<EVector> & velocity){
   for(int i = 0; i < refEl->getNumNodes(); i++){
     velMat.col(i) = velocity[i];
   }
+  const std::vector<double> * pshape;
   for(int i = 0; i < refEl->getNumIPs(); i++){
-    const std::vector<double> * pshape = &(ipShapes->at(i));
+    pshape = &(ipShapes->at(i));
     EMap<const EVector> shapes(pshape->data(), pshape->size());
     vels[i] = velMat*shapes;
   }

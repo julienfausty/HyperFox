@@ -12,7 +12,7 @@ TEST_CASE("Testing the HDGDiffusionSource model", "[unit][model][HDGDiffusionSou
 
   double tol = 1e-12;
   int maxDim = 3;
-  int maxOrd = 5;
+  int maxOrd = 2;
 
   for(int i = 1; i < maxDim; i++){
     for(int j = 0; j < maxOrd; j++){
@@ -101,7 +101,7 @@ TEST_CASE("Testing the HDGDiffusionSource model", "[unit][model][HDGDiffusionSou
           Suq.row(rowInd) -= baseOp.getMatrix()->block(startL + iFace*(refEl.getFaceElement()->getNumNodes()) + k, startQ, 1, lenQ);
         }
       }
-      SECTION("Poisson equation in reference element"){
+      SECTION("Poisson equation in reference element(dim=" + std::to_string(i+1) + ", order=" + std::to_string(j+1) + ")"){
         CHECK_NOTHROW(mod.setElementNodes(refEl.getNodes()));
         CHECK_NOTHROW(mod.compute());
         EMatrix testMat = *(baseOp.getMatrix());
@@ -125,7 +125,7 @@ TEST_CASE("Testing the HDGDiffusionSource model", "[unit][model][HDGDiffusionSou
       mod2.setFieldMap(&fm);
       mod2.allocate(1);
       mod2.setSourceFunction(testSrc);
-      SECTION("Diffusion source equation in reference element"){
+      SECTION("Diffusion source equation in reference element(dim=" + std::to_string(i+1) + ", order=" + std::to_string(j+1) + ")"){
         CHECK_NOTHROW(mod2.setElementNodes(refEl.getNodes()));
         CHECK_NOTHROW(mod2.compute());
         EMatrix testMat = *(baseOp.getMatrix());
@@ -134,7 +134,7 @@ TEST_CASE("Testing the HDGDiffusionSource model", "[unit][model][HDGDiffusionSou
         testMat.block(0, 0, lenU, lenU) += (*(mass.getMatrix()));
         testMat -= *(mod2.getLocalMatrix());
         CHECK((testMat.transpose() * testMat).sum() < tol);
-        EVector testVec(testMat.rows());
+        EVector testVec = EVector::Zero(testMat.rows());
         testVec.segment(0, lenU) = timeStep*((EVector) srcOp.getMatrix()->block(0, 0, lenU, 1));
         testVec.segment(0, lenU) += (*(mass.getMatrix()))*EMap<EVector>(sol.data(), sol.size());
         testVec -= (*(mod2.getLocalRHS()));
