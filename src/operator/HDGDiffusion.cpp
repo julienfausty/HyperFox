@@ -13,8 +13,8 @@ HDGDiffusion::~HDGDiffusion(){
 };//destructor
 
 void HDGDiffusion::allocate(int nDOFsPerNodeUser){
-  convection->allocate(nDOFsPerNodeUser);
-  faceMass->allocate(nDOFsPerNodeUser);
+  convection->allocate(1);
+  faceMass->allocate(1);
   HDGOperator::allocate(nDOFsPerNodeUser);
 };//allocate
 
@@ -61,6 +61,9 @@ void HDGDiffusion::setDiffusionTensor(const std::vector<EMatrix> & diffTensor){
 void HDGDiffusion::assemble(const std::vector<double> & dV, const std::vector<EMatrix> & invJacobians){
   if(!allocated){
     throw(ErrorHandle("HDGDiffusion", "assemble", "must allocated the operator before assembling"));
+  }
+  if(normals == NULL){
+    throw(ErrorHandle("HDGDiffusion", "assemble", "must set the normals from the base before assembling"));
   }
   op = EMatrix::Zero(op.rows(), op.cols());
   int dim = refEl->getDimension();

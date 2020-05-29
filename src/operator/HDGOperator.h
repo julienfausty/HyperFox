@@ -28,7 +28,11 @@ class HDGOperator : public Operator{
      */
     virtual void assemble(const std::vector< double > & dV, 
         const std::vector< EMatrix > & invJacobians) = 0;
-
+  protected:
+    /*!
+     * \brief fill out the operator
+     */
+    void multiplyDOFs();
 };//HDGOperator
 
 }//hfox

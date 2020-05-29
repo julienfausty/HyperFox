@@ -14,4 +14,17 @@ void HDGOperator::allocate(int nDOFsPerNodeUser){
   allocated = 1;
 };//allocate
 
+void HDGOperator::multiplyDOFs(){
+  int nNodes = op.cols()/nDOFsPerNode;
+  EMatrix buff = op.block(0, 0, nNodes, nNodes);
+  op.block(0,0,nNodes,nNodes) = EMatrix::Zero(nNodes, nNodes);
+  for(int i = 0; i < nNodes; i++){
+    for(int j = 0; j < nNodes; j++){
+      for(int k = 0; k < nDOFsPerNode; k++){
+        op(i*nDOFsPerNode + k, j*nDOFsPerNode + k) = buff(i, j);
+      }
+    }
+  }
+};//multiplyDOFs
+
 }//hfox

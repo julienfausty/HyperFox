@@ -10,9 +10,9 @@ namespace hfox{
 /*!
  * \brief operator that implements diffusion in an HDG setting
  *
- * \[f
+ * \[
  * \int_{e} q \cdot \nabla \varphi - \int_{\partial e} q \cdot n \varphi
- * \]f
+ * \]
  *
  * since this operator uses a lot of the same components as HDGBase, instead of re allocating and 
  * recalculating them, this operator takes them a set values from the method "setFromBase"
