@@ -3,6 +3,7 @@
 
 #include "HDGOperator.h"
 #include "Mass.h"
+#include "Convection.h"
 
 namespace hfox{
 

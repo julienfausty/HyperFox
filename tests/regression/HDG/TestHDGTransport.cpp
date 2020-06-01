@@ -10,41 +10,47 @@
 #include "Field.h"
 #include "HDF5Io.h"
 #include "Operator.h"
-#include "Transport.h"
+#include "HDGTransport.h"
 #include "RungeKutta.h"
 #include "Euler.h"
 #include "DirichletModel.h"
 #include "PetscInterface.h"
-#include "CGSolver.h"
+#include "HDGSolver.h"
 #include "TestUtils.h"
 
 using namespace hfox;
 
-double linear(const std::vector<double> & x, const std::vector<double> & c, double a, double b){
-  double r = (EMap<const EVector>(x.data(), x.size()) - EMap<const EVector>(c.data(), c.size())).norm();
-  return (a*r + b);
-};
-
-double analyticalTransportCG(const double t, const std::vector<double> & x, const std::vector<double> & v){
+double analyticalTransportHDG(const double t, const std::vector<double> & x, const std::vector<double> & v){
   std::vector<double> c(x.size(), 0.3);
   double dev = 1.0/12.0;
   double freq = 8.0*M_PI;
-  //double a = 1.0;
-  //double b = 1.0;
   std::vector<double> p(x.size(), 0.0);
   EMap<EVector>(p.data(), p.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(v.data(), v.size());
   return TestUtils::morelet(p, c, freq, dev);
-  //return linear(p, c, a, b);
 };
 
-void runCGTransport(SimRun * thisRun){
+double analyticalTransportHDGGrad(const double t, const std::vector<double> & x, const std::vector<double> & v, int k){
+  std::vector<double> c(x.size(), 0.3);
+  double dev = 1.0/12.0;
+  double freq = 8.0*M_PI;
+  std::vector<double> p(x.size(), 0.0);
+  EMap<EVector>(p.data(), p.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(v.data(), v.size());
+  return TestUtils::moreletGrad(p, c, freq, dev, k);
+};
+
+void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   //setup
   std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
   thisRun->meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/";
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
   meshName += "_ord-" + thisRun->order;
   thisRun->meshLocation += meshName + ".h5";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Transport/CG/";
+  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Transport/HDG/";
+  if(globType == WEXPLICIT){
+    writeDir += "WExp/";
+  } else {
+    writeDir += "Imp/";
+  }
   RKType rkType;
   std::string rkStr = thisRun->rk;
   if(rkStr == "BEuler"){
@@ -70,45 +76,70 @@ void runCGTransport(SimRun * thisRun){
     rkType = BEuler;
   }
   writeDir += meshName + "_dt-" + thisRun->timeStep;
-  //boost::filesystem::create_directory(writeDir);
+  boost::filesystem::create_directory(writeDir);
   Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
   HDF5Io hdfio(&myMesh);
   hdfio.load(thisRun->meshLocation);
-  RungeKutta ts(myMesh.getReferenceElement(), rkType);
+  std::vector<std::string> auxiliaries = {"Flux", "Trace"};
+  RungeKutta ts(myMesh.getReferenceElement(), rkType, auxiliaries);
   int nStages = ts.getNumStages();
   int nNodes = myMesh.getReferenceElement()->getNumNodes();
   int nNodesPerFace = myMesh.getReferenceElement()->getFaceElement()->getNumNodes();
+  int nodeDim = myMesh.getNodeSpaceDimension();
   Field dirichlet(&myMesh, Face, nNodesPerFace, 1);
-  Field sol(&myMesh, Node, 1, 1);
-  Field oldSol(&myMesh, Node, 1, 1);
-  std::vector<Field> rkStages(nStages, Field(&myMesh, Node, 1, 1));
-  Field vel(&myMesh, Node, 1, std::stoi(thisRun->dim));
+  Field sol(&myMesh, Cell, nNodes, 1);
+  Field oldSol(&myMesh, Cell, nNodes, 1);
+  std::vector<Field> rkStages(nStages, Field(&myMesh, Cell, nNodes, 1));
+  Field flux(&myMesh, Cell, nNodes, nodeDim);
+  Field oldFlux(&myMesh, Cell, nNodes, nodeDim);
+  std::vector<Field> rkFluxStages(nStages, Field(&myMesh, Cell, nNodes, nodeDim));
+  Field trace(&myMesh, Face, nNodesPerFace, 1);
+  Field oldTrace(&myMesh, Face, nNodesPerFace, 1);
+  std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, 1));
+  Field tau(&myMesh, Face, nNodesPerFace, 2);
+  //std::fill(tau.getValues()->begin(), tau.getValues()->end(), 1.0);
+  double multiplier = 1.0;
+  for(int i = 0; i < tau.getLength(); i++){
+    tau.getValues()->at(i) = 1.0 - (i % 2);
+    tau.getValues()->at(i) *= multiplier;
+  }
+  Field vel(&myMesh, Cell, nNodes, nodeDim);
   double invSqrt2 = 1.0/std::sqrt(2.0);
   for(int i = 0; i < vel.getLength(); i++){
     vel.getValues()->at(i) = invSqrt2;
   }
   Field anaSol(&myMesh, Node, 1, 1);
-  Field residual(&myMesh, Node, 1, 1);
+  Field residual(&myMesh, Cell, nNodes, 1);
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
   fieldMap["OldSolution"] = &oldSol;
+  fieldMap["Flux"] = &flux;
+  fieldMap["OldFlux"] = &oldFlux;
+  fieldMap["Trace"] = &trace;
+  fieldMap["OldTrace"] = &oldTrace;
   for(int i = 0; i < nStages; i++){
     fieldMap["RKStage_" + std::to_string(i)] = &(rkStages[i]);
+    fieldMap["RKStage_Flux_" + std::to_string(i)] = &(rkFluxStages[i]);
+    fieldMap["RKStage_Trace_" + std::to_string(i)] = &(rkTraceStages[i]);
   }
-  fieldMap["Velocity"] = &vel;
+  fieldMap["Tau"] = &tau;
   fieldMap["Dirichlet"] = &dirichlet;
+  fieldMap["Velocity"] = &vel;
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
-  Transport transportMod(myMesh.getReferenceElement());
+  HDGTransport transportMod(myMesh.getReferenceElement());
   double timeStep = std::stod(thisRun->timeStep);
   ts.setTimeStep(timeStep);
   transportMod.setTimeScheme(&ts);
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-12;
-  myOpts.verbose = false;
+  myOpts.verbose = true;
   PetscInterface petsciface(myOpts);
-  CGSolver mySolver;
-  mySolver.setVerbosity(0);
+  HDGSolverOpts solveOpts;
+  solveOpts.type = globType;
+  solveOpts.verbosity = true;
+  HDGSolver mySolver;
+  mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
@@ -117,50 +148,68 @@ void runCGTransport(SimRun * thisRun){
   mySolver.initialize();
   mySolver.allocate();
   hdfio.setField("Solution", &sol);
-  hdfio.setField("Velocity", &vel);
   const std::set<int> * boundary = myMesh.getBoundaryFaces();
-  std::vector<double> node(myMesh.getNodeSpaceDimension());
+  std::vector<double> node(nodeDim);
   std::vector<int> cell(nNodesPerFace, 0);
-  std::vector< std::vector<double> > nodes(nNodesPerFace, std::vector<double>(myMesh.getNodeSpaceDimension(), 0.0));
+  std::vector< std::vector<double> > nodes(nNodesPerFace, std::vector<double>(nodeDim, 0.0));
   double t = 0;
-  int dimSpace = myMesh.getNodeSpaceDimension();
-  std::vector<double> v(dimSpace, 0.0);
-  for(int i = 0; i < myMesh.getNumberPoints(); i++){
-    myMesh.getPoint(i, &node);
-    vel.getValues(i, &v);
-    sol.getValues()->at(i) = analyticalTransportCG(t, node, v);
+  std::vector<double> v(nodeDim, 0.0);
+  for(int i = 0; i < myMesh.getNumberCells(); i++){
+    myMesh.getCell(i, &cell);
+    for(int j = 0; j < nNodes; j++){
+      myMesh.getPoint(cell[j], &node);
+      vel.getValues(cell[j], &v);
+      sol.getValues()->at(i*nNodes + j) = analyticalTransportHDG(t, node, v);
+      for(int k = 0; k < nodeDim; k++){
+        flux.getValues()->at((i*nNodes + j)*nodeDim + k) = analyticalTransportHDGGrad(t, node, v, k);
+      }
+    }
   }
-  //hdfio.write(writeDir + "/res_0.h5");
+  for(int i = 0; i < myMesh.getNumberFaces(); i++){
+    myMesh.getFace(i, &cell);
+    for(int j = 0; j < nNodesPerFace; j++){
+      myMesh.getPoint(cell[j], &node);
+      vel.getValues(cell[j], &v);
+      trace.getValues()->at(i*nNodesPerFace + j) = analyticalTransportHDG(t, node, v);;
+    }
+  }
+  hdfio.write(writeDir + "/res_0.h5");
   double timeEnd = 1.0;
-  int nIters = timeEnd / timeStep;
-  //int nIters = 5;
+  //int nIters = timeEnd / timeStep;
+  int nIters = 5;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   int i = 0;
-  //ProgressBar pbar;
-  //pbar.setIterIndex(&i);
-  //pbar.setNumIterations(nIters);
-  //std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
-  //pbar.update();
+  ProgressBar pbar;
+  pbar.setIterIndex(&i);
+  pbar.setNumIterations(nIters);
+  std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
+  pbar.update();
   for(i = 0; i < nIters; i++){
     t += timeStep;
     //analytical sol
     for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
       myMesh.getPoint(iNode, &node);
       vel.getValues(iNode, &v);
-      anaSol.getValues()->at(iNode) = analyticalTransportCG(t, node, v);
+      anaSol.getValues()->at(iNode) = analyticalTransportHDG(t, node, v);
     }
     for(auto it = boundary->begin(); it != boundary->end(); it++){
       myMesh.getFace(*it, &cell);
       myMesh.getSlicePoints(cell, &nodes);
       for(int j = 0; j < nNodesPerFace; j++){
         vel.getValues(cell[j], &v);
-        dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalTransportCG(t, nodes[j], v);
+        dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalTransportHDG(t, nodes[j], v);
       }
     }
     //copy sol into oldsol
-    for(int iN = 0; iN < myMesh.getNumberPoints(); iN++){
-      oldSol.getValues()->at(iN) = sol.getValues()->at(iN);
+    for(int iSol = 0; iSol < sol.getLength(); iSol++){
+      oldSol.getValues()->at(iSol) = sol.getValues()->at(iSol);
+    }
+    for(int iSol = 0; iSol < flux.getLength(); iSol++){
+      oldFlux.getValues()->at(iSol) = flux.getValues()->at(iSol);
+    }
+    for(int iSol = 0; iSol < trace.getLength(); iSol++){
+      oldTrace.getValues()->at(iSol) = trace.getValues()->at(iSol);
     }
     for(int k = 0; k < ts.getNumStages(); k++){
       start = std::chrono::high_resolution_clock::now();
@@ -185,12 +234,15 @@ void runCGTransport(SimRun * thisRun){
     //calc l2Err
     cell.resize(nNodes);
     double sumRes = 0, sumAna = 0;
-    for(int k = 0; k < myMesh.getNumberPoints(); k++){
-      residual.getValues()->at(k) = anaSol.getValues()->at(k) - sol.getValues()->at(k);
-      sumRes += std::pow(residual.getValues()->at(k), 2);
-      sumAna += std::pow(anaSol.getValues()->at(k), 2); 
+    for(int k = 0; k < myMesh.getNumberCells(); k++){
+      myMesh.getCell(k, &cell);
+      for(int j = 0; j < nNodes; j++){
+        residual.getValues()->at(k*nNodes + j) = anaSol.getValues()->at(cell[j]) - sol.getValues()->at(k*nNodes + j);
+        sumRes += std::pow(residual.getValues()->at(k*nNodes + j), 2);
+        sumAna += std::pow(anaSol.getValues()->at(cell[j]), 2);
+      }
     }
-    double l2Err = std::sqrt(TestUtils::l2ProjectionNodeField(&residual, &residual, &myMesh));
+    double l2Err = std::sqrt(TestUtils::l2ProjectionCellField(&residual, &residual, &myMesh));
     double dL2Err = std::sqrt(sumRes/sumAna);
     //std::cout << "l2Err at time " << t << ": " << l2Err << std::endl;
     if(i != (nIters-1)){
@@ -207,28 +259,28 @@ void runCGTransport(SimRun * thisRun){
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
     if(rem < timeStep/(5e-3)){
-      //hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+      hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
     }
     end = std::chrono::high_resolution_clock::now();
     thisRun->post += end - start;
-    //pbar.update();
+    pbar.update();
     if(thisRun->l2Err > 1.0){
       break;
     }
   }
 };
 
-TEST_CASE("Testing regression cases for HDG Transport", "[regression][CG][Transport]"){
+TEST_CASE("Testing regression cases for Transport", "[regression][HDG][Transport]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"2e-1", "1e-1"};
-  //meshSizes["2"] = {"7e-2"};
+  //meshSizes["2"] = {"2e-1", "1e-1"};
+  meshSizes["2"] = {"7e-2"};
   //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
-  std::vector<std::string> timeSteps = {"2e-1", "1e-1"};
-  std::vector<std::string> orders = {"1", "2", "3"};
-  //std::vector<std::string> orders = {"1"};
+  std::vector<std::string> timeSteps = {"1e-2"};
+  //std::vector<std::string> orders = {"1", "2", "3"};
+  std::vector<std::string> orders = {"1"};
   std::vector<std::string> rkTypes = {"BEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
@@ -249,8 +301,15 @@ TEST_CASE("Testing regression cases for HDG Transport", "[regression][CG][Transp
     }
   }
 
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Transport/CG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Transport/HDG/";
+  //HDGSolverType globType = WEXPLICIT;
+  HDGSolverType globType = IMPLICIT;
   std::string writeFile = "Breakdown.csv";
+  if(globType == WEXPLICIT){
+    writePath += "WExp/";
+  } else {
+    writePath += "Imp/";
+  }
   if(rkTypes[0] == "BEuler"){
     writePath += "BEuler/";
   }else if(rkTypes[0] == "ALX2"){
@@ -266,26 +325,26 @@ TEST_CASE("Testing regression cases for HDG Transport", "[regression][CG][Transp
   } else{
     writePath += "Misc/";
   }
-  //std::ofstream f; f.open(writePath + writeFile);
-  //f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
+  std::ofstream f; f.open(writePath + writeFile);
+  f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
-    runCGTransport(&(*it));
+    runHDGTransport(&(*it), globType);
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
-    CHECK(it->l2Err < 1e-1);
-    //f << it->dim << ",";
-    //f << it->order << ",";
-    //f << it->meshSize << ",";
-    //f << it->timeStep << ",";
-    //f << it->linAlgErr << ",";
-    //f << it->l2Err << ",";
-    //f << it->dL2Err << ",";
-    //f << it->runtime.count() << ",";
-    //f << it->setup.count() << ",";
-    //f << it->assembly.count() << ",";
-    //f << it->resolution.count() << ",";
-    //f << it->post.count() << "\n";
+    //CHECK(it->l2Err < 1e-1);
+    f << it->dim << ",";
+    f << it->order << ",";
+    f << it->meshSize << ",";
+    f << it->timeStep << ",";
+    f << it->linAlgErr << ",";
+    f << it->l2Err << ",";
+    f << it->dL2Err << ",";
+    f << it->runtime.count() << ",";
+    f << it->setup.count() << ",";
+    f << it->assembly.count() << ",";
+    f << it->resolution.count() << ",";
+    f << it->post.count() << "\n";
   }
-  //f.close();
+  f.close();
 };

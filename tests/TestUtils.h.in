@@ -7,6 +7,8 @@
 #include <vector>
 #include <chrono>
 #include <functional>
+#include <cmath>
+#define _USE_MATH_DEFINES
 #include "DenseEigen.h"
 #include "Field.h"
 #include "Mesh.h"
@@ -161,6 +163,16 @@ class TestUtils{
     std::vector<double> effectiveX(x.size(), 0.0);
     EMap<EVector>(effectiveX.data(), effectiveX.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(velocity.data(), velocity.size());
     return initialSol(effectiveX);
+  };
+  
+  static double morelet(const std::vector<double> & x, const std::vector<double> & c, double freq, double dev){
+    double r = (EMap<const EVector>(x.data(), x.size()) - EMap<const EVector>(c.data(), c.size())).norm();
+    return (0.5*std::exp(-0.5*std::pow((r/dev), 2.0))*std::cos(freq*r));
+  };
+
+  static double moreletGrad(const std::vector<double> & x, const std::vector<double> & c, double freq, double dev, int k){
+    double r = (EMap<const EVector>(x.data(), x.size()) - EMap<const EVector>(c.data(), c.size())).norm();
+    return (0.5*((x[k]-c[k])/r)*std::exp(-0.5*std::pow((r/dev), 2.0))*((r/dev)*std::cos(freq*r) + freq*std::sin(freq*r)));
   };
 
 };//TestUtils
