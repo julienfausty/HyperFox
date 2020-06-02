@@ -3,32 +3,58 @@
 namespace hfox{
 
 HDGConvection::HDGConvection(const ReferenceElement * re) : HDGOperator(re){
-  mass = new Mass(re);
+  convection = new Convection(re);
+  faceMass = new Mass(re->getFaceElement());
 };//constructor
 
 HDGConvection::~HDGConvection(){
-  delete mass;
+  delete convection;
+  delete faceMass;
 };//destructor
 
 void HDGConvection::allocate(int nDOFsPerNodeUser){
-  mass->allocate(1);
+  convection->allocate(1);
+  faceMass->allocate(1);
   HDGOperator::allocate(nDOFsPerNodeUser);
 };//allocate
 
+void HDGConvection::setFromBase(const std::vector<EVector> * ns){
+  if(ns->at(0).size() != refEl->getDimension()){
+    throw(ErrorHandle("HDGConvection", "setFromBase", "the dimension of the normals must be equal to the dimension of the reference space"));
+  }
+  if(ns->size() != refEl->getNumFaces() * (refEl->getFaceElement()->getNumIPs())){
+    throw(ErrorHandle("HDGConvection", "setFromBase", "the number of normals should be the number of faces times the number of integration points per face"));
+  }
+  normals = ns;
+};//setFromBase
+
 void HDGConvection::setVelocity(const std::vector<EVector> & vels){
-  int spaceDim = vels[0].size();
-  velocities.resize(refEl->getNumIPs(), EVector::Zero(spaceDim));
-  const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
-  EMatrix velMat(spaceDim, refEl->getNumNodes());
-  for(int i = 0; i < refEl->getNumNodes(); i++){
-    velMat.col(i) = vels[i];
+  int nNodes = refEl->getNumNodes();
+  if(vels.size() != nNodes){
+    throw(ErrorHandle("HDGConvection", "setVelocity", "the number of vectors should be the number nodes in the element"));
   }
-  const std::vector<double> * pshape;
-  for(int i = 0; i < refEl->getNumIPs(); i++){
-    pshape = &(ipShapes->at(i));
-    EMap<const EVector> shapes(pshape->data(), pshape->size());
-    velocities[i] = velMat*shapes;
+  int dim = refEl->getDimension();
+  if((vels[0].size() != dim)){
+    throw(ErrorHandle("HDGConvection", "setVelocity", "the velocities should have the same number of components as the reference element dimension."));
   }
+  int nFaces = refEl->getNumFaces();
+  const ReferenceElement * fEl = refEl->getFaceElement();
+  int nIPs = fEl->getNumIPs();
+  int nNodesPFc = fEl->getNumNodes();
+  const std::vector< std::vector<int> > * faceNodeMap = refEl->getFaceNodes();
+  const std::vector< std::vector<double> > * ipShapes = fEl->getIPShapeFunctions();
+  faceVels.resize(nFaces*nIPs, EVector::Zero(dim));
+  EMatrix nodeVels(dim, nNodesPFc);
+  for(int iFace = 0; iFace < nFaces; iFace++){
+    for(int i = 0; i < nNodesPFc; i++){
+      nodeVels.col(i) = vels[faceNodeMap->at(iFace)[i]];
+    }
+    for(int i = 0; i < nIPs; i++){
+      EMap<const EVector> shape(ipShapes->at(i).data(), ipShapes->at(i).size());
+      faceVels[iFace*nIPs + i] = nodeVels*shape;
+    }
+  }
+  velocities = vels;
 };//setVelocity
 
 void HDGConvection::assemble(const std::vector<double> & dV, const std::vector<EMatrix> & invJacobians){
@@ -38,18 +64,36 @@ void HDGConvection::assemble(const std::vector<double> & dV, const std::vector<E
   if(velocities.size() == 0){
     throw(ErrorHandle("HDGConvection", "assemble", "the velocity must be set before assembling"));
   }
+  if(normals == NULL){
+    throw(ErrorHandle("HDGConvection", "assemble", "must set the normals from the base before assembling"));
+  }
   op = EMatrix::Zero(op.rows(), op.cols());
-  int dimSpace = refEl->getDimension();
-  int nNodes = refEl->getNumNodes();
-  int nIPs = refEl->getNumIPs();
-  std::vector<double> locMeasure(nIPs, 0.0);
-  for(int i = 0; i < dimSpace; i++){
-    for(int k = 0; k < nIPs; k++){
-      locMeasure[k] = dV[k]*velocities[k][i];
+  int dim = refEl->getDimension();
+  int nNodesEl = refEl->getNumNodes();
+  int nIPsEl = refEl->getNumIPs();
+  int nFaces = refEl->getNumFaces();
+  const ReferenceElement * fEl = refEl->getFaceElement();
+  int nNodesFace = fEl->getNumNodes();
+  int nIPsPFc = fEl->getNumIPs();
+  const std::vector< std::vector<int> > * faceNodeMap = refEl->getFaceNodes(); 
+  convection->setVelocity(velocities);
+  convection->assemble(dV, invJacobians);
+  op.block(0, 0, nNodesEl, nNodesEl) -= convection->getMatrix()->transpose();
+  std::vector<EMatrix> faceInvJacs(nIPsPFc);
+  std::vector<double> locMeasure(nIPsPFc, 0.0);
+  int offset = 0, facesOff = 0;
+  for(int i = 0; i < nFaces; i++){
+    facesOff = i*nIPsPFc;
+    offset = nIPsEl + facesOff;
+    std::copy(invJacobians.begin() + offset, invJacobians.begin() + offset + nIPsPFc, faceInvJacs.begin());
+    for(int j = 0; j < nIPsPFc; j++){
+      locMeasure[j] = dV[offset + j]*(faceVels[facesOff + j].dot(normals->at(facesOff + j)));
     }
-    mass->assemble(locMeasure, invJacobians);
-    for(int k = 0; k < nNodes; k++){
-      op.block(0, nNodes + (dimSpace)*k + i, nNodes, 1) = mass->getMatrix()->col(k);
+    faceMass->assemble(locMeasure, faceInvJacs);
+    for(int j = 0; j < nNodesFace; j++){
+      for(int k = 0; k < nNodesFace; k++){
+        op(faceNodeMap->at(i)[k], faceNodeMap->at(i)[j]) += (*(faceMass->getMatrix()))(k, j);
+      }
     }
   }
   if(nDOFsPerNode > 1){

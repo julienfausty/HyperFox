@@ -54,6 +54,7 @@ void HDGTransport::computeLocalMatrix(){
   ((HDGBase*)operatorMap["Base"])->setTau(*(fieldMap["Tau"]));
   ((HDGBase*)operatorMap["Base"])->calcNormals(*elementNodes, jacobians);
   ((HDGConvection*)operatorMap["Convection"])->setVelocity(parseVelocityVals());
+  ((HDGConvection*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
   operatorMap["Base"]->assemble(dV, invJacobians);
   operatorMap["Convection"]->assemble(dV, invJacobians);
   localMatrix = *(operatorMap["Base"]->getMatrix());

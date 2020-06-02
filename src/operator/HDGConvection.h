@@ -47,15 +47,33 @@ class HDGConvection : public HDGOperator{
      * @param vels a list of velocities at the nodes of the element
      */
     void setVelocity(const std::vector<EVector> & vels);
+    /*!
+     * \brief a method that borrows objects from the HDGBase operator
+     *
+     * @param ns a pointer to the normals to the faces at their IPs
+     */
+    void setFromBase(const std::vector<EVector> * ns);
   protected:
     /*!
-     * \brief the velocities at the IPs
+     * \brief the velocities at the element nodes
      */
     std::vector<EVector> velocities;
     /*!
-     * \brief a pointer to the mass operator
+     * \brief the velocities at the face IPs
      */
-    Mass * mass = NULL;
+    std::vector<EVector> faceVels;
+    /*!
+     * \brief a pointer to a convection operator
+     */
+    Convection * convection = NULL;
+    /*!
+     * \brief a pointer to a face mass operator
+     */
+    Mass * faceMass = NULL;
+    /*!
+     * \brief pointer to the list of normals to the faces at their IPs
+     */
+    const std::vector<EVector> * normals = NULL;
 
 };//HDGConvection
 

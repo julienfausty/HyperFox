@@ -10,8 +10,9 @@ TEST_CASE("Testing the HDGConvection operator", "[unit][operator][HDGConvection]
   SECTION("Testing allocation necessary"){
     ReferenceElement refEl(2, 1, "simplex");
     HDGConvection op(&refEl);
-    std::vector<double> dummydV(refEl.getNumIPs(), 0.0);
-    std::vector<EMatrix> dummyJac(refEl.getNumIPs(), EMatrix::Identity(2,2));
+    int n = refEl.getNumIPs()+refEl.getNumFaces()*(refEl.getFaceElement()->getNumIPs());
+    std::vector<double> dummydV(n, 0.0);
+    std::vector<EMatrix> dummyJac(n, EMatrix::Identity(2,2));
     CHECK_THROWS(op.assemble(dummydV, dummyJac));
     CHECK_NOTHROW(op.allocate(1));
     CHECK_THROWS(op.assemble(dummydV, dummyJac));
@@ -42,8 +43,9 @@ TEST_CASE("Testing the HDGConvection operator", "[unit][operator][HDGConvection]
         std::vector< std::vector<double> > faceNodes(nNodesPFc, std::vector<double>(i+1));
         std::vector<EMatrix> fcMats(nIPsPFc);
         std::vector<double> fcdV(nIPsPFc, 0.0);
-        Mass mass(&refEl);
-        mass.allocate(1);
+        Mass fcMass(refEl.getFaceElement());
+        fcMass.allocate(1);
+        std::vector<EMatrix> fcMasses(nFaces, EMatrix::Zero(nNodesPFc, nNodesPFc));
         for(int k = 0; k < nFaces; k++){
           std::fill(normals.begin() + k*nIPsPFc, normals.begin() + (k+1)*nIPsPFc, EMap<EVector>(refNorms[k].data(), refNorms[k].size()));
           for(int l = 0; l < nNodesPFc; l++){
@@ -54,22 +56,31 @@ TEST_CASE("Testing the HDGConvection operator", "[unit][operator][HDGConvection]
           fcMats = Operator::calcInvJacobians(fcMats);
           std::copy(fcdV.begin(), fcdV.end(), dV.begin()+ nIPsEl + k*nIPsPFc);
           std::copy(fcMats.begin(), fcMats.end(), jacs.begin() + nIPsEl + k*nIPsPFc);
+          fcMass.assemble(fcdV, fcMats);
+          fcMasses[k] = *(fcMass.getMatrix());
         }
         std::vector<EVector> vels(nNodesEl, EVector::Constant(i+1, 2.0));
+        CHECK_NOTHROW(op.setFromBase(&normals));
         CHECK_NOTHROW(op.setVelocity(vels));
+        op.setFromBase(&normals);
         CHECK_NOTHROW(op.assemble(dV, jacs));
-        EMatrix Suq = EMatrix::Zero(nNodesEl, nNodesEl*(i+1));
-        std::vector<double> velMeasure(nIPsEl, 0.0);
-        for(int k = 0; k < (i+1); k++){
-          for(int l = 0; l < nIPsEl; l++){
-            velMeasure[l] = dV[l]*2.0;
-          }
-          mass.assemble(velMeasure, jacs);
-          for(int l = 0 ; l < nNodesEl; l++){
-            Suq.col(l*(i+1) + k) = mass.getMatrix()->col(l);
+        Convection convOp(&refEl);
+        convOp.allocate(1);
+        convOp.setVelocity(vels);
+        convOp.assemble(dV, jacs);
+        EMatrix Suu = EMatrix::Zero(nNodesEl, nNodesEl);
+        Suu = -((convOp.getMatrix())->transpose());
+        for(int iFace = 0; iFace < nFaces; iFace++){
+          double prefactor = EVector::Constant(i+1, 2.0).dot(EMap<const EVector>(refNorms[iFace].data(), refNorms[iFace].size()));
+          for(int k = 0; k < nNodesPFc; k++){
+            int rowInd = (refEl.getFaceNodes()->at(iFace))[k];
+            for(int l = 0; l < nNodesPFc; l++){
+              int colInd = (refEl.getFaceNodes()->at(iFace))[l];
+              Suu(rowInd, colInd) += fcMasses[iFace](k, l)*prefactor;
+            }
           }
         }
-        EMatrix testMat = op.getMatrix()->block(0, nNodesEl, nNodesEl, nNodesEl*(i+1)) - Suq;
+        EMatrix testMat = op.getMatrix()->block(0, 0, nNodesEl, nNodesEl) - Suu;
         CHECK((testMat.transpose() * testMat).sum() < tol);
       };
     }

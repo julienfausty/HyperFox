@@ -97,12 +97,12 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   Field oldTrace(&myMesh, Face, nNodesPerFace, 1);
   std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, 1));
   Field tau(&myMesh, Face, nNodesPerFace, 2);
-  //std::fill(tau.getValues()->begin(), tau.getValues()->end(), 1.0);
-  double multiplier = 1.0;
-  for(int i = 0; i < tau.getLength(); i++){
-    tau.getValues()->at(i) = 1.0 - (i % 2);
-    tau.getValues()->at(i) *= multiplier;
-  }
+  std::fill(tau.getValues()->begin(), tau.getValues()->end(), 0.0);
+  //double multiplier = 1.0;
+  //for(int i = 0; i < tau.getLength(); i++){
+    //tau.getValues()->at(i) = 1.0 - (i % 2);
+    //tau.getValues()->at(i) *= multiplier;
+  //}
   Field vel(&myMesh, Cell, nNodes, nodeDim);
   double invSqrt2 = 1.0/std::sqrt(2.0);
   for(int i = 0; i < vel.getLength(); i++){
@@ -133,11 +133,11 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-12;
-  myOpts.verbose = true;
+  myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
-  solveOpts.verbosity = true;
+  solveOpts.verbosity = false;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);
@@ -175,8 +175,8 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   }
   hdfio.write(writeDir + "/res_0.h5");
   double timeEnd = 1.0;
-  //int nIters = timeEnd / timeStep;
-  int nIters = 5;
+  int nIters = timeEnd / timeStep;
+  //int nIters = 5;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   int i = 0;
@@ -280,7 +280,7 @@ TEST_CASE("Testing regression cases for Transport", "[regression][HDG][Transport
   //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
   std::vector<std::string> timeSteps = {"1e-2"};
   //std::vector<std::string> orders = {"1", "2", "3"};
-  std::vector<std::string> orders = {"1"};
+  std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){

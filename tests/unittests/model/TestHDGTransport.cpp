@@ -70,6 +70,7 @@ TEST_CASE("Testing the HDGTransport model", "[unit][model][HDGTransport]"){
       }
       baseOp.calcNormals(*(refEl.getNodes()), jacs);
       baseOp.assemble(dV, invJacs);
+      convOp.setFromBase(baseOp.getNormals());
       convOp.assemble(dV, invJacs);
       SECTION("Grad ortho equation in reference element(dim=" + std::to_string(i+1) + ", order=" + std::to_string(j+1) + ")"){
         CHECK_NOTHROW(mod.setElementNodes(refEl.getNodes()));

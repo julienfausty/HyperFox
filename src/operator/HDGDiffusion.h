@@ -52,9 +52,7 @@ class HDGDiffusion : public HDGOperator{
     /*!
      * \brief a method that borrows objects from the HDGBase operator
      *
-     * @param cv a pointer to a pre allocated convection operator
-     * @param fcmass a pointer to a pre allocated face mass operator
-     * @param a pointer to the normals to the faces at their IPs
+     * @param ns a pointer to the normals to the faces at their IPs
      */
     void setFromBase(const std::vector<EVector> * ns);
 
