@@ -108,6 +108,7 @@ void HDGDiffusion::assemble(const std::vector<double> & dV, const std::vector<EM
       for(int j = 0; j < nNodesFace; j++){
         for(int k = 0; k < nNodesFace; k++){
           op(faceNodeMap->at(i)[k], nNodesEl + dim*(faceNodeMap->at(i)[j]) + d) -= (*(faceMass->getMatrix()))(k, j);
+          op(nNodesEl*(dim+1) + i*nNodesFace + k, nNodesEl + dim*(faceNodeMap->at(i)[j]) + d) -= (*(faceMass->getMatrix()))(k, j);
         }
       }
     }

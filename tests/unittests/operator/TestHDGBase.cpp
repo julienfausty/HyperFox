@@ -23,8 +23,8 @@ TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
     CHECK_THROWS(baseOp.assemble(dummydV, dummyJac));
   };
 
-  int maxDim = 2;
-  int maxOrder = 1;
+  int maxDim = 3;
+  int maxOrder = 5;
   for(int i = 1; i < maxDim; i++){
     for(int j = 0; j < maxOrder; j++){
       ReferenceElement refEl(i+1, j+1, "simplex");
@@ -106,7 +106,7 @@ TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
         }
         CHECK(std::abs((baseOp.getMatrix()->block(nNodes*(i+2), 0, nNodesFace*refEl.getNumFaces(), nNodes) - Slu).sum()) < 1e-12);
         //Sul
-        CHECK(std::abs((baseOp.getMatrix()->block(0, nNodes*(i+2), nNodes, nNodesFace*refEl.getNumFaces()) - Slu.transpose()).sum()) < 1e-12);
+        CHECK(std::abs((baseOp.getMatrix()->block(0, nNodes*(i+2), nNodes, nNodesFace*refEl.getNumFaces()) + Slu.transpose()).sum()) < 1e-12);
         //Suu
         EMatrix Suu = EMatrix::Zero(nNodes, nNodes);
         for(int iface = 0; iface < refEl.getNumFaces(); iface++){
@@ -114,8 +114,10 @@ TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
             Suu.row((faceNodeMap->at(iface))[k]) += Slu.row(iface*nNodesFace + k);
           }
         }
-        CHECK(std::abs((baseOp.getMatrix()->block(0, 0, nNodes, nNodes) + Suu).sum()) < 1e-12);
+        CHECK(std::abs((baseOp.getMatrix()->block(0, 0, nNodes, nNodes) - Suu).sum()) < 1e-12);
         //Slq
+        CHECK(std::abs((baseOp.getMatrix()->block(nNodes*(i+2), nNodes,nNodesFace*refEl.getNumFaces(), nNodes*(i+1))).sum()) < 1e-12);
+        //Sql
         std::vector< std::vector<double> > normals = TestUtils::getRefNormals(i+1);
         EMatrix Slq = EMatrix::Zero(nNodesFace*refEl.getNumFaces(), nNodes*(i+1));
         for(int iface = 0; iface < refEl.getNumFaces(); iface++){
@@ -125,8 +127,6 @@ TEST_CASE("Testing HDGBase operator", "[unit][operator][HDGBase]"){
             }
           }
         }
-        CHECK(std::abs((baseOp.getMatrix()->block(nNodes*(i+2), nNodes, Slq.rows(), Slq.cols()) - Slq).sum()) < 1e-12);
-        //Sql
         CHECK(std::abs((baseOp.getMatrix()->block(nNodes, nNodes*(i+2), Slq.cols(), Slq.rows()) + Slq.transpose()).sum()) < 1e-12);
         //Suq
         CHECK(std::abs((baseOp.getMatrix()->block(0, nNodes, nNodes, nNodes*(i+1)) - EMatrix::Zero(nNodes, nNodes*(i+1))).sum()) < 1e-12);

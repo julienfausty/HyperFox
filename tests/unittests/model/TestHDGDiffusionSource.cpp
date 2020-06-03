@@ -12,7 +12,7 @@ TEST_CASE("Testing the HDGDiffusionSource model", "[unit][model][HDGDiffusionSou
 
   double tol = 1e-12;
   int maxDim = 3;
-  int maxOrd = 2;
+  int maxOrd = 5;
 
   for(int i = 1; i < maxDim; i++){
     for(int j = 0; j < maxOrd; j++){
@@ -95,10 +95,12 @@ TEST_CASE("Testing the HDGDiffusionSource model", "[unit][model][HDGDiffusionSou
           Suq.col(l*(i+1) + k) = (convOp.getMatrix()->row(l)).transpose();
         }
       }
+      EMatrix Slq = EMatrix::Zero(lenL, lenQ);
       for(int iFace = 0; iFace < refEl.getNumFaces(); iFace++){
         for(int k = 0; k < refEl.getFaceElement()->getNumNodes(); k++){
           int rowInd = (refEl.getFaceNodes()->at(iFace))[k];
-          Suq.row(rowInd) -= baseOp.getMatrix()->block(startL + iFace*(refEl.getFaceElement()->getNumNodes()) + k, startQ, 1, lenQ);
+          Suq.row(rowInd) += baseOp.getMatrix()->block(startQ, startL + iFace*(refEl.getFaceElement()->getNumNodes()) + k, lenQ, 1).transpose();
+          Slq.row(iFace * (refEl.getFaceElement()->getNumNodes()) + k) += baseOp.getMatrix()->block(startQ, startL + iFace*(refEl.getFaceElement()->getNumNodes()) + k, lenQ, 1).transpose();
         }
       }
       SECTION("Poisson equation in reference element(dim=" + std::to_string(i+1) + ", order=" + std::to_string(j+1) + ")"){
@@ -106,7 +108,11 @@ TEST_CASE("Testing the HDGDiffusionSource model", "[unit][model][HDGDiffusionSou
         CHECK_NOTHROW(mod.compute());
         EMatrix testMat = *(baseOp.getMatrix());
         testMat.block(startU, startQ, lenU, lenQ) += Suq;
+        testMat.block(startL, startQ, lenL, lenQ) += Slq;
+        //std::cout << "Ana:\n" << testMat << std::endl;
+        //std::cout << "Computed:\n" << *(mod.getLocalMatrix()) << std::endl;
         testMat -= *(mod.getLocalMatrix());
+        //std::cout << "Diff:\n" << testMat << std::endl;
         CHECK((testMat.transpose() * testMat).sum() < tol);
         EVector testVec = (*(mod.getLocalRHS()));
         testVec.segment(0, lenU) -= ((EVector) *(srcOp.getMatrix()));
@@ -130,6 +136,7 @@ TEST_CASE("Testing the HDGDiffusionSource model", "[unit][model][HDGDiffusionSou
         CHECK_NOTHROW(mod2.compute());
         EMatrix testMat = *(baseOp.getMatrix());
         testMat.block(startU, startQ, lenU, lenQ) += 3.0*Suq;
+        testMat.block(startL, startQ, lenL, lenQ) += 3.0*Slq;
         testMat.block(0, 0, lenU, testMat.cols()) *= timeStep;
         testMat.block(0, 0, lenU, lenU) += (*(mass.getMatrix()));
         testMat -= *(mod2.getLocalMatrix());

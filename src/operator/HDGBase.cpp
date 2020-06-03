@@ -113,19 +113,9 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
   for(int iFace = 0; iFace < nFaces; iFace++){
     std::copy(invJacobians.begin() + nIPsEl + iFace*nIPsFace, invJacobians.begin() + nIPsEl + (iFace+1)*nIPsFace, faceInvJacs.begin());
     std::copy(taus.begin() + iFace*nIPsFace, taus.begin() + (iFace+1)*nIPsFace, faceTaus.begin());
-    //Sll
-    for(int i = 0; i < nIPsFace; i++){
-      faceTaus[i] *= dV[nIPsEl + iFace * nIPsFace + i];
-    }
-    faceMass->assemble(faceTaus, faceInvJacs);
-    int startDiag = startLblock + iFace*nNodesFace;
-    op.block(startDiag, startDiag, nNodesFace, nNodesFace) -= *(faceMass->getMatrix());
-    //Slu
     nodeMap = &(refEl->getFaceNodes()->at(iFace));
-    for(int k = 0; k < nNodesFace; k++){
-      op.block(startDiag, nodeMap->at(k), nNodesFace, 1) += (*(faceMass->getMatrix())).col(k);
-    }
-    //Slq
+    int startDiag = startLblock + iFace*nNodesFace;
+    //Sql
     int findex = iFace*nIPsFace;
     for(int i = 0; i < dim; i++){
       for(int j = 0; j < nIPsFace; j++){
@@ -133,8 +123,18 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
       }
       faceMass->assemble(normaldV, faceInvJacs);
       for(int j = 0; j < nNodesFace; j++){
-        op.block(startDiag, startQblock + dim*(nodeMap->at(j)) + i, nNodesFace, 1) += faceMass->getMatrix()->col(j);
+        op.block(startQblock + dim*(nodeMap->at(j)) + i, startDiag, 1, nNodesFace) -= (faceMass->getMatrix()->col(j)).transpose();
       }
+    }
+    //Sll
+    for(int i = 0; i < nIPsFace; i++){
+      faceTaus[i] *= dV[nIPsEl + iFace * nIPsFace + i];
+    }
+    faceMass->assemble(faceTaus, faceInvJacs);
+    op.block(startDiag, startDiag, nNodesFace, nNodesFace) -= *(faceMass->getMatrix());
+    //Slu
+    for(int k = 0; k < nNodesFace; k++){
+      op.block(startDiag, nodeMap->at(k), nNodesFace, 1) += (*(faceMass->getMatrix())).col(k);
     }
   }
   //Suu
@@ -142,13 +142,11 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
     nodeMap = &(refEl->getFaceNodes()->at(iFace));
     int startDiag = startLblock + iFace*nNodesFace;
     for(int i = 0; i < nNodesFace; i++){
-      op.block(nodeMap->at(i), 0, 1, lenUblock) -= op.block(startDiag + i, 0, 1, lenUblock);
+      op.block(nodeMap->at(i), 0, 1, lenUblock) += op.block(startDiag + i, 0, 1, lenUblock);
     }
   }
-  //Sql
-  op.block(startQblock, startLblock, lenQblock, lenLblock) -= op.block(startLblock, startQblock, lenLblock, lenQblock).transpose();
   //Sul
-  op.block(startUblock, startLblock, lenUblock, lenLblock) += op.block(startLblock, startUblock, lenLblock, lenUblock).transpose();
+  op.block(startUblock, startLblock, lenUblock, lenLblock) -= op.block(startLblock, startUblock, lenLblock, lenUblock).transpose();
   if(nDOFsPerNode > 1){
     multiplyDOFs();
   }

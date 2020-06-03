@@ -4,6 +4,7 @@
 #include <cmath>
 #include "Operator.h"
 #include "HDGBase.h"
+#include "HDGDiffusion.h"
 #include "HDGLaplaceModel.h"
 
 using namespace hfox;
@@ -44,7 +45,9 @@ TEST_CASE("Testing the HDGLaplaceModel", "[unit][model][HDGLaplaceModel]"){
 
       SECTION("Testing Matrix (dim="+std::to_string(i+1)+", order="+std::to_string(j+1)+")"){
         HDGBase baseOp(&refEl);
+        HDGDiffusion diffOp(&refEl);
         baseOp.allocate(1);
+        diffOp.allocate(1);
         baseOp.setTau(taus);
         std::vector<EMatrix> elJacs(refEl.getNumIPs(), EMatrix::Identity(i+1, i+1));
         std::vector<EMatrix> jacs(refEl.getNumIPs()+refEl.getNumFaces()*refEl.getFaceElement()->getNumIPs());
@@ -70,49 +73,11 @@ TEST_CASE("Testing the HDGLaplaceModel", "[unit][model][HDGLaplaceModel]"){
         }
         baseOp.calcNormals(*(refEl.getNodes()), jacs);
         baseOp.assemble(dV, invJacs);
-        int startU = 0;
-        int startQ = refEl.getNumNodes();
-        int startL = refEl.getNumNodes()*(i+2);
-        int lenU = refEl.getNumNodes();
-        int lenQ = refEl.getNumNodes() * (i+1);
-        int lenL = (refEl.getFaceElement()->getNumNodes())*(refEl.getNumFaces());
-        //Suu
-        CHECK(std::abs((hdgLapMod.getLocalMatrix()->block(startU, startU, lenU, lenU) - baseOp.getMatrix()->block(startU, startU, lenU, lenU)).sum()) < tol);
-        //Sul
-        CHECK(std::abs((hdgLapMod.getLocalMatrix()->block(startU, startL, lenU, lenL) - baseOp.getMatrix()->block(startU, startL, lenU, lenL)).sum()) < tol);
-        //Squ
-        CHECK(std::abs((hdgLapMod.getLocalMatrix()->block(startQ, startU, lenQ, lenU) - baseOp.getMatrix()->block(startQ, startU, lenQ, lenU)).sum()) < tol);
-        //Sqq
-        CHECK(std::abs((hdgLapMod.getLocalMatrix()->block(startQ, startQ, lenQ, lenQ) - baseOp.getMatrix()->block(startQ, startQ, lenQ, lenQ)).sum()) < tol);
-        //Sql
-        CHECK(std::abs((hdgLapMod.getLocalMatrix()->block(startQ, startL, lenQ, lenL) - baseOp.getMatrix()->block(startQ, startL, lenQ, lenL)).sum()) < tol);
-        //Slu
-        CHECK(std::abs((hdgLapMod.getLocalMatrix()->block(startL, startU, lenL, lenU) - baseOp.getMatrix()->block(startL, startU, lenL, lenU)).sum()) < tol);
-        //Slq
-        CHECK(std::abs((hdgLapMod.getLocalMatrix()->block(startL, startQ, lenL, lenQ) - baseOp.getMatrix()->block(startL, startQ, lenL, lenQ)).sum()) < tol);
-        //Sll
-        CHECK(std::abs((hdgLapMod.getLocalMatrix()->block(startL, startL, lenL, lenL) - baseOp.getMatrix()->block(startL, startL, lenL, lenL)).sum()) < tol);
-        //Suq
-        Convection convOp(&refEl);
-        convOp.allocate(1);
-        EMatrix Suq(lenU, lenQ);
-        for(int k = 0; k < i+1; k++){
-          EVector unitBase = EVector::Zero(i+1);
-          unitBase[k] = 1.0;
-          std::vector<EVector> velocity(lenU, unitBase);
-          convOp.setVelocity(velocity);
-          convOp.assemble(*(refEl.getIPWeights()), invJacs);
-          for(int l = 0 ; l < lenU; l++){
-            Suq.col(l*(i+1) + k) = (convOp.getMatrix()->row(l)).transpose();
-          }
-        }
-        for(int iFace = 0; iFace < refEl.getNumFaces(); iFace++){
-          for(int k = 0; k < refEl.getFaceElement()->getNumNodes(); k++){
-            int rowInd = (refEl.getFaceNodes()->at(iFace))[k];
-            Suq.row(rowInd) -= baseOp.getMatrix()->block(startL + iFace*(refEl.getFaceElement()->getNumNodes()) + k, startQ, 1, lenQ);
-          }
-        }
-        CHECK(std::abs((hdgLapMod.getLocalMatrix()->block(startU, startQ, lenU, lenQ) - Suq).sum()) < tol);
+        diffOp.setFromBase(baseOp.getNormals());
+        diffOp.assemble(dV, invJacs);
+        EMatrix testMat = *(baseOp.getMatrix()) + *(diffOp.getMatrix());
+        testMat -= *(hdgLapMod.getLocalMatrix());
+        CHECK((testMat.transpose() * testMat).sum() < tol);
       };
       SECTION("Testing RHS (dim="+std::to_string(i+1)+", order="+std::to_string(j+1)+")"){
         CHECK(std::abs((hdgLapMod.getLocalRHS())->sum()) < tol);

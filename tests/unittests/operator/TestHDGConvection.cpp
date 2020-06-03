@@ -69,6 +69,8 @@ TEST_CASE("Testing the HDGConvection operator", "[unit][operator][HDGConvection]
         convOp.setVelocity(vels);
         convOp.assemble(dV, jacs);
         EMatrix Suu = EMatrix::Zero(nNodesEl, nNodesEl);
+        EMatrix Sll = EMatrix::Zero(nNodesPFc*nFaces, nNodesPFc*nFaces);
+        EMatrix Sul = EMatrix::Zero(nNodesEl, nNodesPFc*nFaces);
         Suu = -((convOp.getMatrix())->transpose());
         for(int iFace = 0; iFace < nFaces; iFace++){
           double prefactor = EVector::Constant(i+1, 2.0).dot(EMap<const EVector>(refNorms[iFace].data(), refNorms[iFace].size()));
@@ -76,11 +78,15 @@ TEST_CASE("Testing the HDGConvection operator", "[unit][operator][HDGConvection]
             int rowInd = (refEl.getFaceNodes()->at(iFace))[k];
             for(int l = 0; l < nNodesPFc; l++){
               int colInd = (refEl.getFaceNodes()->at(iFace))[l];
-              Suu(rowInd, colInd) += fcMasses[iFace](k, l)*prefactor;
+              Sul(rowInd, iFace*nNodesPFc + l) += fcMasses[iFace](k, l)*prefactor;
+              Sll(iFace*nNodesPFc + k, iFace*nNodesPFc + l) += fcMasses[iFace](k, l)*prefactor;
             }
           }
         }
-        EMatrix testMat = op.getMatrix()->block(0, 0, nNodesEl, nNodesEl) - Suu;
+        EMatrix testMat = *(op.getMatrix());
+        testMat.block(0, 0, nNodesEl, nNodesEl) -= Suu;
+        testMat.block(0, nNodesEl*(i+2), nNodesEl, nNodesPFc*nFaces) -= Sul;
+        testMat.block(nNodesEl*(i+2), nNodesEl*(i+2), nNodesPFc*nFaces, nNodesPFc*nFaces) -= Sll;
         CHECK((testMat.transpose() * testMat).sum() < tol);
       };
     }

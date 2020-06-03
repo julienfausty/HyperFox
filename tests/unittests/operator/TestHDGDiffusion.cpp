@@ -75,6 +75,7 @@ TEST_CASE("Testing HDGDiffusion operator", "[unit][operator][HDGDiffusion]"){
             Suq.col(l*(i+1) + k) += (convOp.getMatrix()->row(l)).transpose();
           }
         }
+        EMatrix Slq = EMatrix::Zero(nNodesPFc*nFaces, nNodesEl*(i+1));
         for(int iFace = 0; iFace < nFaces; iFace++){
           for(int k = 0; k < nNodesPFc; k++){
             int rowInd = (refEl.getFaceNodes()->at(iFace))[k];
@@ -82,16 +83,21 @@ TEST_CASE("Testing HDGDiffusion operator", "[unit][operator][HDGDiffusion]"){
               int colInd = (refEl.getFaceNodes()->at(iFace))[l];
               for(int d = 0; d < i+1; d++){
                 Suq(rowInd, colInd*(i+1) + d) -= fcMasses[iFace](k, l)*refNorms[iFace][d];
+                Slq(iFace*nNodesPFc + k, colInd*(i+1) + d)-= fcMasses[iFace](k, l)*refNorms[iFace][d];
               }
             }
           }
         }
-        EMatrix testMat = diff.getMatrix()->block(0, nNodesEl, nNodesEl, nNodesEl*(i+1)) - Suq;
+        EMatrix testMat = *(diff.getMatrix());
+        testMat.block(0, nNodesEl, nNodesEl, nNodesEl*(i+1)) -= Suq;
+        testMat.block(nNodesEl*(i+2), nNodesEl, nNodesPFc*nFaces, nNodesEl*(i+1)) -= Slq;
         CHECK((testMat.transpose() * testMat).sum() < tol);
         std::vector<EMatrix> diffTensor(nNodesEl, 3.0*EMatrix::Identity(i+1, i+1)); 
         CHECK_NOTHROW(diff.setDiffusionTensor(diffTensor));
         diff.assemble(dV, jacs);
-        testMat = diff.getMatrix()->block(0, nNodesEl, nNodesEl, nNodesEl*(i+1)) - 3.0*Suq;
+        testMat = *(diff.getMatrix());
+        testMat.block(0, nNodesEl, nNodesEl, nNodesEl*(i+1)) -= 3.0*Suq;
+        testMat.block(nNodesEl*(i+2), nNodesEl, nNodesPFc*nFaces, nNodesEl*(i+1)) -= 3.0*Slq;
         CHECK((testMat.transpose() * testMat).sum() < tol);
       };
     }

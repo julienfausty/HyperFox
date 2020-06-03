@@ -22,8 +22,8 @@ using namespace hfox;
 
 double analyticalTransportHDG(const double t, const std::vector<double> & x, const std::vector<double> & v){
   std::vector<double> c(x.size(), 0.3);
-  double dev = 1.0/12.0;
-  double freq = 8.0*M_PI;
+  double dev = 1.0;
+  double freq = M_PI;
   std::vector<double> p(x.size(), 0.0);
   EMap<EVector>(p.data(), p.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(v.data(), v.size());
   return TestUtils::morelet(p, c, freq, dev);
@@ -31,8 +31,8 @@ double analyticalTransportHDG(const double t, const std::vector<double> & x, con
 
 double analyticalTransportHDGGrad(const double t, const std::vector<double> & x, const std::vector<double> & v, int k){
   std::vector<double> c(x.size(), 0.3);
-  double dev = 1.0/12.0;
-  double freq = 8.0*M_PI;
+  double dev = 1.0;
+  double freq = M_PI;
   std::vector<double> p(x.size(), 0.0);
   EMap<EVector>(p.data(), p.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(v.data(), v.size());
   return TestUtils::moreletGrad(p, c, freq, dev, k);
@@ -54,8 +54,16 @@ std::vector<EVector> calculateOutwardNormal(Mesh * myMesh, int faceInd){
   std::vector<int> cell(refEl->getNumNodes(), 0);
   myMesh->getFace2Cell(faceInd, &face2Cell);
   myMesh->getCell(face2Cell[0], &cell);
-  int innerNode = cell[refEl->getInnerNodes()->at(0)];
-  myMesh->getPoint(innerNode, &node);
+  std::vector<int>::iterator it;
+  int innerNode = 0;
+  for(int i = 0; i < cell.size(); i++){
+    it = std::find(faceIndexes.begin(), faceIndexes.end(), cell[i]);
+    if(it == faceIndexes.end()){
+      innerNode = i;
+      break;
+    }
+  }
+  myMesh->getPoint(cell[innerNode], &node);
   testVec -= EMap<EVector>(node.data(), node.size());
   std::vector<EVector> res(nNodes, EVector::Zero(dimSpace));
   EMatrix jacobian(dimSpace, dimSpace - 1);
@@ -195,12 +203,12 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
       //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0;
       //tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV);
       //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV);
-      if(projV < 0){
-        tau.getValues()->at(2*(i*nNodesPerFace + j)) = -std::fabs(projV);
+      if(projV > 0){
+        tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV);
         tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0;
       } else {
         tau.getValues()->at(2*(i*nNodesPerFace + j)) = 0.0;
-        tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = -std::fabs(projV);
+        tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV);
       }
     }
   }
@@ -325,12 +333,12 @@ TEST_CASE("Testing regression cases for Transport", "[regression][HDG][Transport
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  //meshSizes["2"] = {"2e-1", "1e-1"};
-  meshSizes["2"] = {"7e-2"};
+  //meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
+  meshSizes["2"] = {"5e-2"};
   //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
-  std::vector<std::string> timeSteps = {"1e-2"};
+  std::vector<std::string> timeSteps = {"1e-3"};
   //std::vector<std::string> orders = {"1", "2", "3"};
-  std::vector<std::string> orders = {"3"};
+  std::vector<std::string> orders = {"2"};
   std::vector<std::string> rkTypes = {"BEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){

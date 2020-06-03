@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "HDGModel.h"
 #include "HDGBase.h"
+#include "HDGDiffusion.h"
 
 namespace hfox{
 
@@ -21,12 +22,6 @@ class HDGLaplaceModel : public HDGModel{
      */
     using HDGModel::HDGModel;
     /*!
-     * \brief a method to set the local fields
-     *
-     * @param pointer to a map of names and corresponding local values of fields
-     */
-    //void setFieldMap(const std::map<std::string, std::vector<double> > * fm);
-    /*!
      * \brief allocating the local matrix and rhs
      */
     void allocate(int nDOFsPerNode);
@@ -34,7 +29,7 @@ class HDGLaplaceModel : public HDGModel{
     /*!
      * \brief initialize all the operators for the class
      */
-    //void initializeOperators();
+    void initializeOperators();
     /*!
      * \brief compute the local matrix
      */
@@ -43,14 +38,6 @@ class HDGLaplaceModel : public HDGModel{
      * \brief compute the local right hand side
      */
     void computeLocalRHS();
-    /*!
-     * \brief compute the element jacobians, inverse jacobians and measures
-     */
-    //void computeElementJacobians();
-    /*!
-     * \brief number of DOFs per node
-     */
-    //int nDOFsPNode = 1;
 
 };//HDGLaplaceModel
 

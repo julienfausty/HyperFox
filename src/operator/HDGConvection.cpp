@@ -90,9 +90,11 @@ void HDGConvection::assemble(const std::vector<double> & dV, const std::vector<E
       locMeasure[j] = dV[offset + j]*(faceVels[facesOff + j].dot(normals->at(facesOff + j)));
     }
     faceMass->assemble(locMeasure, faceInvJacs);
+    offset = nNodesEl*(dim+1) + i*nNodesFace;
     for(int j = 0; j < nNodesFace; j++){
       for(int k = 0; k < nNodesFace; k++){
-        op(faceNodeMap->at(i)[k], faceNodeMap->at(i)[j]) += (*(faceMass->getMatrix()))(k, j);
+        op(faceNodeMap->at(i)[k], offset + j) += (*(faceMass->getMatrix()))(k, j);
+        op(offset + k, offset + j) += (*(faceMass->getMatrix()))(k, j);
       }
     }
   }
