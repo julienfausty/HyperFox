@@ -38,6 +38,41 @@ double analyticalTransportHDGGrad(const double t, const std::vector<double> & x,
   return TestUtils::moreletGrad(p, c, freq, dev, k);
 };
 
+std::vector<EVector> calculateOutwardNormal(Mesh * myMesh, int faceInd){
+  const ReferenceElement * refEl = myMesh->getReferenceElement();
+  const ReferenceElement * fEl = refEl->getFaceElement();
+  int dimSpace = myMesh->getNodeSpaceDimension();
+  int nNodes = fEl->getNumNodes();
+  std::vector<int> faceIndexes;
+  std::vector< std::vector<double> > faceNodes;
+  const std::vector< std::vector< std::vector<double> > > * derivShapes = fEl->getDerivShapeFunctions();
+  myMesh->getFace(faceInd, &faceIndexes);
+  myMesh->getSlicePoints(faceIndexes, &faceNodes);
+  EVector testVec = EMap<EVector>(faceNodes[0].data(), faceNodes[0].size());
+  std::vector<double> node(dimSpace, 0.0);
+  std::vector<int> face2Cell(2, 0);
+  std::vector<int> cell(refEl->getNumNodes(), 0);
+  myMesh->getFace2Cell(faceInd, &face2Cell);
+  myMesh->getCell(face2Cell[0], &cell);
+  int innerNode = cell[refEl->getInnerNodes()->at(0)];
+  myMesh->getPoint(innerNode, &node);
+  testVec -= EMap<EVector>(node.data(), node.size());
+  std::vector<EVector> res(nNodes, EVector::Zero(dimSpace));
+  EMatrix jacobian(dimSpace, dimSpace - 1);
+  for(int i = 0; i < nNodes; i++){
+    jacobian *= 0.0;
+    for(int j = 0; j < nNodes; j++){
+      jacobian += EMap<const EVector>(faceNodes[j].data(), faceNodes[j].size())*(EMap<const EVector>(derivShapes->at(i)[j].data(), derivShapes->at(i)[j].size())).transpose();
+    }
+    res[i] = (jacobian*jacobian.transpose()).fullPivLu().kernel();
+    res[i].normalize();
+    if(res[i].dot(testVec) < 0){
+      res[i] *= -1;
+    }
+  }
+  return res;
+};
+
 void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   //setup
   std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
@@ -96,18 +131,12 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   Field trace(&myMesh, Face, nNodesPerFace, 1);
   Field oldTrace(&myMesh, Face, nNodesPerFace, 1);
   std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, 1));
-  Field tau(&myMesh, Face, nNodesPerFace, 2);
-  std::fill(tau.getValues()->begin(), tau.getValues()->end(), 0.0);
-  //double multiplier = 1.0;
-  //for(int i = 0; i < tau.getLength(); i++){
-    //tau.getValues()->at(i) = 1.0 - (i % 2);
-    //tau.getValues()->at(i) *= multiplier;
-  //}
-  Field vel(&myMesh, Cell, nNodes, nodeDim);
+  Field vel(&myMesh, Node, 1, nodeDim);
   double invSqrt2 = 1.0/std::sqrt(2.0);
   for(int i = 0; i < vel.getLength(); i++){
     vel.getValues()->at(i) = invSqrt2;
   }
+  Field tau(&myMesh, Face, nNodesPerFace, 2);
   Field anaSol(&myMesh, Node, 1, 1);
   Field residual(&myMesh, Cell, nNodes, 1);
   std::map<std::string, Field*> fieldMap;
@@ -154,6 +183,27 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   std::vector< std::vector<double> > nodes(nNodesPerFace, std::vector<double>(nodeDim, 0.0));
   double t = 0;
   std::vector<double> v(nodeDim, 0.0);
+  std::vector<EVector> normals(nNodesPerFace, EVector::Zero(nodeDim));
+  double projV = 0.0;
+  for(int i = 0; i < myMesh.getNumberFaces(); i++){
+    normals = calculateOutwardNormal(&myMesh, i);
+    myMesh.getFace(i, &cell);
+    for(int j = 0; j < nNodesPerFace; j++){
+      vel.getValues(cell[j], &v);
+      projV = normals[j].dot(EMap<EVector>(v.data(), v.size()));
+      //tau.getValues()->at(2*(i*nNodesPerFace + j)) = 0.0;
+      //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0;
+      //tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV);
+      //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV);
+      if(projV < 0){
+        tau.getValues()->at(2*(i*nNodesPerFace + j)) = -std::fabs(projV);
+        tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0;
+      } else {
+        tau.getValues()->at(2*(i*nNodesPerFace + j)) = 0.0;
+        tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = -std::fabs(projV);
+      }
+    }
+  }
   for(int i = 0; i < myMesh.getNumberCells(); i++){
     myMesh.getCell(i, &cell);
     for(int j = 0; j < nNodes; j++){
