@@ -22,8 +22,8 @@ using namespace hfox;
 
 double analyticalTransportHDG(const double t, const std::vector<double> & x, const std::vector<double> & v){
   std::vector<double> c(x.size(), 0.3);
-  double dev = 1.0;
-  double freq = M_PI;
+  double dev = 1.0/16.0;
+  double freq = 8.0*M_PI;
   std::vector<double> p(x.size(), 0.0);
   EMap<EVector>(p.data(), p.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(v.data(), v.size());
   return TestUtils::morelet(p, c, freq, dev);
@@ -31,8 +31,8 @@ double analyticalTransportHDG(const double t, const std::vector<double> & x, con
 
 double analyticalTransportHDGGrad(const double t, const std::vector<double> & x, const std::vector<double> & v, int k){
   std::vector<double> c(x.size(), 0.3);
-  double dev = 1.0;
-  double freq = M_PI;
+  double dev = 1.0/16.0;
+  double freq = 8.0*M_PI;
   std::vector<double> p(x.size(), 0.0);
   EMap<EVector>(p.data(), p.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(v.data(), v.size());
   return TestUtils::moreletGrad(p, c, freq, dev, k);
@@ -234,7 +234,7 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   hdfio.write(writeDir + "/res_0.h5");
   double timeEnd = 1.0;
   int nIters = timeEnd / timeStep;
-  //int nIters = 5;
+  //int nIters = 2;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   int i = 0;
@@ -333,13 +333,13 @@ TEST_CASE("Testing regression cases for Transport", "[regression][HDG][Transport
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  //meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
-  meshSizes["2"] = {"5e-2"};
-  //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4"};
-  std::vector<std::string> timeSteps = {"1e-3"};
-  //std::vector<std::string> orders = {"1", "2", "3"};
-  std::vector<std::string> orders = {"2"};
-  std::vector<std::string> rkTypes = {"BEuler"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  //meshSizes["2"] = {"1e-1"};
+  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4"};
+  //std::vector<std::string> timeSteps = {"1e-3"};
+  std::vector<std::string> orders = {"1", "2", "3"};
+  //std::vector<std::string> orders = {"1"};
+  std::vector<std::string> rkTypes = {"SSPRK3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){

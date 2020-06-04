@@ -226,10 +226,11 @@ void HDGSolver::assemble(){
     for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){
       locFieldMap[itfm->first].resize((itfm->second).size());
       for(int i = 0; i < nFacesPEl; i++){
+        myMesh->getFace(facesInCell[i], &face);
         offset = i*nNodesPFc;
         for(int j = 0; j <nNodesPFc; j++){
           for(int k = 0; k < nDOFsPerNode; k++){
-            locFieldMap[itfm->first][offset + j*nDOFsPerNode + k] = itfm->second[matRowCols[offset + j*nDOFsPerNode + k] - facesInCell[i] * nNodesPFc * nDOFsPerNode];
+            locFieldMap[itfm->first][offset + j*nDOFsPerNode + k] = itfm->second[offset + std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]))*nDOFsPerNode + k];
           }
         }
       }
