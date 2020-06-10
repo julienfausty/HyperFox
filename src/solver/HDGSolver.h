@@ -53,6 +53,10 @@ class HDGSolver : public Solver{
      */
     Field * Q = NULL;
     /*!
+     * \brief a pointer to a field holding the values of the face to face operator for the trace
+     */
+    Field * S = NULL;
+    /*!
      * \brief a pointer to a field holding the values of the face to bulk offset for the solution
      */
     Field * U0 = NULL;
@@ -60,6 +64,10 @@ class HDGSolver : public Solver{
      * \brief a pointer to a field holding the values of the face to bulk offset for the flux
      */
     Field * Q0 = NULL;
+    /*!
+     * \brief a pointer to a field holding the values of the face to face offset for the trace
+     */
+    Field * S0 = NULL;
     /*!
      * \brief structure for setting options of solver
      */

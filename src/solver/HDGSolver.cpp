@@ -9,7 +9,7 @@ void HDGSolver::allocate(){
   if(myMesh == NULL){
     throw(ErrorHandle("HDGSolver", "allocate", "must set the Mesh before allocating."));
   }
-  if(linSystem == NULL){
+  if((linSystem == NULL) and (myOpts.type != SEXPLICIT)){
     throw(ErrorHandle("HDGSolver", "allocate", "must set the linear system before allocating."));
   }
   if(model == NULL){
@@ -71,13 +71,21 @@ void HDGSolver::allocate(){
   if(*(it->second->getNumValsPerObj()) != nDOFsPerNode){
     throw(ErrorHandle("HDGSolver", "allocate", "the Trace field must have the same number of values per object as the Solution field."));
   }
-  calcSparsityPattern();
+
   int dim = myMesh->getNodeSpaceDimension();
   int nNodesPEl = myMesh->getReferenceElement()->getNumNodes();
   int nFacesPEl = myMesh->getReferenceElement()->getNumFaces();
   int nFaces = myMesh->getNumberFaces();
   int nNodesPFace = myMesh->getReferenceElement()->getFaceElement()->getNumNodes();
-  linSystem->allocate(nDOFsPerNode*nNodesPFace*nFaces, &diagSparsePattern, &offSparsePattern);
+  if(myOpts.type != SEXPLICIT){
+    calcSparsityPattern();
+    linSystem->allocate(nDOFsPerNode*nNodesPFace*nFaces, &diagSparsePattern, &offSparsePattern);
+  } else{
+    if(S != NULL){delete S;}
+    S = new Field(myMesh, Face, 1, std::pow(nDOFsPerNode*nNodesPFace, 2));
+    if(S0 != NULL){delete S0;}
+    S0 = new Field(myMesh, Face, 1, nDOFsPerNode*nNodesPFace);
+  }
   model->allocate(nDOFsPerNode);
   boundaryModel->allocate(nDOFsPerNode);
   if(U != NULL){delete U;}
@@ -92,11 +100,13 @@ void HDGSolver::allocate(){
 };//allocate
 
 HDGSolver::~HDGSolver(){
-  delete U;
-  delete Q;
-  delete U0;
-  delete Q0;
-}
+  if(U != NULL){delete U;}
+  if(Q != NULL){delete Q;}
+  if(S != NULL){delete S;}
+  if(U0 != NULL){delete U0;}
+  if(Q0 != NULL){delete Q0;}
+  if(S0 != NULL){delete S0;}
+};//destructor
 
 void HDGSolver::calcSparsityPattern(){
   const ReferenceElement * refEl = myMesh->getReferenceElement();
@@ -134,8 +144,13 @@ void HDGSolver::assemble(){
   if(!(initialized and allocated)){
     throw(ErrorHandle("HDGSolver", "assemble", "the solver must be initialized and allocated before assembling."));
   }
-  if(assembled){
-    linSystem->clearSystem();
+  if(myOpts.type != SEXPLICIT){
+    if(assembled){
+      linSystem->clearSystem();
+    }
+  } else {
+    std::fill(S->getValues()->begin(), S->getValues()->end(), 0.0);
+    std::fill(S0->getValues()->begin(), S0->getValues()->end(), 0.0);
   }
   const ReferenceElement * refEl = myMesh->getReferenceElement();
   const ReferenceElement * fEl = refEl->getFaceElement();
@@ -162,6 +177,7 @@ void HDGSolver::assemble(){
   std::vector<int> facesInCell(nFacesPEl, 0);
   std::vector<int> face2Cells(2, 0);
   std::vector<int> unitCell(1, 0);
+  std::vector<int> face2CellMap(lenL, 0);
   std::vector<int> matRowCols(lenL, 0);
   std::vector<double> fieldBuffer;
   int buff = 0;
@@ -197,8 +213,9 @@ void HDGSolver::assemble(){
     for(int i = 0; i < nFacesPEl; i++){
       myMesh->getFace(facesInCell[i], &face);
       for(int j = 0; j < nNodesPFc; j++){
+        face2CellMap[i*nNodesPFc + j] = std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]));
         for(int k = 0; k < nDOFsPerNode; k++){
-          matRowCols[i*nNodesPFc + j*nDOFsPerNode + k] = (facesInCell[i] * nNodesPFc + std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]])))*nDOFsPerNode + k;
+          matRowCols[i*nNodesPFc + j*nDOFsPerNode + k] = (facesInCell[i] * nNodesPFc + face2CellMap[i*nNodesPFc + j])*nDOFsPerNode + k;
         }
       }
     }
@@ -208,9 +225,9 @@ void HDGSolver::assemble(){
         fieldBuffer.resize(lenL, 0.0);
         for(int i = 0; i < nFacesPEl; i++){
           myMesh->getFace2Cell(facesInCell[i], &face2Cells);
-          offset = 0;
-          if(iEl == face2Cells[1]){
-            offset = 1;
+          offset = 1;
+          if(iEl == face2Cells[0]){
+            offset = 0;
           }
           for(int j = 0; j < nNodesPFc; j++){
             for(int k = 0; k < nDOFsPerNode; k++){
@@ -230,7 +247,7 @@ void HDGSolver::assemble(){
         offset = i*nNodesPFc;
         for(int j = 0; j <nNodesPFc; j++){
           for(int k = 0; k < nDOFsPerNode; k++){
-            locFieldMap[itfm->first][offset + j*nDOFsPerNode + k] = itfm->second[offset + std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]))*nDOFsPerNode + k];
+            locFieldMap[itfm->first][(offset + j)*nDOFsPerNode + k] = itfm->second[(offset + face2CellMap[offset + j])*nDOFsPerNode + k];
           }
         }
       }
@@ -252,53 +269,86 @@ void HDGSolver::assemble(){
     locU0 = invSuuMinSuqinvSqqSqu.solve(locVec->segment(startU, lenU));
     locQ = -invSqqSqu*locU - invSqqSql;
     locQ0 = -invSqqSqu*locU0;
-    switch(myOpts.type){
-      case IMPLICIT:
-        {
-          locS = locMat->block(startL, startU, lenL, lenU)*locU + locMat->block(startL, startQ, lenL, lenQ)*locQ + locMat->block(startL, startL, lenL, lenL);
-          locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*locU0 - locMat->block(startL, startQ, lenL, lenQ)*locQ0;
-          break;
-        }
-      case WEXPLICIT:
-        {
-          EMap<const EVector> sol(locFieldMap["Solution"].data(), locFieldMap["Solution"].size());
-          EMap<const EVector> flux(locFieldMap["Flux"].data(), locFieldMap["Flux"].size());
-          locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*sol - locMat->block(startL, startQ, lenL, lenQ)*flux;
-          locS = locMat->block(startL, startL, lenL, lenL);
-          break;
-        }
-      case SEXPLICIT:
-        {
-          break;
-        }
+    if(myOpts.type == IMPLICIT){
+      locS = locMat->block(startL, startU, lenL, lenU)*locU + locMat->block(startL, startQ, lenL, lenQ)*locQ + locMat->block(startL, startL, lenL, lenL);
+      locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*locU0 - locMat->block(startL, startQ, lenL, lenQ)*locQ0;
+    } else {
+      EMap<const EVector> sol(locFieldMap["Solution"].data(), locFieldMap["Solution"].size());
+      EMap<const EVector> flux(locFieldMap["Flux"].data(), locFieldMap["Flux"].size());
+      locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*sol - locMat->block(startL, startQ, lenL, lenQ)*flux;
+      locS = locMat->block(startL, startL, lenL, lenL);
     }
-    locS = locS.transpose();
-    switch(modAssembly->matrix){
-      case Add:{
-                 linSystem->addValsMatrix(matRowCols, matRowCols, locS.data());
-                 break;
-               }
-      case Set:{
-                 linSystem->setValsMatrix(matRowCols, matRowCols, locS.data());
-                 break;
-               }
-    }
-    switch(modAssembly->rhs){
-      case Add:{
-                 linSystem->addValsRHS(matRowCols, locS0.data());
-                 break;
-               }
-      case Set:{
-                 linSystem->setValsRHS(matRowCols, locS0.data());
-                 break;
-               }
+    if((myOpts.type == IMPLICIT) or (myOpts.type == WEXPLICIT)){
+      locS = locS.transpose();
+      switch(modAssembly->matrix){
+        case Add:{
+                   linSystem->addValsMatrix(matRowCols, matRowCols, locS.data());
+                   break;
+                 }
+        case Set:{
+                   linSystem->setValsMatrix(matRowCols, matRowCols, locS.data());
+                   break;
+                 }
+      }
+      switch(modAssembly->rhs){
+        case Add:{
+                   linSystem->addValsRHS(matRowCols, locS0.data());
+                   break;
+                 }
+        case Set:{
+                   linSystem->setValsRHS(matRowCols, locS0.data());
+                   break;
+                 }
+      }
+    } else {
+      buff = nDOFsPerNode*nNodesPFc;
+      for(int i = 0; i < nFacesPEl; i++){
+        EMap<EVector> S0map(S0->getValues()->data() + facesInCell[i]*buff, buff);
+        for(int j = 0; j < nNodesPFc; j++){
+          for(int k = 0; k < nDOFsPerNode; k++){
+            switch(modAssembly->rhs){
+              case Add:{
+                         S0map[face2CellMap[i*nNodesPFc + j]*nDOFsPerNode + k] += locS0[(i*nNodesPFc + j)*nDOFsPerNode + k];
+                         break;
+                       }
+              case Set:{
+                         S0map[face2CellMap[i*nNodesPFc + j]*nDOFsPerNode + k] = locS0[(i*nNodesPFc + j)*nDOFsPerNode + k];
+                         break;
+                       }
+            }
+          }
+        }
+      }
+      int buff2 = std::pow(buff,2);
+      for(int i = 0; i < nFacesPEl; i++){
+        EMap<EMatrix> Smap(S->getValues()->data() + facesInCell[i]*buff2, buff, buff);
+        for(int j = 0; j < nNodesPFc; j++){
+          for(int k = 0; k < nDOFsPerNode; k++){
+            for(int l = 0; l < nNodesPFc; l++){
+              for(int m = 0; m < nDOFsPerNode; m++){
+                switch(modAssembly->rhs){
+                  case Add:{
+                             Smap(face2CellMap[i*nNodesPFc + j]*nDOFsPerNode + k, face2CellMap[i*nNodesPFc + l]*nDOFsPerNode + m) += locS((i*nNodesPFc + j)*nDOFsPerNode + k, (i*nNodesPFc + l)*nDOFsPerNode + m);
+                             break;
+                           }
+                  case Set:{
+                             Smap(face2CellMap[i*nNodesPFc + j]*nDOFsPerNode + k, face2CellMap[i*nNodesPFc + l]*nDOFsPerNode + m) = locS((i*nNodesPFc + j)*nDOFsPerNode + k, (i*nNodesPFc + l)*nDOFsPerNode + m);
+                             break;
+                           }
+                }
+              }
+            }
+          }
+        }
+      }
     }
     if(verbose){
       pb.update();
     }
   }
-  linSystem->assemble();
-
+  if(myOpts.type != SEXPLICIT){
+    linSystem->assemble();
+  }
   matRowCols.resize(nNodesPFc*nDOFsPerNode);
   cell.resize(nNodesPFc);
   nodes.resize(nNodesPFc);
@@ -311,17 +361,19 @@ void HDGSolver::assemble(){
     pb.setIterIndex(&index);
     pb.setNumIterations(boundaryFaces->size());
   }
-  if(modAssembly->matrix == Set){
-    if(verbose){
-      std::cout << "Assembly - Zero loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << nNodesPFc << "):" << std::endl;
-      pb.update();
-    }
-    for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
-      std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
-      linSystem->zeroOutRows(matRowCols);
+  if(myOpts.type != SEXPLICIT){
+    if(modAssembly->matrix == Set){
       if(verbose){
-        index += 1;
+        std::cout << "Assembly - Zero loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << nNodesPFc << "):" << std::endl;
         pb.update();
+      }
+      for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
+        std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
+        linSystem->zeroOutRows(matRowCols);
+        if(verbose){
+          index += 1;
+          pb.update();
+        }
       }
     }
     //linSystem->assembleFlush();
@@ -339,34 +391,63 @@ void HDGSolver::assemble(){
     boundaryModel->setElementNodes(&nodes);
     boundaryModel->setFieldMap(&faceFieldMap);
     boundaryModel->compute();
-    boundaryT = boundaryModel->getLocalMatrix()->transpose();
-    std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
-    switch(modAssembly->matrix){
-      case Add:{
-                 linSystem->addValsMatrix(matRowCols, matRowCols, boundaryT.data());
-                 break;
-               }
-      case Set:{
-                 linSystem->setValsMatrix(matRowCols, matRowCols, boundaryT.data());
-                 break;
-               }
-    }
-    switch(modAssembly->rhs){
-      case Add:{
-                 linSystem->addValsRHS(matRowCols, boundaryModel->getLocalRHS()->data());
-                 break;
-               }
-      case Set:{
-                 linSystem->setValsRHS(matRowCols, boundaryModel->getLocalRHS()->data());
-                 break;
-               }
+    if(myOpts.type != SEXPLICIT){
+      boundaryT = boundaryModel->getLocalMatrix()->transpose();
+      std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
+      switch(modAssembly->matrix){
+        case Add:{
+                   linSystem->addValsMatrix(matRowCols, matRowCols, boundaryT.data());
+                   break;
+                 }
+        case Set:{
+                   linSystem->setValsMatrix(matRowCols, matRowCols, boundaryT.data());
+                   break;
+                 }
+      }
+      switch(modAssembly->rhs){
+        case Add:{
+                   linSystem->addValsRHS(matRowCols, boundaryModel->getLocalRHS()->data());
+                   break;
+                 }
+        case Set:{
+                   linSystem->setValsRHS(matRowCols, boundaryModel->getLocalRHS()->data());
+                   break;
+                 }
+      }
+    } else {
+      buff = nDOFsPerNode*nNodesPFc;
+      EMap<EVector> S0map(S0->getValues()->data() + (*itFace)*buff, buff);
+      switch(modAssembly->rhs){
+        case Add:{
+                   S0map += *(boundaryModel->getLocalRHS());
+                   break;
+                 }
+        case Set:{
+                   S0map = *(boundaryModel->getLocalRHS());
+                   break;
+                 }
+      }
+      int buff2 = std::pow(buff, 2);
+      EMap<EMatrix> Smap(S->getValues()->data() + (*itFace)*buff2, buff, buff);
+      switch(modAssembly->rhs){
+        case Add:{
+                   Smap += *(boundaryModel->getLocalMatrix());
+                   break;
+                 }
+        case Set:{
+                   Smap = *(boundaryModel->getLocalMatrix());
+                   break;
+                 }
+      }
     }
     if(verbose){
       index += 1;
       pb.update();
     }
   }
-  linSystem->assemble();
+  if(myOpts.type != SEXPLICIT){
+    linSystem->assemble();
+  }
   assembled = 1;
 };//assemble
 
@@ -374,7 +455,6 @@ void HDGSolver::solve(){
   if(!assembled){
     throw(ErrorHandle("HDGSolver", "solve", "system must be assembled before solving"));
   }
-  linSystem->solve((*fieldMap)["Trace"]->getValues());
   const ReferenceElement * refEl = myMesh->getReferenceElement();
   const std::vector< std::vector<int> > * nodeMap = refEl->getFaceNodes();
   const ReferenceElement * fEl = refEl->getFaceElement();
@@ -390,8 +470,37 @@ void HDGSolver::solve(){
   std::vector<int> cell(nNodesPEl, 0);
   std::vector<int> face(nNodesPFc, 0);
   EVector locL(lenL);
-  int iEl = 0;
   ProgressBar pb;
+  if(myOpts.type != SEXPLICIT){
+    linSystem->solve((*fieldMap)["Trace"]->getValues());
+  } else {
+    int lenT2 = std::pow(lenT, 2);
+    Eigen::HouseholderQR<EMatrix> invS(lenT, lenT);
+    int iFace = 0;
+    if(verbose){
+      pb.setIterIndex(&iFace);
+      pb.setNumIterations(myMesh->getNumberFaces());
+      std::cout << "Computing Trace - Face loop (nFaces = " << myMesh->getNumberFaces() << ", nNodes/Fc = " << nNodesPFc << "):" << std::endl;
+      pb.update();
+    }
+    for(iFace = 0; iFace < myMesh->getNumberFaces(); iFace++){
+      EMap<EMatrix> SMap(S->getValues()->data() + iFace*lenT2, lenT, lenT);
+      invS.compute(SMap);
+      EMap<EVector> S0Map(S0->getValues()->data() + iFace*lenT, lenT);
+      EMap<EVector> trace(fieldMap->at("Trace")->getValues()->data() + iFace*lenT, lenT);
+      trace = invS.solve(S0Map);
+      //std::cout << "Trace face " << iFace << std::endl;
+      //std::cout << trace << std::endl;
+      //std::cout << "S face " << iFace << std::endl;
+      //std::cout << SMap << std::endl;
+      //std::cout << "S0 face " << iFace << std::endl;
+      //std::cout << S0Map << std::endl;
+      if(verbose){
+        pb.update();
+      }
+    }
+  }
+  int iEl = 0;
   if(verbose){
     pb.setIterIndex(&iEl);
     pb.setNumIterations(myMesh->getNumberCells());

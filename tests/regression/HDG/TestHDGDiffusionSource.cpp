@@ -70,7 +70,7 @@ void runHDGDiffSrc(SimRun * thisRun, HDGSolverType globType){
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
   meshName += "_ord-" + thisRun->order;
   thisRun->meshLocation += meshName + ".h5";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/HDG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/Alt/";
   //std::string writePath = "/home/julien.fausty/workspace/M2P2/Postprocess/results/Diffusion/HDG/";
   std::string writeDir = writePath;
   if(globType == WEXPLICIT){
@@ -124,8 +124,9 @@ void runHDGDiffSrc(SimRun * thisRun, HDGSolverType globType){
   Field oldTrace(&myMesh, Face, nNodesPerFace, 1);
   std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, 1));
   Field tau(&myMesh, Face, nNodesPerFace, 2);
-  std::fill(tau.getValues()->begin(), tau.getValues()->end(), 0.0);
-  //double multiplier = 100.0;
+  std::fill(tau.getValues()->begin(), tau.getValues()->end(), 1/std::sqrt(std::stod(thisRun->timeStep)));
+  //double multiplier = 1000.0;
+  //double multiplier = 1/std::sqrt(std::stod(thisRun->timeStep));
   //for(int i = 0; i < tau.getLength(); i++){
     //tau.getValues()->at(i) = 1.0 - (i % 2);
     //tau.getValues()->at(i) *= multiplier;
@@ -295,13 +296,13 @@ TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
   meshSizes["2"] = {"2e-1", "1e-1"};
-  //meshSizes["2"] = {"5e-2"};
+  //meshSizes["2"] = {"1e-1"};
   //std::vector<std::string> timeSteps = {"2e-1", "1e-1", "5e-2", "1e-2", "5e-3", "2e-3"};
-  std::vector<std::string> timeSteps = {"2e-1", "1e-1"};
-  //std::vector<std::string> timeSteps = {"2e-4", "1e-4", "5e-5", "2e-5", "1e-5"};
-  //std::vector<std::string> timeSteps = {"1e-2"};
+  std::vector<std::string> timeSteps = {"1e-1", "5e-2"};
+  //std::vector<std::string> timeSteps = {"1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "1e-5"};
+  //std::vector<std::string> timeSteps = {"1e-5"};
   std::vector<std::string> orders = {"1", "2", "3"};
-  //std::vector<std::string> orders = {"3"};
+  //std::vector<std::string> orders = {"1"};
   std::vector<std::string> rkTypes = {"BEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
@@ -322,7 +323,7 @@ TEST_CASE("Testing regression cases for HDGDiffusionSource", "[regression][HDG][
     }
   }
 
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/HDG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/DiffusionConvergence/Alt/";
   //std::string writePath = "/home/julien.fausty/workspace/M2P2/Postprocess/results/Diffusion/HDG/";
   //HDGSolverType globType = WEXPLICIT;
   HDGSolverType globType = IMPLICIT;
