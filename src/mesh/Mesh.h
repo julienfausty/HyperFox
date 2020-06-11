@@ -9,6 +9,7 @@
 #include <moab/Skinner.hpp>
 #include "ReferenceElement.h"
 #include "ErrorHandle.h"
+#include "Modifier.h"
 
 namespace hfox{
 
@@ -157,6 +158,42 @@ class Mesh{
      * \brief get the indexes of the faces on the boundary
      */
     const std::set<int> * getBoundaryFaces() const;
+    /*!
+     * \brief modify mesh nodes
+     * @param nodeMod a modifier configured for the nodes
+     */
+    template<class T>
+    void modifyNodes(Modifier< std::vector<T> > * nodeMod){nodeMod->modify(&nodes);};
+    /*!
+     * \brief modify mesh cells
+     * @param cellMod a modifier configured for the cells
+     */
+    template<class T>
+    void modifyCells(Modifier< std::vector<T> > * cellMod){cellMod->modify(&cells);};
+    /*!
+     * \brief modify mesh cell2FaceMap
+     * @param cell2FaceMod a modifier configured for the cell2FaceMap
+     */
+    template<class T>
+    void modifyCell2FaceMap(Modifier< std::vector<T> > * cell2FaceMod){cell2FaceMod->modify(&cell2FaceMap);};
+    /*!
+     * \brief modify mesh faces
+     * @param faceMod a modifier configured for the faces
+     */
+    template<class T>
+    void modifyFaces(Modifier< std::vector<T> > * faceMod){faceMod->modify(&faces);};
+    /*!
+     * \brief modify mesh face2CellMap
+     * @param face2CellMod a modifier configured for the face2CellMap
+     */
+    template<class T>
+    void modifyFace2CellMap(Modifier< std::vector<T> > * face2CellMod){face2CellMod->modify(&face2CellMap);};
+    /*!
+     * \brief modify the boundaryFace set
+     * @param boundaryFaceMod a modifier configured for the boundaryFaces
+     */
+    template<class T>
+    void modifyBoundaryFaces(Modifier< std::vector<T> > * boundaryFaceMod){boundaryFaceMod->modify(&boundaryFaces);};
   protected:
     /*! \brief compute and set both the inner and outer faces of the mesh.
      */

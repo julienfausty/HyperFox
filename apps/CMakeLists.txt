@@ -33,3 +33,16 @@ target_link_libraries(tests_hyperFox ${hyperFoxLibs}
   ${MOAB_LIBRARIES} 
   ${HDF5_C_LIBRARIES} 
   Catch2::Catch2)
+
+add_executable(
+  par_tests_hyperFox
+  partest.cpp
+  ${parTestSrcFiles}
+  )
+target_link_libraries(par_tests_hyperFox ${hyperFoxLibs}
+  MPI::MPI_CXX
+  ${PETSC_LIBRARIES} 
+  Eigen3::Eigen 
+  ${MOAB_LIBRARIES} 
+  ${HDF5_C_LIBRARIES} 
+  Catch2::Catch2)

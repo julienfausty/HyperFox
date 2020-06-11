@@ -26,3 +26,8 @@ foreach(name ${hyperFoxRegressionNames})
     "${CMAKE_SOURCE_DIR}/tests/regression/${name}/*.cpp")
   set(testSrcFiles ${testSrcFiles} ${tempTestSrcFiles})
 endforeach()
+
+file(GLOB
+  tempTestSrcFiles
+  "${CMAKE_SOURCE_DIR}/tests/parallel/*.cpp")
+set(parTestSrcFiles ${parTestSrcFiles} ${tempTestSrcFiles})
