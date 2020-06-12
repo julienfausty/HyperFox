@@ -40,16 +40,7 @@ allows for mistakes to be made and unmade at no cost to the integrity of the app
 
 # Goals
 
-- Very Short term (~ couple of days):
-  - Finish the implementation of a LaplaceModel and a Continuous Galerkin Solver so as to confirm the 
-  convergence of the code in both spatial discretization and polynomial order.
-
 - Short term (~ weeks):
-  - Implement both explicit and implicit HDG Solvers with explicit and implicit models for the Diffusion 
-  equation with a source
-  - Compare the computational efficiency vs. precision of the different explicit/implicit combos
-
-- Medium term (~ month):
   - Parallelize the code: the plan is to link to an external partitionner (Zoltan or Metis) to partition the 
   mesh and then to adapt the Solvers to parallel assembly (the current linear algebra package PetsC is 
   already parallel)
@@ -79,6 +70,8 @@ For now the project has the following dependencies:
 - HDF5: for input/output binary file formatting
 
 - MOAB: a c++ library for dealing with meshes and computing mesh entities.
+
+- Zoltan: a c++ library for graph partitioning (must set ZOLTAN_PREFIX envioronment variable to install directory of Zoltan)
 
 Also, the following library is used for the testing module:
 

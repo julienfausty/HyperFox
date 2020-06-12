@@ -33,3 +33,5 @@ find_package(HDF5 REQUIRED)
 find_package(Catch2 REQUIRED)
 
 find_package(MOAB REQUIRED)
+
+find_package(Zoltan REQUIRED)

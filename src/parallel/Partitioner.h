@@ -2,8 +2,11 @@
 #define PARTITIONER_H
 
 #include <vector>
+#include <algorithm>
 #include "Mesh.h"
 #include "Field.h"
+#include "ErrorHandle.h"
+#include "Utils.h"
 
 namespace hfox{
 
@@ -64,6 +67,24 @@ class Partitioner{
      */
     virtual int local2GlobalEl(int loc) const {return elementIDs[loc];};
     /*!
+     * \brief get the global indeces of a list of nodes from local indeces
+     * @param loc list of local indeces of nodes
+     * @param glob list to fill with global indeces
+     */
+    virtual void local2GlobalNodeSlice(const std::vector<int> & loc, std::vector<int> * glob) const;
+    /*!
+     * \brief get the global indeces of a list of faces from local indeces
+     * @param loc list of local indeces of faces
+     * @param glob list to fill with global indeces
+     */
+    virtual void local2GlobalFaceSlice(const std::vector<int> & loc, std::vector<int> * glob) const;
+    /*!
+     * \brief get the global indeces of a list of elements from local indeces
+     * @param loc list of local indeces of elements
+     * @param glob list to fill with global indeces
+     */
+    virtual void local2GlobalElementSlice(const std::vector<int> & loc, std::vector<int> * glob) const;
+    /*!
      * \brief get the local index of node from a global index
      * @param glob global index of node
      */
@@ -78,7 +99,32 @@ class Partitioner{
      * @param glob global index of element
      */
     virtual int global2LocalElement(int glob) const;
+    /*!
+     * \brief get the local indeces of a slice of nodes from global indeces
+     * @param glob global indeces of nodes
+     * @param loc list to fill with local indeces
+     */
+    virtual void global2LocalNodeSlice(const std::vector<int> & glob, std::vector<int> * loc) const;
+    /*!
+     * \brief get the local indeces of a slice of faces from global indeces
+     * @param glob global indeces of faces
+     * @param loc list to fill with local indeces
+     */
+    virtual void global2LocalFaceSlice(const std::vector<int> & glob, std::vector<int> * loc) const;
+    /*!
+     * \brief get the local indeces of a slice of elements from global indeces
+     * @param glob global indeces of elements
+     * @param loc list to fill with local indeces
+     */
+    virtual void global2LocalElementSlice(const std::vector<int> & glob, std::vector<int> * loc) const;
   protected:
+    /*!
+     * \brief helper function for multiplying indexes
+     * @param dim number of objects per idex
+     * @param idexes the list of indexes
+     * @param multiIndexes the list of multiplied indexes
+     */
+    static void multiplyIndexes(int dim, const std::vector<int> * indexes, std::vector<int> * multiIndexes);
     /*!
      * \brief pointer to the partitioned mesh
      */

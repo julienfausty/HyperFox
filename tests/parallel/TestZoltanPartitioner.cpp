@@ -1,4 +1,4 @@
 #include <catch2/catch.hpp>
-#include "Partitioner.h"
+#include "ZoltanPartitioner.h"
 
 using namespace hfox;

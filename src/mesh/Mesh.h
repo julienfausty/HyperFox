@@ -194,6 +194,14 @@ class Mesh{
      */
     template<class T>
     void modifyBoundaryFaces(Modifier< std::vector<T> > * boundaryFaceMod){boundaryFaceMod->modify(&boundaryFaces);};
+    /*!
+     * \brief update the members after modication
+     */
+    void update(){ 
+      nNodes = nodes.size()/dimNodeSpace; 
+      nCells = cells.size()/nNodesPerCell;
+      nFaces = faces.size()/nNodesPerFace;
+    };
   protected:
     /*! \brief compute and set both the inner and outer faces of the mesh.
      */
