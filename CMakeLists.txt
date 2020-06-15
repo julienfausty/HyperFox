@@ -43,3 +43,29 @@ add_subdirectory(apps)
 
 #Add subdirectory for tools.
 add_subdirectory(tools)
+
+# Add all targets to the build-tree export set
+export(TARGETS hyperfox
+  FILE "${PROJECT_BINARY_DIR}/HyperFox.cmake")
+
+# Export the package for use from the build-tree
+# (this registers the build-tree with a global CMake-registry)
+export(PACKAGE HyperFox)
+
+configure_file(cmake/HyperFoxConfig.cmake.in
+  "${PROJECT_BINARY_DIR}/HyperFoxConfig.cmake" @ONLY)
+
+configure_file(cmake/HyperFoxConfigVersion.cmake.in
+  "${PROJECT_BINARY_DIR}/HyperFoxConfigVersion.cmake" @ONLY)
+
+# Install the FooBarConfig.cmake and FooBarConfigVersion.cmake
+install(FILES
+  "${PROJECT_BINARY_DIR}/HyperFoxConfig.cmake"
+  "${PROJECT_BINARY_DIR}/HyperFoxConfigVersion.cmake"
+  DESTINATION share)
+
+# Install the export set for use with the install-tree
+install(EXPORT HyperFox DESTINATION
+  "${CMAKE_INSTALL_PREFIX}/share")
+
+
