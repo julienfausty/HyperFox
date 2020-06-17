@@ -6,6 +6,14 @@
 
 namespace hfox{
 
+/*!
+ * \brief A model implementing the transport equation in an HDG setting
+ *
+ * \f[
+ * \partial_{t} u - v \cdot \nabla u = 0
+ * \f]
+ */
+
 class HDGTransport : public HDGModel{
 
   public:

@@ -1,26 +1,28 @@
-#ifndef SOURCE_H
-#define SOURCE_H
+#ifndef REACTION_H
+#define REACTION_H
 
+#include <vector>
+#include <algorithm>
 #include <functional>
-#include "RHSOperator.h"
+#include "Mass.h"
+#include "ReferenceElement.h"
 
 namespace hfox{
 
 /*!
- * \brief the operator implementing the source term from an analytical function
+ * \brief the operator implementing the reaction term from an analytical function
  *
  * \f[
- * \int_{\Omega} f \varphi
+ * \int_{\Omega} r u \varphi
  * \f]
  */
 
-class Source : public RHSOperator{
-
+class Reaction : public Mass{
   public:
     /*!
      * \brief constructor inheritance
      */
-    using RHSOperator::RHSOperator;
+    using Mass::Mass;
     /*!
      * \brief method for assembling the operator
      *
@@ -29,29 +31,28 @@ class Source : public RHSOperator{
      */
     void assemble(const std::vector< double > & dV, const std::vector< EMatrix > & invJacobians);
     /*!
-     * \brief method for setting the source function
+     * \brief method for setting the reaction function
      *
-     * @param s the analytical source function (takes nodes)
+     * @param s the analytical reaction function (takes nodes)
      */
-    void setSourceFunction(std::function<double(const std::vector<double>&)> s){sourceFunc = s;};
+    void setReactionFunction(std::function<double(const std::vector<double>&)> r){reactionFunc = r;};
     /*!
      * \brief method for calculating source at IPs
      *
      * @param nodes element nodes
      */
-    void calcSource(const std::vector< std::vector<double> > & nodes);
+    void calcReaction(const std::vector< std::vector<double> > & nodes);
   protected:
     /*!
      * \brief the source values at the IPs
      */
-    std::vector<double> source;
+    std::vector<double> reaction;
     /*!
      * \brief the source function
      */
-    std::function<double(const std::vector<double>&)> sourceFunc;
-
-};//Source
+    std::function<double(const std::vector<double>&)> reactionFunc;
+};//Reaction
 
 }//hfox
 
-#endif //SOURCE_H
+#endif//REACTION_H

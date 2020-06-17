@@ -26,7 +26,7 @@ class Mass : public Operator{
      * @param invJacobians the values of the inverse jacobian matrices at the integration points
      * @param dV values of discrete mesure at the integration points
      */
-    void assemble(const std::vector< double > & dV, const std::vector< EMatrix > & invJacobians);
+    virtual void assemble(const std::vector< double > & dV, const std::vector< EMatrix > & invJacobians);
 
 };//Mass
 

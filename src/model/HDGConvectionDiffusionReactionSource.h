@@ -1,24 +1,23 @@
-#ifndef HDGDIFFUSIONSOURCE_H
-#define HDGDIFFUSIONSOURCE_H
+#ifndef HDGCONVECTIONDIFFUSIONREACTIONSOURCE_H
+#define HDGCONVECTIONDIFFUSIONREACTIONSOURCE_H
 
 #include "HDGModel.h"
-#include "HDGBase.h"
+#include "HDGConvection.h"
 #include "HDGDiffusion.h"
-#include "TimeScheme.h"
 #include "Source.h"
+#include "Reaction.h"
 
 namespace hfox{
 
 /*!
- * \brief A model implementing the diffusion with a source term equation in an HDG setting
+ * \brief A model implementing a convection-diffusion equation with possible reaction and source terms in an HDG setting
  *
  * \f[
- * \partial_{t} u - \Delta u = f
+ * \partial_{t} u + \nabla \cdot ( v u - D\nabla u) + r u  = f
  * \f]
  */
 
-class HDGDiffusionSource : public HDGModel{
-
+class HDGConvectionDiffusionReactionSource : public HDGModel{
   public:
     /*!
      * \brief constructor inheritance
@@ -38,6 +37,10 @@ class HDGDiffusionSource : public HDGModel{
      * \brief set the source function
      */
     void setSourceFunction(std::function<double(const std::vector<double>&)> s);
+    /*!
+     * \brief set the source function
+     */
+    void setReactionFunction(std::function<double(const std::vector<double>&)> r);
   protected:
     /*!
      * \brief initialize all the operators for the class
@@ -52,12 +55,23 @@ class HDGDiffusionSource : public HDGModel{
      */
     void computeLocalRHS();
     /*!
+     * \brief parse the velocity field values into vectors
+     */
+    std::vector<EVector> parseVelocityVals() const;
+    /*!
      * \brief method for parsing diffusion tensor values into matrices
      */
     std::vector<EMatrix> parseDiffusionVals() const;
-
-};//HDGDiffusionSource
+    /*!
+     * \brief boolean tracking if a source function has been set
+     */
+    bool sourceSet = 0;
+    /*!
+     * \brief boolean tracking if reaction function has been set
+     */
+    bool reactionSet = 0;
+};//HDGConvectionDiffusionReactionSource
 
 }//hfox
 
-#endif//HDGDIFFUSIONSOURCE_H
+#endif//HDGCONVECTIONDIFFUSIONREACTIONSOURCE

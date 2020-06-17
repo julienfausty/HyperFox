@@ -4,7 +4,7 @@ namespace hfox{
 
 void Source::calcSource(const std::vector< std::vector<double> > & nodes){
   if(sourceFunc == NULL){
-    throw(ErrorHandle("Source", "calcSource", "must set a dource function before calculating the source."));
+    throw(ErrorHandle("Source", "calcSource", "must set a source function before calculating the source."));
   }
   source.resize(refEl->getNumIPs(), 0.0);
   const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
@@ -23,10 +23,10 @@ void Source::calcSource(const std::vector< std::vector<double> > & nodes){
 
 void Source::assemble(const std::vector< double > & dV, const std::vector< EMatrix > & invJacobians){
   if(!allocated){
-    throw(ErrorHandle("Source", "assemble", "the source operator must be allocated before beign assembled"));
+    throw(ErrorHandle("Source", "assemble", "the source operator must be allocated before being assembled"));
   }
   if(source.size() == 0){
-    throw(ErrorHandle("Source", "assemble", "the source must be calculated in the element before beign assembled"));
+    throw(ErrorHandle("Source", "assemble", "the source must be calculated in the element before being assembled"));
   }
   const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
   EVector locMeasure(refEl->getNumIPs());
