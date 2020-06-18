@@ -57,7 +57,7 @@ For now the project has the following dependencies:
 
 - CMake: for generating the makefiles easily
 
-- OpenMpi: For MPI parallelism support
+- OpenMpi: For MPI parallelism support (check that mpi-io capabilities are present for full parallel hdf5 support)
 
 - OpenMP: A compiler with OpenMP support should be used
 
@@ -69,7 +69,7 @@ For now the project has the following dependencies:
 
 - HDF5: for input/output binary file formatting
 
-- MOAB: a c++ library for dealing with meshes and computing mesh entities.
+- MOAB: a c++ library for dealing with meshes and computing mesh entities 
 
 - Zoltan: a c++ library for graph partitioning (must set ZOLTAN_PREFIX envioronment variable to install directory of Zoltan)
 

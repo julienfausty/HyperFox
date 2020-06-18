@@ -121,7 +121,7 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
     rkType = BEuler;
   }
   writeDir += meshName + "_dt-" + thisRun->timeStep;
-  boost::filesystem::create_directory(writeDir);
+  //boost::filesystem::create_directory(writeDir);
   Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
   HDF5Io hdfio(&myMesh);
   hdfio.load(thisRun->meshLocation);
@@ -233,18 +233,18 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
       trace.getValues()->at(i*nNodesPerFace + j) = analyticalTransportHDG(t, node, v);;
     }
   }
-  hdfio.write(writeDir + "/res_0.h5");
+  //hdfio.write(writeDir + "/res_0.h5");
   double timeEnd = 1.0;
   int nIters = timeEnd / timeStep;
   //int nIters = 2;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   int i = 0;
-  ProgressBar pbar;
-  pbar.setIterIndex(&i);
-  pbar.setNumIterations(nIters);
-  std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
-  pbar.update();
+  //ProgressBar pbar;
+  //pbar.setIterIndex(&i);
+  //pbar.setNumIterations(nIters);
+  //std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
+  //pbar.update();
   for(i = 0; i < nIters; i++){
     t += timeStep;
     //analytical sol
@@ -319,11 +319,11 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
     if(rem < timeStep/(5e-3)){
-      hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+      //hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
     }
     end = std::chrono::high_resolution_clock::now();
     thisRun->post += end - start;
-    pbar.update();
+    //pbar.update();
     if(thisRun->l2Err > 1.0){
       break;
     }
@@ -335,13 +335,13 @@ TEST_CASE("Testing regression cases for Transport", "[regression][HDG][Transport
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  //meshSizes["2"] = {"2e-1"};
-  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
-  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4"};
-  //std::vector<std::string> timeSteps = {"5e-4"};
-  std::vector<std::string> orders = {"1", "2", "3"};
-  //std::vector<std::string> orders = {"3"};
-  std::vector<std::string> rkTypes = {"SSPRK3"};
+  meshSizes["2"] = {"2e-1"};
+  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4"};
+  std::vector<std::string> timeSteps = {"1e-2", "5e-3"};
+  //std::vector<std::string> orders = {"1", "2", "3"};
+  std::vector<std::string> orders = {"3"};
+  std::vector<std::string> rkTypes = {"BEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -363,8 +363,8 @@ TEST_CASE("Testing regression cases for Transport", "[regression][HDG][Transport
 
   std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Transport/HDG/";
   //HDGSolverType globType = WEXPLICIT;
-  //HDGSolverType globType = IMPLICIT;
-  HDGSolverType globType = SEXPLICIT;
+  HDGSolverType globType = IMPLICIT;
+  //HDGSolverType globType = SEXPLICIT;
   std::string writeFile = "Breakdown.csv";
   if(globType == WEXPLICIT){
     writePath += "WExp/";
@@ -388,26 +388,26 @@ TEST_CASE("Testing regression cases for Transport", "[regression][HDG][Transport
   } else{
     writePath += "Misc/";
   }
-  std::ofstream f; f.open(writePath + writeFile);
-  f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
+  //std::ofstream f; f.open(writePath + writeFile);
+  //f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runHDGTransport(&(*it), globType);
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
-    //CHECK(it->l2Err < 1);
-    f << it->dim << ",";
-    f << it->order << ",";
-    f << it->meshSize << ",";
-    f << it->timeStep << ",";
-    f << it->linAlgErr << ",";
-    f << it->l2Err << ",";
-    f << it->dL2Err << ",";
-    f << it->runtime.count() << ",";
-    f << it->setup.count() << ",";
-    f << it->assembly.count() << ",";
-    f << it->resolution.count() << ",";
-    f << it->post.count() << "\n";
+    CHECK(it->l2Err < 1);
+    //f << it->dim << ",";
+    //f << it->order << ",";
+    //f << it->meshSize << ",";
+    //f << it->timeStep << ",";
+    //f << it->linAlgErr << ",";
+    //f << it->l2Err << ",";
+    //f << it->dL2Err << ",";
+    //f << it->runtime.count() << ",";
+    //f << it->setup.count() << ",";
+    //f << it->assembly.count() << ",";
+    //f << it->resolution.count() << ",";
+    //f << it->post.count() << "\n";
   }
-  f.close();
+  //f.close();
 };

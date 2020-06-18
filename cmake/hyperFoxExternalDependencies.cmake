@@ -34,4 +34,7 @@ find_package(Catch2 REQUIRED)
 
 find_package(MOAB REQUIRED)
 
+message(STATUS "Moab includes: ${MOAB_INCLUDE_DIRS}")
+message(STATUS "Moab libraries: ${MOAB_LIBRARIES}")
+
 find_package(Zoltan REQUIRED)

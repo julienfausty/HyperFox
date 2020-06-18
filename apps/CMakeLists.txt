@@ -35,8 +35,6 @@ add_library(
   ${hyperFoxCPPFiles}
   )
 
-#target_include_directories(hyperfox PUBLIC ${hyperFoxIncludes})
-
 target_link_libraries(hyperfox 
   MPI::MPI_CXX 
   ${PETSC_LIBRARIES} 
