@@ -10,9 +10,8 @@
 #include "Field.h"
 #include "HDF5Io.h"
 #include "Operator.h"
-#include "HDGTransport.h"
+#include "HDGConvectionDiffusionReactionSource.h"
 #include "RungeKutta.h"
-#include "Euler.h"
 #include "DirichletModel.h"
 #include "PetscInterface.h"
 #include "HDGSolver.h"
@@ -20,32 +19,29 @@
 
 using namespace hfox;
 
-double analyticalTransportHDG(const double t, const std::vector<double> & x, const std::vector<double> & v){
-  std::vector<double> c(x.size(), 0.3);
-  double dev = 1.0/16.0;
-  double freq = 8.0*M_PI;
-  std::vector<double> p(x.size(), 0.0);
-  EMap<EVector>(p.data(), p.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(v.data(), v.size());
-  return TestUtils::morelet(p, c, freq, dev);
+double analyticalCDRSHDG(const double t, const std::vector<double> & x, const std::vector<double> & v, double & D){
+  double M = 1.0;
+  double at = t + 0.1;
+  double u0 = 1.0;
+  double lam = 1.0;
+  std::vector<double> c = {0.0, 0.5};
+  double inter = 4.0*D*at*(1.0 + std::pow(lam*at, 2)/12);
+  double res = M/(std::sqrt(inter * M_PI))*std::exp( - ( std::pow(x[0] - c[0] - at*(u0 + lam*x[1]), 2)/inter + std::pow(x[1] - c[1], 2)/(4.0*D*at)));
+  return res;
 };
 
-double analyticalTransportHDGGrad(const double t, const std::vector<double> & x, const std::vector<double> & v, int k){
-  std::vector<double> c(x.size(), 0.3);
-  double dev = 1.0/16.0;
-  double freq = 8.0*M_PI;
-  std::vector<double> p(x.size(), 0.0);
-  EMap<EVector>(p.data(), p.size()) = EMap<const EVector>(x.data(), x.size()) - t*EMap<const EVector>(v.data(), v.size());
-  return TestUtils::moreletGrad(p, c, freq, dev, k);
+double analyticalCDRSHDGGrad(const double t, const std::vector<double> & x, const std::vector<double> & v, double & D, int k){
+  return 0;
 };
 
-void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
+void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   //setup
   std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
   thisRun->meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/";
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
   meshName += "_ord-" + thisRun->order;
   thisRun->meshLocation += meshName + ".h5";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Transport/HDG/";
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/CDRS/";
   if(globType == WEXPLICIT){
     writeDir += "WExp/";
   } else if(globType == SEXPLICIT){
@@ -78,7 +74,7 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
     rkType = BEuler;
   }
   writeDir += meshName + "_dt-" + thisRun->timeStep;
-  //boost::filesystem::create_directory(writeDir);
+  boost::filesystem::create_directory(writeDir);
   Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
   HDF5Io hdfio(&myMesh);
   hdfio.load(thisRun->meshLocation);
@@ -99,10 +95,13 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   Field oldTrace(&myMesh, Face, nNodesPerFace, 1);
   std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, 1));
   Field vel(&myMesh, Node, 1, nodeDim);
-  double invSqrt2 = 1.0/std::sqrt(2.0);
-  for(int i = 0; i < vel.getLength(); i++){
-    vel.getValues()->at(i) = invSqrt2;
+  std::vector<double> node(nodeDim);
+  for(int i = 0; i < myMesh.getNumberPoints(); i++){
+    myMesh.getPoint(i, &node);
+    vel.getValues()->at(i*nodeDim) = 1.0 + node[1];
   }
+  Field diff(&myMesh, Node, 1, 1);
+  std::fill(diff.getValues()->begin(), diff.getValues()->end(), 1e-2);
   Field tau(&myMesh, Face, nNodesPerFace, 2);
   Field anaSol(&myMesh, Node, 1, 1);
   Field residual(&myMesh, Cell, nNodes, 1);
@@ -121,8 +120,9 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   fieldMap["Tau"] = &tau;
   fieldMap["Dirichlet"] = &dirichlet;
   fieldMap["Velocity"] = &vel;
+  fieldMap["DiffusionTensor"] = &diff;
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
-  HDGTransport transportMod(myMesh.getReferenceElement());
+  HDGConvectionDiffusionReactionSource transportMod(myMesh.getReferenceElement());
   double timeStep = std::stod(thisRun->timeStep);
   ts.setTimeStep(timeStep);
   transportMod.setTimeScheme(&ts);
@@ -145,11 +145,11 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   mySolver.allocate();
   hdfio.setField("Solution", &sol);
   const std::set<int> * boundary = myMesh.getBoundaryFaces();
-  std::vector<double> node(nodeDim);
   std::vector<int> cell(nNodesPerFace, 0);
   std::vector< std::vector<double> > nodes(nNodesPerFace, std::vector<double>(nodeDim, 0.0));
   double t = 0;
   std::vector<double> v(nodeDim, 0.0);
+  std::vector<double> D(1, 0.0);
   std::vector<EVector> normals(nNodesPerFace, EVector::Zero(nodeDim));
   double projV = 0.0;
   for(int i = 0; i < myMesh.getNumberFaces(); i++){
@@ -176,9 +176,10 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
     for(int j = 0; j < nNodes; j++){
       myMesh.getPoint(cell[j], &node);
       vel.getValues(cell[j], &v);
-      sol.getValues()->at(i*nNodes + j) = analyticalTransportHDG(t, node, v);
+      diff.getValues(cell[j], &D);
+      sol.getValues()->at(i*nNodes + j) = analyticalCDRSHDG(t, node, v, D[0]);
       for(int k = 0; k < nodeDim; k++){
-        flux.getValues()->at((i*nNodes + j)*nodeDim + k) = analyticalTransportHDGGrad(t, node, v, k);
+        flux.getValues()->at((i*nNodes + j)*nodeDim + k) = analyticalCDRSHDGGrad(t, node, v, D[0], k);
       }
     }
   }
@@ -187,35 +188,38 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
     for(int j = 0; j < nNodesPerFace; j++){
       myMesh.getPoint(cell[j], &node);
       vel.getValues(cell[j], &v);
-      trace.getValues()->at(i*nNodesPerFace + j) = analyticalTransportHDG(t, node, v);;
+      diff.getValues(cell[j], &D);
+      trace.getValues()->at(i*nNodesPerFace + j) = analyticalCDRSHDG(t, node, v, D[0]);;
     }
   }
-  //hdfio.write(writeDir + "/res_0.h5");
+  hdfio.write(writeDir + "/res_0.h5");
   double timeEnd = 1.0;
   int nIters = timeEnd / timeStep;
   //int nIters = 2;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   int i = 0;
-  //ProgressBar pbar;
-  //pbar.setIterIndex(&i);
-  //pbar.setNumIterations(nIters);
-  //std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
-  //pbar.update();
+  ProgressBar pbar;
+  pbar.setIterIndex(&i);
+  pbar.setNumIterations(nIters);
+  std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
+  pbar.update();
   for(i = 0; i < nIters; i++){
     t += timeStep;
     //analytical sol
     for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
       myMesh.getPoint(iNode, &node);
       vel.getValues(iNode, &v);
-      anaSol.getValues()->at(iNode) = analyticalTransportHDG(t, node, v);
+      diff.getValues(iNode, &D);
+      anaSol.getValues()->at(iNode) = analyticalCDRSHDG(t, node, v, D[0]);
     }
     for(auto it = boundary->begin(); it != boundary->end(); it++){
       myMesh.getFace(*it, &cell);
       myMesh.getSlicePoints(cell, &nodes);
       for(int j = 0; j < nNodesPerFace; j++){
         vel.getValues(cell[j], &v);
-        dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalTransportHDG(t, nodes[j], v);
+        diff.getValues(cell[j], &D);
+        dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalCDRSHDG(t, nodes[j], v, D[0]);
       }
     }
     //copy sol into oldsol
@@ -276,26 +280,26 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
     if(rem < timeStep/(5e-3)){
-      //hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+      hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
     }
     end = std::chrono::high_resolution_clock::now();
     thisRun->post += end - start;
-    //pbar.update();
+    pbar.update();
     if(thisRun->l2Err > 1.0){
       break;
     }
   }
 };
 
-TEST_CASE("Testing regression cases for Transport", "[regression][HDG][Transport]"){
+TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[regression][HDG][ConvectionDiffusionReactionSource]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"2e-1"};
+  meshSizes["2"] = {"1e-1"};
   //meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4"};
-  std::vector<std::string> timeSteps = {"1e-2", "5e-3"};
+  std::vector<std::string> timeSteps = {"5e-4"};
   //std::vector<std::string> orders = {"1", "2", "3"};
   std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};
@@ -318,7 +322,7 @@ TEST_CASE("Testing regression cases for Transport", "[regression][HDG][Transport
     }
   }
 
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Transport/HDG/";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/CDRS/";
   //HDGSolverType globType = WEXPLICIT;
   HDGSolverType globType = IMPLICIT;
   //HDGSolverType globType = SEXPLICIT;
@@ -345,26 +349,26 @@ TEST_CASE("Testing regression cases for Transport", "[regression][HDG][Transport
   } else{
     writePath += "Misc/";
   }
-  //std::ofstream f; f.open(writePath + writeFile);
-  //f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
+  std::ofstream f; f.open(writePath + writeFile);
+  f << "dim,order,h,timeStep,linAlgErr,l2Err,dL2Err,runtime,setup,assembly,resolution,post\n";
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
-    runHDGTransport(&(*it), globType);
+    runHDGCDRS(&(*it), globType);
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
-    CHECK(it->l2Err < 1);
-    //f << it->dim << ",";
-    //f << it->order << ",";
-    //f << it->meshSize << ",";
-    //f << it->timeStep << ",";
-    //f << it->linAlgErr << ",";
-    //f << it->l2Err << ",";
-    //f << it->dL2Err << ",";
-    //f << it->runtime.count() << ",";
-    //f << it->setup.count() << ",";
-    //f << it->assembly.count() << ",";
-    //f << it->resolution.count() << ",";
-    //f << it->post.count() << "\n";
+    //CHECK(it->l2Err < 1);
+    f << it->dim << ",";
+    f << it->order << ",";
+    f << it->meshSize << ",";
+    f << it->timeStep << ",";
+    f << it->linAlgErr << ",";
+    f << it->l2Err << ",";
+    f << it->dL2Err << ",";
+    f << it->runtime.count() << ",";
+    f << it->setup.count() << ",";
+    f << it->assembly.count() << ",";
+    f << it->resolution.count() << ",";
+    f << it->post.count() << "\n";
   }
-  //f.close();
+  f.close();
 };
