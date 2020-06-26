@@ -19,19 +19,37 @@
 
 using namespace hfox;
 
-double analyticalCDRSHDG(const double t, const std::vector<double> & x, const std::vector<double> & v, double & D){
-  double M = 1.0;
-  double at = t + 0.1;
-  double u0 = 1.0;
-  double lam = 1.0;
-  std::vector<double> c = {0.0, 0.5};
-  double inter = 4.0*D*at*(1.0 + std::pow(lam*at, 2)/12);
-  double res = M/(std::sqrt(inter * M_PI))*std::exp( - ( std::pow(x[0] - c[0] - at*(u0 + lam*x[1]), 2)/inter + std::pow(x[1] - c[1], 2)/(4.0*D*at)));
+double analyticalCDRSHDG(const double t, const std::vector<double> & x, double & v, std::vector<double> & cvel, double & D){
+  double sigma = 0.1;
+  std::vector<double> c = {0.3, 0.3};
+  double vt = v*t;
+  double twoSigSq = 2.0*std::pow(sigma, 2);
+  double fourKapT = 4.0*D*t;
+  double xbar = (x[0] - cvel[0])*std::cos(vt) + (x[1] - cvel[1])*std::sin(vt);
+  double ybar = -(x[0] - cvel[0])*std::sin(vt) + (x[1] - cvel[1])*std::cos(vt);
+  double res = (twoSigSq/(twoSigSq + fourKapT))*std::exp(-(std::pow(xbar - c[0] + cvel[0], 2) + std::pow(ybar - c[1] + cvel[1], 2))/(twoSigSq + fourKapT));
   return res;
 };
 
-double analyticalCDRSHDGGrad(const double t, const std::vector<double> & x, const std::vector<double> & v, double & D, int k){
-  return 0;
+double analyticalCDRSHDGGrad(const double t, const std::vector<double> & x, double & v, std::vector<double> & cvel, double & D, int k){
+  double sigma = 0.1;
+  std::vector<double> c = {0.3, 0.3};
+  double vt = v*t;
+  double twoSigSq = 2.0*std::pow(sigma, 2);
+  double fourKapT = 4.0*D*t;
+  double cvt = std::cos(vt);
+  double svt = std::sin(vt);
+  double xbar = (x[0] - cvel[0])*cvt + (x[1] - cvel[1])*svt;
+  double ybar = -(x[0] - cvel[0])*svt + (x[1] - cvel[1])*cvt;
+  double res = -(2.0*twoSigSq/std::pow(twoSigSq + fourKapT, 2))*std::exp(-(std::pow(xbar - c[0] + cvel[0], 2) + std::pow(ybar - c[1] + cvel[1], 2))/(twoSigSq + fourKapT));
+  if(k == 0){
+    res *= (cvt*(xbar - c[0] + cvel[0]) - svt*(ybar - c[1] + cvel[1]));
+  } else if(k == 1){
+    res *= (svt*(xbar - c[0] + cvel[0]) + cvt*(ybar - c[1] + cvel[1]));
+  } else {
+    res *= 0;
+  }
+  return res;
 };
 
 void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
@@ -41,7 +59,8 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
   meshName += "_ord-" + thisRun->order;
   thisRun->meshLocation += meshName + ".h5";
-  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/CDRS/";
+  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/CDRS/";
+  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/CDRS/";
   if(globType == WEXPLICIT){
     writeDir += "WExp/";
   } else if(globType == SEXPLICIT){
@@ -96,12 +115,18 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, 1));
   Field vel(&myMesh, Node, 1, nodeDim);
   std::vector<double> node(nodeDim);
+  double timeStep = std::stod(thisRun->timeStep);
+  double v = 4.0; std::vector<double> cvel = {0.5, 0.5};
+  double D = 1e-2; 
+  //double carLen = std::stod(thisRun->meshSize);
+  double carLen = std::sqrt(D*timeStep);
   for(int i = 0; i < myMesh.getNumberPoints(); i++){
     myMesh.getPoint(i, &node);
-    vel.getValues()->at(i*nodeDim) = 1.0 + node[1];
+    vel.getValues()->at(i*nodeDim) = -v*(node[1] - cvel[1]);
+    vel.getValues()->at(i*nodeDim + 1) = v*(node[0] - cvel[0]);
   }
   Field diff(&myMesh, Node, 1, 1);
-  std::fill(diff.getValues()->begin(), diff.getValues()->end(), 1e-2);
+  std::fill(diff.getValues()->begin(), diff.getValues()->end(), D);
   Field tau(&myMesh, Face, nNodesPerFace, 2);
   Field anaSol(&myMesh, Node, 1, 1);
   Field residual(&myMesh, Cell, nNodes, 1);
@@ -123,7 +148,6 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   fieldMap["DiffusionTensor"] = &diff;
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   HDGConvectionDiffusionReactionSource transportMod(myMesh.getReferenceElement());
-  double timeStep = std::stod(thisRun->timeStep);
   ts.setTimeStep(timeStep);
   transportMod.setTimeScheme(&ts);
   PetscOpts myOpts;
@@ -148,26 +172,25 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   std::vector<int> cell(nNodesPerFace, 0);
   std::vector< std::vector<double> > nodes(nNodesPerFace, std::vector<double>(nodeDim, 0.0));
   double t = 0;
-  std::vector<double> v(nodeDim, 0.0);
-  std::vector<double> D(1, 0.0);
+  std::vector<double> locV(nodeDim, 0.0);
   std::vector<EVector> normals(nNodesPerFace, EVector::Zero(nodeDim));
   double projV = 0.0;
   for(int i = 0; i < myMesh.getNumberFaces(); i++){
     normals = TestUtils::calculateOutwardNormal(&myMesh, i);
     myMesh.getFace(i, &cell);
     for(int j = 0; j < nNodesPerFace; j++){
-      vel.getValues(cell[j], &v);
-      projV = normals[j].dot(EMap<EVector>(v.data(), v.size()));
+      vel.getValues(cell[j], &locV);
+      projV = normals[j].dot(EMap<EVector>(locV.data(), locV.size()));
       //tau.getValues()->at(2*(i*nNodesPerFace + j)) = 0.0;
       //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0;
       //tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV);
       //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV);
       if(projV > 0){
-        tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV);
+        tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV) + D/carLen;
         tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0;
       } else {
         tau.getValues()->at(2*(i*nNodesPerFace + j)) = 0.0;
-        tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV);
+        tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV) + D/carLen;
       }
     }
   }
@@ -175,11 +198,9 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
     myMesh.getCell(i, &cell);
     for(int j = 0; j < nNodes; j++){
       myMesh.getPoint(cell[j], &node);
-      vel.getValues(cell[j], &v);
-      diff.getValues(cell[j], &D);
-      sol.getValues()->at(i*nNodes + j) = analyticalCDRSHDG(t, node, v, D[0]);
+      sol.getValues()->at(i*nNodes + j) = analyticalCDRSHDG(t, node, v, cvel, D);
       for(int k = 0; k < nodeDim; k++){
-        flux.getValues()->at((i*nNodes + j)*nodeDim + k) = analyticalCDRSHDGGrad(t, node, v, D[0], k);
+        flux.getValues()->at((i*nNodes + j)*nodeDim + k) = analyticalCDRSHDGGrad(t, node, v, cvel, D, k);
       }
     }
   }
@@ -187,9 +208,7 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
     myMesh.getFace(i, &cell);
     for(int j = 0; j < nNodesPerFace; j++){
       myMesh.getPoint(cell[j], &node);
-      vel.getValues(cell[j], &v);
-      diff.getValues(cell[j], &D);
-      trace.getValues()->at(i*nNodesPerFace + j) = analyticalCDRSHDG(t, node, v, D[0]);;
+      trace.getValues()->at(i*nNodesPerFace + j) = analyticalCDRSHDG(t, node, v, cvel, D);;
     }
   }
   hdfio.write(writeDir + "/res_0.h5");
@@ -209,17 +228,13 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
     //analytical sol
     for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
       myMesh.getPoint(iNode, &node);
-      vel.getValues(iNode, &v);
-      diff.getValues(iNode, &D);
-      anaSol.getValues()->at(iNode) = analyticalCDRSHDG(t, node, v, D[0]);
+      anaSol.getValues()->at(iNode) = analyticalCDRSHDG(t, node, v, cvel, D);
     }
     for(auto it = boundary->begin(); it != boundary->end(); it++){
       myMesh.getFace(*it, &cell);
       myMesh.getSlicePoints(cell, &nodes);
       for(int j = 0; j < nNodesPerFace; j++){
-        vel.getValues(cell[j], &v);
-        diff.getValues(cell[j], &D);
-        dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalCDRSHDG(t, nodes[j], v, D[0]);
+        dirichlet.getValues()->at((*it)*nNodesPerFace+j) = analyticalCDRSHDG(t, nodes[j], v, cvel, D);
       }
     }
     //copy sol into oldsol
@@ -296,13 +311,13 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[re
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"1e-1"};
-  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
-  //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4"};
-  std::vector<std::string> timeSteps = {"5e-4"};
-  //std::vector<std::string> orders = {"1", "2", "3"};
-  std::vector<std::string> orders = {"3"};
-  std::vector<std::string> rkTypes = {"BEuler"};
+  //meshSizes["2"] = {"1e-1"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
+  //std::vector<std::string> timeSteps = {"1e-3"};
+  std::vector<std::string> orders = {"1", "2", "3"};
+  //std::vector<std::string> orders = {"3"};
+  std::vector<std::string> rkTypes = {"ALX2"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -322,10 +337,11 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[re
     }
   }
 
-  std::string writePath = "/home/jfausty/workspace/Postprocess/results/CDRS/";
+  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/CDRS/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/CDRS/";
   //HDGSolverType globType = WEXPLICIT;
-  HDGSolverType globType = IMPLICIT;
-  //HDGSolverType globType = SEXPLICIT;
+  //HDGSolverType globType = IMPLICIT;
+  HDGSolverType globType = SEXPLICIT;
   std::string writeFile = "Breakdown.csv";
   if(globType == WEXPLICIT){
     writePath += "WExp/";
@@ -369,6 +385,7 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[re
     f << it->assembly.count() << ",";
     f << it->resolution.count() << ",";
     f << it->post.count() << "\n";
+    f << std::flush;
   }
   f.close();
 };
