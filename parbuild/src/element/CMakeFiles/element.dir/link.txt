@@ -1,1 +1,0 @@
-/usr/bin/mpicxx -fPIC  -fopenmp -O3 -DNDEBUG  -shared -Wl,-soname,libelement.so -o ../../lib/libelement.so CMakeFiles/element.dir/Cubature.cpp.o CMakeFiles/element.dir/ReferenceElement.cpp.o  -Wl,-rpath,/home/jfausty/workspace/Codes/HyperFox/parbuild/lib ../../lib/libglobals.so 
