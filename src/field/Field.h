@@ -88,6 +88,21 @@ class Field {
      * @param vals a pointer to the vector to fill with the vals
      */
     void getSliceValues(std::vector<int> & is, std::vector<double> * vals);
+    /*!
+     * \brief get pointer to the parallel id list
+     */
+    std::vector<int> * getParIds(){return &parIds;};
+    /*!
+     * \brief get pointer to the parallel value list
+     */
+    std::vector<double> * getParValues(){return &parValues;};
+    /*!
+     * \brief get the values belonging to a specific entity on an interface between partitions
+     *
+     * @param i the global index of the entity
+     * @param vals a pointer to the vector to fill with the vals
+     */
+    void getParValues(int i, std::vector<double> * vals);
   protected:
     /*!
      * \brief list of values of the field
@@ -113,6 +128,14 @@ class Field {
      * \brief the number of values per object
      */
     int numValsPerObj;
+    /*!
+     * \brief global indexes of objects of the mesh that are held by another partition
+     */
+    std::vector<int> parIds;
+    /*!
+     * \brief values of the field on objects that are held by another partition
+     */
+    std::vector<double> parValues;
 };//Field
 
 } //hfox

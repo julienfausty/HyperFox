@@ -14,32 +14,42 @@ void HDF5Io::load(std::string filename){
   if(myMesh == NULL){
     throw(ErrorHandle("HDF5Io", "load", "must enter a mesh into the io before loading a file."));
   }
-  if(!(H5Fis_hdf5(filename.c_str()) > 0)){
-    throw(ErrorHandle("HDF5Io", "load", "the file " + filename + " is not an hdf5 file."));
+  bool is_master = 1;
+  int mpiInit = 0;
+  int mpiRank;
+  MPI_Initialized(&mpiInit);
+  if(mpiInit){
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
+    is_master = (mpiRank == 0);
   }
-  hid_t file;
-  hid_t tempid;
-  file = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-  bool meshExists, fieldExists;
-  herr_t status;
-  status = H5Lexists(file, "Mesh", H5P_DEFAULT);
-  meshExists = (status > 0);
-  status = H5Lexists(file, "FieldData", H5P_DEFAULT);
-  fieldExists = (status > 0);
-  if(meshExists){
-    hid_t meshGrp = H5Gopen(file, "Mesh", H5P_DEFAULT);
-    loadMesh(meshGrp);
-    H5Gclose(meshGrp);
+  if(is_master){
+    if(!(H5Fis_hdf5(filename.c_str()) > 0)){
+      throw(ErrorHandle("HDF5Io", "load", "the file " + filename + " is not an hdf5 file."));
+    }
+    hid_t file;
+    hid_t tempid;
+    file = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    bool meshExists, fieldExists;
+    herr_t status;
+    status = H5Lexists(file, "Mesh", H5P_DEFAULT);
+    meshExists = (status > 0);
+    status = H5Lexists(file, "FieldData", H5P_DEFAULT);
+    fieldExists = (status > 0);
+    if(meshExists){
+      hid_t meshGrp = H5Gopen(file, "Mesh", H5P_DEFAULT);
+      loadMesh(meshGrp);
+      H5Gclose(meshGrp);
+    }
+    if(fieldExists){
+      hid_t fieldGrp = H5Gopen(file, "FieldData", H5P_DEFAULT);
+      loadFields(fieldGrp);
+      H5Gclose(fieldGrp);
+    }
+    if(!(meshExists || fieldExists)){
+      throw(ErrorHandle("HDFIo", "load", "could not find Mesh or FieldData groups in file"));
+    }
+    H5Fclose(file);
   }
-  if(fieldExists){
-    hid_t fieldGrp = H5Gopen(file, "FieldData", H5P_DEFAULT);
-    loadFields(fieldGrp);
-    H5Gclose(fieldGrp);
-  }
-  if(!(meshExists || fieldExists)){
-    throw(ErrorHandle("HDFIo", "load", "could not find Mesh or FieldData groups in file"));
-  }
-  H5Fclose(file);
 };//load
 
 void HDF5Io::write(std::string filename){

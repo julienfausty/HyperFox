@@ -1,0 +1,36 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/jfausty/workspace/Codes/HyperFox/src/globals/ErrorHandle.cpp
+ErrorHandle.h
+/home/jfausty/workspace/Codes/HyperFox/src/globals/ErrorHandle.h
+
+/home/jfausty/workspace/Codes/HyperFox/src/globals/ErrorHandle.h
+exception
+-
+iostream
+-
+string
+-
+vector
+-
+
+/home/jfausty/workspace/Codes/HyperFox/src/globals/ProgressBar.cpp
+ProgressBar.h
+/home/jfausty/workspace/Codes/HyperFox/src/globals/ProgressBar.h
+
+/home/jfausty/workspace/Codes/HyperFox/src/globals/ProgressBar.h
+chrono
+-
+iostream
+-
+sys/ioctl.h
+-
+unistd.h
+-
+

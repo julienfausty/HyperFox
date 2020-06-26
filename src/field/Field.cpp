@@ -60,4 +60,15 @@ void Field::getSliceValues(std::vector<int> & is, std::vector<double> * vals){
   }
 };//getSliceValues
 
+void Field::getParValues(int i, std::vector<double> * vals){
+  int numValsPerEnt = numObjPerEnt*numValsPerObj;
+  vals->resize(numValsPerEnt);
+  std::vector<int>::iterator it = std::find(parIds.begin(), parIds.end(), i);
+  if(it == parIds.end()){
+    throw(ErrorHandle("Field", "getParValues", "could not find the global ID " + std::to_string(i) + " in the parallel ID list."));
+  }
+  int locInd = std::distance(parIds.begin(), it);
+  std::copy(parValues.begin() + locInd*numValsPerEnt, parValues.begin() + (locInd+1)*numValsPerEnt, vals->begin());
+}; //getParValue
+
 } //hfox

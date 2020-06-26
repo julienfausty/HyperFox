@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <mpi.h>
 #include "Mesh.h"
 #include "Field.h"
 #include "ErrorHandle.h"
@@ -20,9 +21,13 @@ class Partitioner{
 
   public:
     /*!
+     * \brief virtual destructor
+     */
+    virtual ~Partitioner();
+    /*!
      * \brief method for initializing the inner variables
      */
-    virtual void initialize()=0;
+    virtual void initialize();
     /*!
      * \brief method for computing the partition
      *
@@ -50,7 +55,19 @@ class Partitioner{
     /*!
      * \brief get the index of this partition
      */
-    virtual int getThisPartition() const {return thisPartition;};
+    virtual int getRank() const {return rank;};
+    /*!
+     * \brief get the total number of nodes
+     */
+    virtual int getTotalNumberNodes() const;
+    /*!
+     * \brief get the total number of cells
+     */
+    virtual int getTotalNumberEls() const;
+    /*!
+     * \brief get the total number of faces
+     */
+    virtual int getTotalNumberFaces() const;
     /*!
      * \brief get the global index of node from a local index
      * @param loc local index of node
@@ -152,11 +169,15 @@ class Partitioner{
     /*!
      * \brief the index of this partition
      */
-    int thisPartition = 0;
+    int rank = 0;
     /*!
      * \brief boolean tracking the intialization of the class
      */
     bool initialized = 0;
+    /*!
+     * \brief boolean tracking if the initialization of MPI happened in the partitioner
+     */
+    bool initializedMPI = 0;
 
 };//Partitioner
 

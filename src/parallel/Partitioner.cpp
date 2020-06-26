@@ -2,6 +2,25 @@
 
 namespace hfox{
 
+void Partitioner::initialize(){
+  int mpiInit = 0;
+  initializedMPI = 0;
+  MPI_Initialized(&mpiInit);
+  if(!mpiInit){
+    MPI_Init(NULL, NULL);
+    initializedMPI = 1;
+  }
+  MPI_Comm_size(MPI_COMM_WORLD, &nPartitions);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  initialized = 1;
+};//initialize
+
+Partitioner::~Partitioner(){
+  if(initializedMPI){
+    MPI_Finalize();
+  }
+}
+
 void Partitioner::local2GlobalNodeSlice(const std::vector<int> & loc, std::vector<int> * glob) const{
   Utils::slice(loc, &nodeIDs, glob);
 };

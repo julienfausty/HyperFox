@@ -5,7 +5,7 @@ FOREACH(dir ${hyperFoxIncludes})
   include_directories(${dir})
 ENDFOREACH()
 
-include_directories(${MPI_CXX_INCLUDE_DIRS} ${MOAB_INCLUDE_DIRS} ${PETSC_INCLUDES} ${HDF5_C_INCLUDE_DIRS})
+include_directories(${MPI_CXX_INCLUDE_DIRS} ${MOAB_INCLUDE_DIRS} ${PETSC_INCLUDES} ${HDF5_C_INCLUDE_DIRS} ${ZOLTAN_INCLUDE_DIR})
 
 add_executable(
   hyperFoxDriver
@@ -18,6 +18,7 @@ target_link_libraries(hyperFoxDriver ${hyperFoxLibs}
   ${MOAB_LIBRARIES} 
   ${HDF5_C_LIBRARIES} 
   Boost::filesystem
+  ${ZOLTAN_LIBRARY}
   )
 
 
@@ -42,6 +43,7 @@ target_link_libraries(hyperfox
   ${MOAB_LIBRARIES} 
   ${HDF5_C_LIBRARIES} 
   Boost::filesystem
+  ${ZOLTAN_LIBRARY}
   )
 
 install(TARGETS hyperfox EXPORT HyperFox
@@ -67,7 +69,9 @@ target_link_libraries(tests_hyperFox ${hyperFoxLibs}
   ${MOAB_LIBRARIES} 
   ${HDF5_C_LIBRARIES} 
   Boost::filesystem
-  Catch2::Catch2)
+  Catch2::Catch2
+  ${ZOLTAN_LIBRARY}
+  )
 
 add_executable(
   par_tests_hyperFox
@@ -81,4 +85,6 @@ target_link_libraries(par_tests_hyperFox ${hyperFoxLibs}
   ${MOAB_LIBRARIES} 
   ${HDF5_C_LIBRARIES} 
   Boost::filesystem
-  Catch2::Catch2)
+  Catch2::Catch2
+  ${ZOLTAN_LIBRARY}
+  )

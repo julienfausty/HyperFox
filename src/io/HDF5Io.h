@@ -2,9 +2,10 @@
 #define HDF5IO_H
 
 #include <string>
+#include <hdf5.h>
+#include <mpi.h>
 #include "Io.h"
 #include "ErrorHandle.h"
-#include "hdf5.h"
 
 namespace hfox{
 

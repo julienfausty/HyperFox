@@ -1,0 +1,1 @@
+/usr/bin/mpicxx -fPIC  -fopenmp -O3 -DNDEBUG  -shared -Wl,-soname,libglobals.so -o ../../lib/libglobals.so CMakeFiles/globals.dir/ErrorHandle.cpp.o CMakeFiles/globals.dir/ProgressBar.cpp.o 
