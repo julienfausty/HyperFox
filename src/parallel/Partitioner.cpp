@@ -21,6 +21,27 @@ Partitioner::~Partitioner(){
   }
 }
 
+int Partitioner::getTotalNumberNodes() const{
+  int nNodes = myMesh->getNumberPoints();
+  int totnNodes = 0;
+  MPI_Allreduce(&nNodes, &totnNodes, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  return totnNodes;
+}
+
+int Partitioner::getTotalNumberFaces() const{
+  int nFaces = myMesh->getNumberFaces();
+  int totnFaces = 0;
+  MPI_Allreduce(&nFaces, &totnFaces, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  return totnFaces;
+}
+
+int Partitioner::getTotalNumberEls() const{
+  int nCells = myMesh->getNumberCells();
+  int totnCells = 0;
+  MPI_Allreduce(&nCells, &totnCells, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  return totnCells;
+}
+
 void Partitioner::local2GlobalNodeSlice(const std::vector<int> & loc, std::vector<int> * glob) const{
   Utils::slice(loc, &nodeIDs, glob);
 };

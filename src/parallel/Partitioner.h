@@ -30,10 +30,8 @@ class Partitioner{
     virtual void initialize();
     /*!
      * \brief method for computing the partition
-     *
-     * @param weights parameters controlling the different weights given to each partition
      */
-    virtual void computePartition(std::vector<double> weights = std::vector<double>())=0;
+    virtual void computePartition()=0;
     /*!
      * \brief method that updates both the mesh and fields with current computed partition
      */
@@ -68,6 +66,10 @@ class Partitioner{
      * \brief get the total number of faces
      */
     virtual int getTotalNumberFaces() const;
+    /*!
+     * \brief read only access to the sharedFaceList
+     */
+    virtual const std::vector<int> * getSharedFaceList() const{return &sharedFaceList;};
     /*!
      * \brief get the global index of node from a local index
      * @param loc local index of node
@@ -162,6 +164,10 @@ class Partitioner{
      * \brief list of global element IDs
      */
     std::vector<int> elementIDs;
+    /*!
+     * \brief a list of shared faces of the partition with structure [[globIdFace, rankOtherPartition, globIdAdjacentEl]]
+     */
+    std::vector<int> sharedFaceList;
     /*!
      * \brief number of partitions
      */

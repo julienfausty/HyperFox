@@ -119,9 +119,10 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   double v = 4.0; std::vector<double> cvel = {0.5, 0.5};
   double D = 1e-2; 
   //double carLen = 1.0;
-  double carLen = std::stod(thisRun->meshSize);
-  //double carLen = std::sqrt(D*timeStep);
-  //double carLen = 1e-3;
+  //double carLen = std::stod(thisRun->meshSize);
+  double carLen = std::sqrt(D*timeStep);
+  //double carLen = 0.00223607;
+  //std::cout << "carLen: " << carLen << std::endl;
   for(int i = 0; i < myMesh.getNumberPoints(); i++){
     myMesh.getPoint(i, &node);
     vel.getValues()->at(i*nodeDim) = -v*(node[1] - cvel[1]);
@@ -189,9 +190,11 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
       //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV);
       if(projV > 0){
         tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV) + D/carLen;
-        tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0;
+        //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0; //Imp
+        tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = D/carLen; //Exp
       } else {
-        tau.getValues()->at(2*(i*nNodesPerFace + j)) = 0.0;
+        //tau.getValues()->at(2*(i*nNodesPerFace + j)) = 0.0; //Imp
+        tau.getValues()->at(2*(i*nNodesPerFace + j)) = D/carLen; //Exp
         tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV) + D/carLen;
       }
     }
@@ -313,12 +316,12 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[re
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"7e-2"};
-  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
-  //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-4"};
-  //std::vector<std::string> orders = {"1", "2", "3"};
-  std::vector<std::string> orders = {"3"};
+  //meshSizes["2"] = {"1e-1"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
+  //std::vector<std::string> timeSteps = {"1e-3"};
+  std::vector<std::string> orders = {"1", "2", "3"};
+  //std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
@@ -342,8 +345,8 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[re
   std::string writePath = "/home/jfausty/workspace/Postprocess/results/CDRS/";
   //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/CDRS/";
   //HDGSolverType globType = WEXPLICIT;
-  HDGSolverType globType = IMPLICIT;
-  //HDGSolverType globType = SEXPLICIT;
+  //HDGSolverType globType = IMPLICIT;
+  HDGSolverType globType = SEXPLICIT;
   std::string writeFile = "Breakdown.csv";
   if(globType == WEXPLICIT){
     writePath += "WExp/";
