@@ -322,7 +322,7 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[re
   //std::vector<std::string> timeSteps = {"1e-3"};
   std::vector<std::string> orders = {"1", "2", "3"};
   //std::vector<std::string> orders = {"3"};
-  std::vector<std::string> rkTypes = {"BEuler"};
+  std::vector<std::string> rkTypes = {"FEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){

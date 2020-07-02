@@ -40,7 +40,7 @@ class Partitioner{
      * \brief set the mesh pointer
      * @param pmesh pointer to the mesh
      */
-    virtual void setMesh(Mesh * pmesh){myMesh = pmesh;};
+    virtual void setMesh(Mesh * pmesh);
     /*!
      * \brief set the field list
      * @param fieldList list of pointers to the fields
@@ -144,6 +144,10 @@ class Partitioner{
      * @param multiIndexes the list of multiplied indexes
      */
     static void multiplyIndexes(int dim, const std::vector<int> * indexes, std::vector<int> * multiIndexes);
+    /*!
+     * \brief a method for computing the shared faces of the partition
+     */
+    void computeSharedFaces();
     /*!
      * \brief pointer to the partitioned mesh
      */

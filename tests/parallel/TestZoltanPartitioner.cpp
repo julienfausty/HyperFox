@@ -9,15 +9,17 @@ using namespace hfox;
 TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartitioner]"){
 
   SECTION("Testing setup"){
-    CHECK_NOTHROW(ZoltanPartitioner());
+    Mesh seqMesh(2, 3, "simplex");
+    CHECK_NOTHROW(ZoltanPartitioner(&seqMesh));
     ZoltanOpts opts;
-    CHECK_NOTHROW(ZoltanPartitioner(opts));
-    ZoltanPartitioner zPart;
+    CHECK_NOTHROW(ZoltanPartitioner(&seqMesh, opts));
+    ZoltanPartitioner zPart(&seqMesh);
     CHECK_NOTHROW(zPart.initialize());
   };
 
   SECTION("Test initialization"){
-    ZoltanPartitioner zPart;
+    Mesh seqMesh(2, 3, "simplex");
+    ZoltanPartitioner zPart(&seqMesh);
     zPart.initialize();
     int worldSize;
     MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
@@ -28,16 +30,17 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
   };
 
   SECTION("Test a mesh partition"){
-    std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-5e-2_ord-3.h5";
-    Mesh seqMesh(2, 3, "simplex");
+    std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-1e-1_ord-1.h5";
+    Mesh seqMesh(2, 1, "simplex");
     HDF5Io hdf5io(&seqMesh);
     hdf5io.load(meshLocation);
-    Mesh parMesh(2, 3, "simplex");
+    Mesh parMesh(2, 1, "simplex");
     HDF5Io parhdf5io(&parMesh);
     parhdf5io.load(meshLocation);
-    ZoltanPartitioner zPart;
+    ZoltanOpts myOpts;
+    myOpts.debugLevel = "10";
+    ZoltanPartitioner zPart(&parMesh, myOpts);
     zPart.initialize();
-    zPart.setMesh(&parMesh);
     zPart.computePartition();
     zPart.update();
     int totNodes = zPart.getTotalNumberNodes();
@@ -97,7 +100,7 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     for(int i = 0; i < parMesh.getNumberFaces(); i++){
       parMesh.getFace2Cell(i, &cell);
       globIndex = zPart.local2GlobalFace(i);
-      for(int k = 0; k < 2; k++){
+      for(int k = 0; k < cell.size(); k++){
         CHECK(cell[k] == face2CellMap[globIndex*2 + k]);
       }
     }
@@ -105,7 +108,7 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
       parMesh.getCell2Face(i, &cell);
       globIndex = zPart.local2GlobalEl(i);
       for(int k = 0; k < 3; k++){
-        CHECK(cell[k] == face2CellMap[globIndex*3 + k]);
+        CHECK(cell[k] == cell2FaceMap[globIndex*3 + k]);
       }
     }
     //global checking
@@ -140,7 +143,7 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
           CHECK(cell[k] == faces[i*nNodesPFace + k]);
         }
         parMesh.getFace2Cell(locIndex, &cell);
-        for(int k = 0; k < 2; k++){
+        for(int k = 0; k < cell.size(); k++){
           CHECK(cell[k] == face2CellMap[i*2 + k]);
         }
       }
@@ -148,11 +151,11 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
   };
 
   SECTION("Testing a field partition"){
-    std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-5e-2_ord-3.h5";
-    Mesh seqMesh(2, 3, "simplex");
+    std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-1e-1_ord-1.h5";
+    Mesh seqMesh(2, 1, "simplex");
     HDF5Io hdf5io(&seqMesh);
     hdf5io.load(meshLocation);
-    Mesh parMesh(2, 3, "simplex");
+    Mesh parMesh(2, 1, "simplex");
     HDF5Io parhdf5io(&parMesh);
     parhdf5io.load(meshLocation);
     Field nodeField(&parMesh, Node, 1, 1);
@@ -162,7 +165,7 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     Field faceField(&parMesh, Face, 1, 1);
     std::iota(faceField.getValues()->begin(), faceField.getValues()->end(), 0);
     std::vector<Field*> fieldList = {&nodeField, &cellField, &faceField};
-    ZoltanPartitioner zPart;
+    ZoltanPartitioner zPart(&parMesh);
     zPart.initialize();
     zPart.setMesh(&parMesh);
     zPart.setFields(fieldList);

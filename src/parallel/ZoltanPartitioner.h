@@ -17,7 +17,7 @@ class ZoltanPartitioner : public Partitioner{
     /*!
      * \brief Constructor
      */
-    ZoltanPartitioner(){;};
+    ZoltanPartitioner(Mesh * pMesh){setMesh(pMesh);};
     /*!
      * \brief destructor
      */
@@ -25,7 +25,7 @@ class ZoltanPartitioner : public Partitioner{
     /*!
      * \brief option constructor
      */
-    ZoltanPartitioner(ZoltanOpts opts){setOptions(opts);};
+    ZoltanPartitioner(Mesh * pMesh, ZoltanOpts opts){setMesh(pMesh), setOptions(opts);};
     /*!
      * \brief set the options for the partitioner
      */
@@ -52,6 +52,10 @@ class ZoltanPartitioner : public Partitioner{
      * \brief the Zoltan object from the Zoltan library
      */
     Zoltan * zObj = NULL;
+    /*!
+     * \brief a struct for storing the results of the changes to the partition
+     */
+    ZoltanChanges zChanges;
     /*!
      * \brief static function for getting the number of cells on partition (for Zoltan)
      *
