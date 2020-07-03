@@ -38,7 +38,7 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     HDF5Io parhdf5io(&parMesh);
     parhdf5io.load(meshLocation);
     ZoltanOpts myOpts;
-    myOpts.debugLevel = "10";
+    myOpts.debugLevel = "1";
     ZoltanPartitioner zPart(&parMesh, myOpts);
     zPart.initialize();
     zPart.computePartition();

@@ -46,15 +46,16 @@ struct ZoltanChanges{
   int num_gid_entries;
   int num_lid_entries;
   int num_import;
-  ZOLTAN_ID_PTR import_global_ids;
-  ZOLTAN_ID_PTR import_local_ids;
-  int * import_procs;
-  int * import_to_part;
+  ZOLTAN_ID_PTR import_global_ids = NULL;
+  ZOLTAN_ID_PTR import_local_ids = NULL;
+  int * import_procs = NULL;
+  int * import_to_part = NULL;
   int num_export;
-  ZOLTAN_ID_PTR export_global_ids;
-  ZOLTAN_ID_PTR export_local_ids;
-  int * export_procs;
-  int * export_to_part;
+  ZOLTAN_ID_PTR export_global_ids = NULL;
+  ZOLTAN_ID_PTR export_local_ids = NULL;
+  int * export_procs = NULL;
+  int * export_to_part = NULL;
+  bool isfree = 1;
 };
 
 };

@@ -57,6 +57,10 @@ class ZoltanPartitioner : public Partitioner{
      */
     ZoltanChanges zChanges;
     /*!
+     * \brief a helper method for free the data held by zChanges
+     */
+    void freeZChanges();
+    /*!
      * \brief static function for getting the number of cells on partition (for Zoltan)
      *
      * @param data this is supposed to be the mesh

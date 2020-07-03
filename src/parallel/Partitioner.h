@@ -184,10 +184,6 @@ class Partitioner{
      * \brief boolean tracking the intialization of the class
      */
     bool initialized = 0;
-    /*!
-     * \brief boolean tracking if the initialization of MPI happened in the partitioner
-     */
-    bool initializedMPI = 0;
 
 };//Partitioner
 

@@ -4,40 +4,39 @@ namespace hfox{
 
 void Partitioner::initialize(){
   int mpiInit = 0;
-  initializedMPI = 0;
   MPI_Initialized(&mpiInit);
   if(!mpiInit){
-    MPI_Init(NULL, NULL);
-    initializedMPI = 1;
+    throw(ErrorHandle("Partitioner", "inititalize", "MPI should be initialized before initializing the partitioner"));
   }
   MPI_Comm_size(MPI_COMM_WORLD, &nPartitions);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  //here we need to implement the initializing of the global ids
   int locNNodes = myMesh->getNumberPoints();
   int locNFaces = myMesh->getNumberFaces();
   int locNCells = myMesh->getNumberCells();
-  std::vector<int> nLocAll(nPartitions, 0);
+  std::vector<int> nLocAll;
+  nLocAll.resize(nPartitions);
   int globalStartingIndex = 0;
-  MPI_Allgather(&locNNodes, 1, MPI_INT, nLocAll.data(), nLocAll.size(), MPI_INT, MPI_COMM_WORLD);
+  MPI_Allgather(&locNNodes, 1, MPI_INT, nLocAll.data(), 1, MPI_INT, MPI_COMM_WORLD);
   if(rank != 0){
-    globalStartingIndex = std::accumulate(nLocAll.begin(), nLocAll.begin() + rank - 1, 0);
+    globalStartingIndex = std::accumulate(nLocAll.begin(), nLocAll.begin() + rank, 0);
   }
   nodeIDs.resize(locNNodes, 0);
   std::iota(nodeIDs.begin(), nodeIDs.end(), globalStartingIndex);
-  MPI_Allgather(&locNFaces, 1, MPI_INT, nLocAll.data(), nLocAll.size(), MPI_INT, MPI_COMM_WORLD);
+  MPI_Allgather(&locNFaces, 1, MPI_INT, nLocAll.data(), 1, MPI_INT, MPI_COMM_WORLD);
   if(rank != 0){
-    globalStartingIndex = std::accumulate(nLocAll.begin(), nLocAll.begin() + rank - 1, 0);
+    globalStartingIndex = std::accumulate(nLocAll.begin(), nLocAll.begin() + rank, 0);
   }
   faceIDs.resize(locNFaces, 0);
   std::iota(faceIDs.begin(), faceIDs.end(), globalStartingIndex);
-  MPI_Allgather(&locNCells, 1, MPI_INT, nLocAll.data(), nLocAll.size(), MPI_INT, MPI_COMM_WORLD);
+  MPI_Allgather(&locNCells, 1, MPI_INT, nLocAll.data(), 1, MPI_INT, MPI_COMM_WORLD);
   if(rank != 0){
-    globalStartingIndex = std::accumulate(nLocAll.begin(), nLocAll.begin() + rank - 1, 0);
+    globalStartingIndex = std::accumulate(nLocAll.begin(), nLocAll.begin() + rank, 0);
   }
   elementIDs.resize(locNCells, 0);
   std::iota(elementIDs.begin(), elementIDs.end(), globalStartingIndex);
   computeSharedFaces();
   initialized = 1;
+  MPI_Barrier(MPI_COMM_WORLD);
 };//initialize
 
 void Partitioner::computeSharedFaces(){
@@ -88,9 +87,7 @@ void Partitioner::computeSharedFaces(){
 };//computeSharedFaces
 
 Partitioner::~Partitioner(){
-  if(initializedMPI){
-    MPI_Finalize();
-  }
+
 };//destructor
 
 void Partitioner::setMesh(Mesh * pMesh){
