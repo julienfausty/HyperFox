@@ -77,6 +77,7 @@ void ZoltanPartitioner::update(){
     throw(ErrorHandle("ZoltanPartitioner", "update", "must compute the partition before updating the mesh and fields"));
   }
   std::map<int, std::map< FieldType, std::vector<int> > > exportMap, importMap;
+  //format the cell partition
   for(int i = 0; i < zChanges.num_export; i++){
     if(exportMap.find(zChanges.export_procs[i]) == exportMap.end()){
       exportMap[zChanges.export_procs[i]] = {{Cell, std::vector<int>()}};
@@ -93,9 +94,13 @@ void ZoltanPartitioner::update(){
   std::map<int, std::map<FieldType, std::vector<int> > >::iterator itMap;
   std::vector<int> cell;
   std::vector<int> cell2Face;
+  std::vector<int> face2Cell;
+  int dimSpace = myMesh->getNodeSpaceDimension();
   int nNodesPCell = myMesh->getReferenceElement()->getNumNodes();
   int nNodesPFace = myMesh->getReferenceElement()->getFaceElement()->getNumNodes();
+  int nFacesPCell = myMesh->getNumFacesPerCell();
   int localCellIndex;
+  //decide how to partition the nodes and faces based on the cell partition
   for(itMap = exportMap.begin(); itMap != exportMap.end(); itMap++){
     std::set<int> exportCandFaces;
     std::set<int> exportCandNodes;
@@ -127,11 +132,158 @@ void ZoltanPartitioner::update(){
       }
     }
   }
-  //TO DO:
+  int tag;
+  //communicate the node and face partition to relevant processes
+  for(itMap = exportMap.begin(); itMap != exportMap.end(); itMap++){
+    tag = 0;
+    int s = itMap->second.at(Face).size();
+    MPI_Send(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    tag += 1;
+    s = itMap->second.at(Node).size();
+    MPI_Send(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    tag += 1;
+    MPI_Send(itMap->second.at(Face).data(), itMap->second.at(Face).size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    tag += 1;
+    MPI_Send(itMap->second.at(Node).data(), itMap->second.at(Node).size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+  }
+  for(itMap = importMap.begin(); itMap != importMap.end(); itMap++){
+    tag = 0;
+    int s;
+    MPI_Recv(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    itMap->second[Face] = std::vector<int>(s, 0);
+    tag += 1;
+    MPI_Recv(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    itMap->second[Node] = std::vector<int>(s, 0);
+    tag += 1;
+    MPI_Recv(itMap->second.at(Face).data(), itMap->second.at(Face).size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    tag += 1;
+    MPI_Recv(itMap->second.at(Node).data(), itMap->second.at(Node).size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
   //make fieldMap (FieldType, *Field)
-  //generate buffers to receive the sent items
-  //send in order: the cells and the cell2faces the cell fields, the faces and the faces2cells and the boundary and the face fields, the nodes and the node fields
-  //recieve the things sent from the procs in the importMap and buffers
+  std::map<FieldType, std::vector<Field*> > fieldMap;
+  FieldType * fT;
+  for(int i = 0; i < fields.size(); i++){
+    fT = fields[i]->getFieldType();
+    if(fieldMap.find(*fT) == fieldMap.end()){
+      fieldMap[*fT] = std::vector<Field*>();
+    }
+    fieldMap[*fT].push_back(fields[i]);
+  }
+  //generate send/recieve buffers
+  std::map<int, std::vector<int> > iSendBuffer, iRecvBuffer;
+  std::map<int, std::vector<double> > dSendBuffer, dRecvBuffer;
+  int inExportData, inImportData, dnExportData, dnImportData;
+  const std::set<int> * bSet = myMesh->getBoundaryFaces();
+  std::set<int>::const_iterator bIt;
+  std::vector<int> boundaryBuffer;
+  for(itMap = exportMap.begin(); itMap != exportMap.end(); itMap++){
+    int nCells = itMap->second[Cell].size();
+    int nFaces = itMap->second[Face].size();
+    int nNodes = itMap->second[Node].size();
+    int nExpCells = nCells * nNodesPCell;//the cells
+    int nExpCell2Face = nCells * nFacesPCell;//the cell2Faces
+    int nExpFaces = nFaces * nNodesPFace;//the faces
+    int nExpFace2Cell = nFaces * 2;//the face2Cell
+    int nExpNodes = nNodes*dimSpace;
+    inExportData = nExpCells + nExpCell2Face + nExpFaces + nExpFace2Cell;
+    for(int i = 0; i < nFaces; i++){
+      bIt = bSet->find(itMap->second[Face][i]);
+      if(bIt != bSet->end()){
+        inExportData += 1;
+        boundaryBuffer.push_back(*bIt);
+      }
+    }
+    iSendBuffer[itMap->first] = std::vector<int>();
+    iSendBuffer[itMap->first].resize(inExportData, 0);
+    dnExportData = nExpNodes;
+    int nExpFCell = 0, nExpFFace = 0, nExpFNode = 0;
+    for(int i = 0; i < fieldMap[Cell].size(); i++){
+      nExpFCell += nCells * (*(fieldMap[Cell][i]->getNumObjPerEnt())) * (*(fieldMap[Cell][i]->getNumValsPerObj()));
+    }
+    for(int i = 0; i < fieldMap[Face].size(); i++){
+      nExpFFace += nFaces * (*(fieldMap[Face][i]->getNumObjPerEnt())) * (*(fieldMap[Face][i]->getNumValsPerObj()));
+    }
+    for(int i = 0; i < fieldMap[Node].size(); i++){
+      nExpFNode += nNodes * (*(fieldMap[Node][i]->getNumObjPerEnt())) * (*(fieldMap[Node][i]->getNumValsPerObj()));
+    }
+    dnExportData += nExpFCell + nExpFFace + nExpFNode;
+    dSendBuffer[itMap->first] = std::vector<double>();
+    dSendBuffer[itMap->first].resize(dnExportData, 0.0);
+    int foffset, nFVals;
+    for(int i = 0; i < nCells; i++){
+      localCellIndex = global2LocalElement(itMap->second[Cell][i]);
+      myMesh->getCell(localCellIndex, &cell);
+      std::copy(cell.begin(), cell.end(), iSendBuffer[itMap->first].begin() + i*nNodesPCell);
+      myMesh->getCell2Face(localCellIndex, &cell2Face);
+      std::copy(cell2Face.begin(), cell2Face.end(), iSendBuffer[itMap->first].begin() + nExpCells + i*nFacesPCell);
+      foffset = nExpNodes;
+      for(int k = 0; k < fieldMap[Cell].size(); k++){
+        Field * F = fieldMap[Cell][k];
+        nFVals = (*(F->getNumObjPerEnt())) * (*(F->getNumValsPerObj()));
+        std::copy(F->getValues()->begin() + localCellIndex*nFVals, F->getValues()->begin() + (localCellIndex+1)*nFVals, dSendBuffer[itMap->first].begin() + foffset + i*nFVals);
+        foffset += nCells*nFVals;
+      }
+    }
+    int offset = nExpCells + nExpCell2Face;
+    for(int i = 0; i < nFaces; i++){
+      localCellIndex = global2LocalFace(itMap->second[Face][i]);
+      myMesh->getFace(localCellIndex, &cell);
+      std::copy(cell.begin(), cell.end(), iSendBuffer[itMap->first].begin() + offset + i*nNodesPFace);
+      myMesh->getFace2Cell(localCellIndex, &face2Cell);
+      std::copy(face2Cell.begin(), face2Cell.end(), iSendBuffer[itMap->first].begin() + offset + nExpFaces + i*2);
+      foffset = nExpNodes + nExpFCell;
+      for(int k = 0; k < fieldMap[Face].size(); k++){
+        Field * F = fieldMap[Face][k];
+        nFVals = (*(F->getNumObjPerEnt())) * (*(F->getNumValsPerObj()));
+        std::copy(F->getValues()->begin() + localCellIndex*nFVals, F->getValues()->begin() + (localCellIndex+1)*nFVals, dSendBuffer[itMap->first].begin() + foffset + i*nFVals);
+        foffset += nFaces*nFVals;
+      }
+    }
+    offset += nExpFaces + nExpFace2Cell;
+    std::copy(boundaryBuffer.begin(), boundaryBuffer.end(), iSendBuffer[itMap->first].begin() + offset);
+    const std::vector<double> * pNodes = myMesh->getPoints();
+    for(int i = 0; i < nNodes; i++){
+      localCellIndex = global2LocalNode(itMap->second[Node][i]);
+      std::copy(pNodes->begin() + localCellIndex*dimSpace, pNodes->begin() + (localCellIndex+1)*dimSpace, dSendBuffer[itMap->first].begin() + i*dimSpace);
+      foffset = nExpNodes + nExpFCell + nExpFFace;
+      for(int k = 0; k < fieldMap[Node].size(); k++){
+        Field * F = fieldMap[Node][k];
+        nFVals = (*(F->getNumObjPerEnt())) * (*(F->getNumValsPerObj()));
+        std::copy(F->getValues()->begin() + localCellIndex*nFVals, F->getValues()->begin() + (localCellIndex+1)*nFVals, dSendBuffer[itMap->first].begin() + foffset + i*nFVals);
+        foffset += nNodes*nFVals;
+      }
+    }
+  }
+  //send/recieve the buffers
+  for(itMap = exportMap.begin(); itMap != exportMap.end(); itMap++){
+    tag = 0;
+    int s = iSendBuffer[itMap->first].size();
+    MPI_Send(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    tag += 1;
+    s = dSendBuffer[itMap->first].size();
+    MPI_Send(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    tag += 1;
+    MPI_Send(iSendBuffer[itMap->first].data(), iSendBuffer[itMap->first].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    tag += 1;
+    MPI_Send(dSendBuffer[itMap->first].data(), dSendBuffer[itMap->first].size(), MPI_DOUBLE, itMap->first, tag, MPI_COMM_WORLD);
+  }
+  for(itMap = importMap.begin(); itMap != importMap.end(); itMap++){
+    iRecvBuffer[itMap->first] = std::vector<int>();
+    dRecvBuffer[itMap->first] = std::vector<double>();
+    tag = 0;
+    int s;
+    MPI_Recv(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    iRecvBuffer[itMap->first].resize(s, 0);
+    tag += 1;
+    MPI_Recv(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    dRecvBuffer[itMap->first].resize(s, 0.0);
+    tag += 1;
+    MPI_Recv(iRecvBuffer[itMap->first].data(), iRecvBuffer[itMap->first].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    tag += 1;
+    MPI_Recv(dRecvBuffer[itMap->first].data(), dRecvBuffer[itMap->first].size(), MPI_DOUBLE, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
   //make modifications to mesh and fields
   //compute the shared faces list
   //update the mesh/fields with shared information
