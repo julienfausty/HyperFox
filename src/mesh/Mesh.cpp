@@ -430,7 +430,7 @@ void Mesh::computeBoundary(moab::Interface * mbInterface, moab::EntityHandle & m
   }
 };//computeBoundary
 
-const std::set<int> * Mesh::getBoundaryFaces() const{
+std::set<int> * Mesh::getBoundaryFaces(){
   return &boundaryFaces;
 };//getBoundaryFaces
 

@@ -4,6 +4,7 @@
 #include <zoltan_cpp.h>
 #include "Partitioner.h"
 #include "ZoltanOpts.h"
+#include "Modifier.h"
 
 namespace hfox{
 

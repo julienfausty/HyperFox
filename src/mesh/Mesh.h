@@ -157,7 +157,7 @@ class Mesh{
     /*!
      * \brief get the indexes of the faces on the boundary
      */
-    const std::set<int> * getBoundaryFaces() const;
+    std::set<int> * getBoundaryFaces();
     /*!
      * \brief modify mesh nodes
      * @param nodeMod a modifier configured for the nodes
@@ -188,12 +188,6 @@ class Mesh{
      */
     template<class T>
     void modifyFace2CellMap(Modifier< std::vector<T> > * face2CellMod){face2CellMod->modify(&face2CellMap);};
-    /*!
-     * \brief modify the boundaryFace set
-     * @param boundaryFaceMod a modifier configured for the boundaryFaces
-     */
-    template<class T>
-    void modifyBoundaryFaces(Modifier< std::vector<T> > * boundaryFaceMod){boundaryFaceMod->modify(&boundaryFaces);};
     /*!
      * \brief update the members after modication
      */

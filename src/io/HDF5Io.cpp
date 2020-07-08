@@ -17,6 +17,7 @@ void HDF5Io::load(std::string filename){
   bool is_master = 1;
   int mpiInit = 0;
   int mpiRank;
+  int dimNodeSpace = 0;
   MPI_Initialized(&mpiInit);
   if(mpiInit){
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -49,6 +50,15 @@ void HDF5Io::load(std::string filename){
       throw(ErrorHandle("HDFIo", "load", "could not find Mesh or FieldData groups in file"));
     }
     H5Fclose(file);
+    dimNodeSpace = myMesh->getNodeSpaceDimension();
+  }
+  if(mpiInit){
+    MPI_Bcast(&dimNodeSpace, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if(!is_master){
+      std::vector<double> emptynodes;
+      std::vector<int> emptycells;
+      myMesh->setMesh(dimNodeSpace, emptynodes, emptycells);
+    }
   }
 };//load
 

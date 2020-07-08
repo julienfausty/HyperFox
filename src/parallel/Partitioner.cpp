@@ -97,7 +97,7 @@ void Partitioner::setMesh(Mesh * pMesh){
 int Partitioner::getTotalNumberNodes() const{
   int nNodes = myMesh->getNumberPoints();
   int totnNodes = 0;
-  MPI_Allreduce(&nNodes, &totnNodes, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&nNodes, &totnNodes, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD); 
   return totnNodes;
 };//getTotalNumberNodes
 
@@ -105,6 +105,9 @@ int Partitioner::getTotalNumberFaces() const{
   int nFaces = myMesh->getNumberFaces();
   int totnFaces = 0;
   MPI_Allreduce(&nFaces, &totnFaces, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  std::cout << "rank: " << rank << "\n";
+  std::cout << "loc Faces: " << nFaces << "\n";
+  std::cout << "glob Faces: " << totnFaces << std::endl;
   return totnFaces;
 };//getTotalNumberFaces
 
@@ -112,6 +115,9 @@ int Partitioner::getTotalNumberEls() const{
   int nCells = myMesh->getNumberCells();
   int totnCells = 0;
   MPI_Allreduce(&nCells, &totnCells, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  //std::cout << "rank: " << rank << "\n";
+  //std::cout << "loc Cells: " << nCells << "\n";
+  //std::cout << "glob Cells: " << totnCells << std::endl;
   return totnCells;
 };//getTotalNumberEls
 

@@ -71,18 +71,32 @@ class Modifier{
     template <class ModContainer>
     void remove(ModContainer * c) const{
       std::sort(vals->begin(), vals->end());
-      typename ModContainer::iterator readit, writeit;
-      writeit = c->begin() + *(vals->begin());
-      typename Container::iterator delIt = vals->begin() + 1;
-      for(readit = writeit + 1; readit != c->end(); readit++){
-        while((std::distance(c->begin(), readit) == *(delIt)) and (delIt != vals->end())){
-          readit += 1;
-          delIt += 1;
+      //typename ModContainer::iterator readit, writeit;
+      //writeit = c->begin() + *(vals->begin());
+      //typename Container::iterator delIt = vals->begin() + 1;
+      //for(readit = writeit + 1; readit != c->end(); readit++){
+        //while((std::distance(c->begin(), readit) == *(delIt)) and (delIt != vals->end())){
+          //readit += 1;
+          //delIt += 1;
+        //}
+        //if(readit != c->end()){
+          //*writeit = *readit;
+          //writeit += 1;
+        //} else {
+          //break;
+        //}
+      //}
+      //c->erase(writeit, c->end());
+      ModContainer buffer(c->size() - vals->size());
+      int pos = 0;
+      for(int i = 0; i < c->size(); i++){
+        if(std::find(vals->begin(), vals->end(), i) == vals->end()){
+          buffer[pos] = c->at(i);
+          pos += 1;
         }
-        *writeit = *readit;
-        writeit += 1;
       }
-      c->erase(writeit, c->end());
+      c->resize(buffer.size());
+      std::copy(buffer.begin(), buffer.end(), c->begin());
     };
   protected:
     /*!
