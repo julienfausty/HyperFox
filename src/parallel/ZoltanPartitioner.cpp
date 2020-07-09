@@ -76,7 +76,6 @@ void ZoltanPartitioner::update(){
   if(myOpts.debugLevel != "0" and rank == 0){
     std::cout << "Updating mesh and fields with new partition..." << std::endl;
   }
-  std::map<int, std::map< FieldType, std::vector<int> > > exportMap, importMap;
   //format the cell partition
   for(int i = 0; i < zChanges.num_export; i++){
     if(exportMap.find(zChanges.export_procs[i]) == exportMap.end()){
@@ -465,7 +464,9 @@ void ZoltanPartitioner::update(){
     }
     myMesh->update();
   }
+  emptyImportExportMaps();
   //compute the shared faces list
+  computeSharedFaces();
   //update the mesh/fields with shared information
   if(myOpts.debugLevel != "0" and rank == 0){
     std::cout << "... finished updating partition" << std::endl;

@@ -26,7 +26,7 @@ class ZoltanPartitioner : public Partitioner{
     /*!
      * \brief option constructor
      */
-    ZoltanPartitioner(Mesh * pMesh, ZoltanOpts opts){setMesh(pMesh), setOptions(opts);};
+    ZoltanPartitioner(Mesh * pMesh, ZoltanOpts opts){setMesh(pMesh); setOptions(opts);};
     /*!
      * \brief set the options for the partitioner
      */

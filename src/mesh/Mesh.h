@@ -236,7 +236,7 @@ class Mesh{
     /*!
      * \brief the number of nodes
      */
-    int nNodes;
+    int nNodes = 0;
     /*!
      * \brief where the connectivity of the cells are stored
      */
@@ -248,7 +248,7 @@ class Mesh{
     /*!
      * \brief the number of cells
      */
-    int nCells;
+    int nCells = 0;
     /*!
      * \brief where the connectivity of the faces are stored
      */
@@ -260,7 +260,7 @@ class Mesh{
     /*!
      * \brief the number of faces
      */
-    int nFaces;
+    int nFaces = 0;
     /*!
      * \brief the reference element of the mesh
      */

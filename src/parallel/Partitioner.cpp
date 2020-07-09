@@ -10,12 +10,6 @@ void Partitioner::initialize(){
   }
   MPI_Comm_size(MPI_COMM_WORLD, &nPartitions);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  //if(exportMap != NULL){
-    //delete exportMap;
-  //}
-  //if(importMap != NULL){
-    //delete importMap;
-  //}
   int locNNodes = myMesh->getNumberPoints();
   int locNFaces = myMesh->getNumberFaces();
   int locNCells = myMesh->getNumberCells();
@@ -42,11 +36,9 @@ void Partitioner::initialize(){
   std::iota(elementIDs.begin(), elementIDs.end(), globalStartingIndex);
   computeSharedFaces();
   initialized = 1;
-  MPI_Barrier(MPI_COMM_WORLD);
 };//initialize
 
 void Partitioner::computeSharedFaces(){
-  bool isShared;
   int localCellInd;
   int globalFaceInd;
   std::vector<int> localSharedFaces;
@@ -67,43 +59,41 @@ void Partitioner::computeSharedFaces(){
     }
   }
   int nSharedFaces = localSharedFaces.size()/3;
-  int totNSharedFaces = 0;
-  MPI_Allreduce(&nSharedFaces, &totNSharedFaces, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  std::vector<int> nSharedFacesPerProc(nPartitions, 0);
+  MPI_Allgather(&nSharedFaces, 1, MPI_INT, nSharedFacesPerProc.data(), 1, MPI_INT, MPI_COMM_WORLD);
+  int totNSharedFaces = std::accumulate(nSharedFacesPerProc.begin(), nSharedFacesPerProc.end(), 0);
   std::vector<int> allSharedFaces(totNSharedFaces*3, 0);
-  MPI_Allgather(localSharedFaces.data(), localSharedFaces.size(), MPI_INT, allSharedFaces.data(), allSharedFaces.size(), MPI_INT, MPI_COMM_WORLD);
-  int sharedFaceInd, procRank, adjEl;
-  bool found;
-  sharedFaceList.resize(nSharedFaces*3, 0);
-  for(int i = 0; i < nSharedFaces; i++){
-    found = 0;
-    sharedFaceInd = localSharedFaces[i*3];
-    for(int j = 0; j < totNSharedFaces; j++){
-      if(sharedFaceInd == allSharedFaces[j*3]){
-        if(allSharedFaces[j*3 + 1] != rank){
-          found = 1;
-          std::copy(allSharedFaces.begin() + j*3, allSharedFaces.end() + (j+1)*3, sharedFaceList.begin() + i*3);
-          break;
-        }
+  std::vector<int> faceOffsets(nPartitions, 0);
+  for(int i = 0; i < nPartitions; i++){
+    faceOffsets[i] = std::accumulate(nSharedFacesPerProc.begin(), nSharedFacesPerProc.begin()+i, 0) * 3;
+  }
+  for(int i = 0; i < nPartitions; i++){
+    nSharedFacesPerProc[i] *= 3;
+  }
+  MPI_Allgatherv(localSharedFaces.data(), localSharedFaces.size(), MPI_INT, allSharedFaces.data(), nSharedFacesPerProc.data(), faceOffsets.data(), MPI_INT, MPI_COMM_WORLD);
+  int adjEl;
+  sharedFaceList.resize(0);
+  for(int i = 0; i < totNSharedFaces; i++){
+    adjEl = global2LocalElement(allSharedFaces[i*3+2]);
+    if(adjEl != -1){
+      for(int k = 0; k < 3; k++){
+        sharedFaceList.push_back(allSharedFaces[i*3 + k]);
       }
-    }
-    if(!found){
-      throw(ErrorHandle("Partitioner", "computeSharedFaces", "could not find the entry for shared face " + std::to_string(sharedFaceInd)));
     }
   }
 };//computeSharedFaces
 
 Partitioner::~Partitioner(){
-  //if(exportMap != NULL){
-    //delete exportMap;
-  //}
-  //if(importMap != NULL){
-    //delete importMap;
-  //}
 };//destructor
 
 void Partitioner::setMesh(Mesh * pMesh){
   myMesh = pMesh;
 };//setMesh
+
+void Partitioner::emptyImportExportMaps(){
+  exportMap.clear();
+  importMap.clear();
+}
 
 int Partitioner::getTotalNumberNodes() const{
   int nNodes = myMesh->getNumberPoints();

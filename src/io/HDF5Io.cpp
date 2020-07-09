@@ -58,6 +58,7 @@ void HDF5Io::load(std::string filename){
       std::vector<double> emptynodes;
       std::vector<int> emptycells;
       myMesh->setMesh(dimNodeSpace, emptynodes, emptycells);
+      myMesh->update();
     }
   }
 };//load
