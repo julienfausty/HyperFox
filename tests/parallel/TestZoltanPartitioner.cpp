@@ -34,18 +34,15 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     Mesh seqMesh(2, 1, "simplex");
     HDF5Io hdf5io(&seqMesh);
     hdf5io.load(meshLocation);
-    std::cout << "finished loading seqmesh" << std::endl;
     Mesh parMesh(2, 1, "simplex");
     HDF5Io parhdf5io(&parMesh);
     parhdf5io.load(meshLocation);
-    std::cout << "finished loading parmesh" << std::endl;
     ZoltanOpts myOpts;
     myOpts.debugLevel = "1";
     ZoltanPartitioner zPart(&parMesh, myOpts);
     zPart.initialize();
     zPart.computePartition();
     zPart.update();
-    std::cout << "finished partitioning" << std::endl;
     int totNodes = zPart.getTotalNumberNodes();
     int seqNodes = seqMesh.getNumberPoints();
     MPI_Bcast(&seqNodes, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -67,10 +64,10 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     std::vector<int> faces(totFaces*(parMesh.getReferenceElement()->getFaceElement()->getNumNodes()));
     std::copy(seqMesh.getFaces()->begin(), seqMesh.getFaces()->end(), faces.begin());
     MPI_Bcast(faces.data(), faces.size(), MPI_INT, 0, MPI_COMM_WORLD);
-    std::vector<double> face2CellMap(totFaces*2);
+    std::vector<int> face2CellMap(totFaces*2);
     std::copy(seqMesh.getFace2CellMap()->begin(), seqMesh.getFace2CellMap()->end(), face2CellMap.begin());
     MPI_Bcast(face2CellMap.data(), face2CellMap.size(), MPI_INT, 0, MPI_COMM_WORLD);
-    std::vector<double> cell2FaceMap(totCells*3);
+    std::vector<int> cell2FaceMap(totCells*3);
     std::copy(seqMesh.getCell2FaceMap()->begin(), seqMesh.getCell2FaceMap()->end(), cell2FaceMap.begin());
     MPI_Bcast(cell2FaceMap.data(), cell2FaceMap.size(), MPI_INT, 0, MPI_COMM_WORLD);
     std::vector<double> point;
@@ -79,78 +76,78 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     int globIndex;
     int nNodesPCell = parMesh.getReferenceElement()->getNumNodes();
     int nNodesPFace = parMesh.getReferenceElement()->getFaceElement()->getNumNodes();
-    //for(int i = 0; i < parMesh.getNumberPoints(); i++){
-      //parMesh.getPoint(i, &point);
-      //globIndex = zPart.local2GlobalNode(i);
-      //for(int k = 0; k < 2; k++){
-        //CHECK(point[k] == nodes[globIndex*2 + k]);
-      //}
-    //}
-    //for(int i = 0; i < parMesh.getNumberCells(); i++){
-      //parMesh.getCell(i, &cell);
-      //globIndex = zPart.local2GlobalEl(i);
-      //for(int k = 0; k < nNodesPCell; k++){
-        //CHECK(cell[k] == cells[globIndex*nNodesPCell + k]);
-      //}
-    //}
-    //for(int i = 0; i < parMesh.getNumberFaces(); i++){
-      //parMesh.getFace(i, &cell);
-      //globIndex = zPart.local2GlobalFace(i);
-      //for(int k = 0; k < nNodesPFace; k++){
-        //CHECK(cell[k] == faces[globIndex*nNodesPFace + k]);
-      //}
-    //}
-    //for(int i = 0; i < parMesh.getNumberFaces(); i++){
-      //parMesh.getFace2Cell(i, &cell);
-      //globIndex = zPart.local2GlobalFace(i);
-      //for(int k = 0; k < cell.size(); k++){
-        //CHECK(cell[k] == face2CellMap[globIndex*2 + k]);
-      //}
-    //}
-    //for(int i = 0; i < parMesh.getNumberCells(); i++){
-      //parMesh.getCell2Face(i, &cell);
-      //globIndex = zPart.local2GlobalEl(i);
-      //for(int k = 0; k < 3; k++){
-        //CHECK(cell[k] == cell2FaceMap[globIndex*3 + k]);
-      //}
-    //}
+    for(int i = 0; i < parMesh.getNumberPoints(); i++){
+      parMesh.getPoint(i, &point);
+      globIndex = zPart.local2GlobalNode(i);
+      for(int k = 0; k < 2; k++){
+        CHECK(point[k] == nodes[globIndex*2 + k]);
+      }
+    }
+    for(int i = 0; i < parMesh.getNumberCells(); i++){
+      parMesh.getCell(i, &cell);
+      globIndex = zPart.local2GlobalEl(i);
+      for(int k = 0; k < nNodesPCell; k++){
+        CHECK(cell[k] == cells[globIndex*nNodesPCell + k]);
+      }
+    }
+    for(int i = 0; i < parMesh.getNumberFaces(); i++){
+      parMesh.getFace(i, &cell);
+      globIndex = zPart.local2GlobalFace(i);
+      for(int k = 0; k < nNodesPFace; k++){
+        CHECK(cell[k] == faces[globIndex*nNodesPFace + k]);
+      }
+    }
+    for(int i = 0; i < parMesh.getNumberFaces(); i++){
+      parMesh.getFace2Cell(i, &cell);
+      globIndex = zPart.local2GlobalFace(i);
+      for(int k = 0; k < cell.size(); k++){
+        CHECK(cell[k] == face2CellMap[globIndex*2 + k]);
+      }
+    }
+    for(int i = 0; i < parMesh.getNumberCells(); i++){
+      parMesh.getCell2Face(i, &cell);
+      globIndex = zPart.local2GlobalEl(i);
+      for(int k = 0; k < 3; k++){
+        CHECK(cell[k] == cell2FaceMap[globIndex*3 + k]);
+      }
+    }
     //global checking
-    //int locIndex;
-    //for(int i = 0; i < nodes.size()/2; i++){
-      //locIndex = zPart.global2LocalNode(i);
-      //if(locIndex != -1){
-        //parMesh.getPoint(locIndex, &point);
-        //for(int k = 0; k < 2; k++){
-          //CHECK(point[k] == nodes[i*2 + k]);
-        //}
-      //}
-    //}
-    //for(int i = 0; i < cells.size()/nNodesPCell; i++){
-      //locIndex = zPart.global2LocalElement(i);
-      //if(locIndex != -1){
-        //parMesh.getCell(locIndex, &cell);
-        //for(int k = 0; k < nNodesPCell; k++){
-          //CHECK(cell[k] == cells[i*nNodesPCell + k]);
-        //}
-        //parMesh.getCell2Face(locIndex, &cell);
-        //for(int k = 0; k < 3; k++){
-          //CHECK(cell[k] == cell2FaceMap[i*3 + k]);
-        //}
-      //}
-    //}
-    //for(int i = 0; i < faces.size()/nNodesPFace; i++){
-      //locIndex = zPart.global2LocalFace(i);
-      //if(locIndex != -1){
-        //parMesh.getFace(locIndex, &cell);
-        //for(int k = 0; k < nNodesPFace; k++){
-          //CHECK(cell[k] == faces[i*nNodesPFace + k]);
-        //}
-        //parMesh.getFace2Cell(locIndex, &cell);
-        //for(int k = 0; k < cell.size(); k++){
-          //CHECK(cell[k] == face2CellMap[i*2 + k]);
-        //}
-      //}
-    //}
+    int locIndex;
+    for(int i = 0; i < nodes.size()/2; i++){
+      locIndex = zPart.global2LocalNode(i);
+      if(locIndex != -1){
+        parMesh.getPoint(locIndex, &point);
+        for(int k = 0; k < 2; k++){
+          CHECK(point[k] == nodes[i*2 + k]);
+        }
+      }
+    }
+    for(int i = 0; i < cells.size()/nNodesPCell; i++){
+      locIndex = zPart.global2LocalElement(i);
+      if(locIndex != -1){
+        parMesh.getCell(locIndex, &cell);
+        for(int k = 0; k < nNodesPCell; k++){
+          CHECK(cell[k] == cells[i*nNodesPCell + k]);
+        }
+        parMesh.getCell2Face(locIndex, &cell);
+        for(int k = 0; k < 3; k++){
+          CHECK(cell[k] == cell2FaceMap[i*3 + k]);
+        }
+      }
+    }
+    for(int i = 0; i < faces.size()/nNodesPFace; i++){
+      locIndex = zPart.global2LocalFace(i);
+      if(locIndex != -1){
+        parMesh.getFace(locIndex, &cell);
+        for(int k = 0; k < nNodesPFace; k++){
+          CHECK(cell[k] == faces[i*nNodesPFace + k]);
+        }
+        parMesh.getFace2Cell(locIndex, &cell);
+        for(int k = 0; k < cell.size(); k++){
+          CHECK(cell[k] == face2CellMap[i*2 + k]);
+        }
+      }
+    }
   };
 
   //SECTION("Testing a field partition"){

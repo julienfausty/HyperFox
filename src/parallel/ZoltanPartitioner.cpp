@@ -122,16 +122,35 @@ void ZoltanPartitioner::update(){
     std::set<int>::iterator itset;
     itMap->second[Face] = std::vector<int>();
     itMap->second[Node] = std::vector<int>();
+    std::map<int, std::map<FieldType, std::vector<int> > >::iterator itBuff;
     for(itset = exportCandFaces.begin(); itset != exportCandFaces.end(); itset++){
       localCellIndex = global2LocalFace(*itset);
       if(localCellIndex != -1){
-        itMap->second[Face].push_back(*itset);
+        bool exported = 0;
+        for(itBuff = exportMap.begin(); itBuff != itMap; itBuff++){
+          exported = (std::find(itBuff->second[Face].begin(), itBuff->second[Face].end(), *itset) != itBuff->second[Face].end());
+          if(exported){
+            break;
+          }
+        }
+        if(!exported){
+          itMap->second[Face].push_back(*itset);
+        }
       }
     }
     for(itset = exportCandNodes.begin(); itset != exportCandNodes.end(); itset++){
       localCellIndex = global2LocalNode(*itset);
       if(localCellIndex != -1){
-        itMap->second[Node].push_back(*itset);
+        bool exported = 0;
+        for(itBuff = exportMap.begin(); itBuff != itMap; itBuff++){
+          exported = (std::find(itBuff->second[Node].begin(), itBuff->second[Node].end(), *itset) != itBuff->second[Node].end());
+          if(exported){
+            break;
+          }
+        }
+        if(!exported){
+          itMap->second[Node].push_back(*itset);
+        }
       }
     }
   }
@@ -312,13 +331,8 @@ void ZoltanPartitioner::update(){
     locIndexes.resize(itMap->second[Cell].size());
     global2LocalElementSlice(itMap->second[Cell], &locIndexes);
     multiplyIndexes(nNodesPCell, &locIndexes, &indexes2Del);
-    //std::cout << "rank: " << rank << "\n";
-    //std::cout << "export to: " << itMap->first << "\n";
-    //std::cout << "nCells: " << itMap->second[Cell].size() << std::endl;
-    //std::cout << "nCells actually removing: " << indexes2Del.size()/nNodesPCell << "\n";
     remover.setValues(&indexes2Del);
     myMesh->modifyCells(&remover);
-    //std::cout << "number of cells after removal: " << myMesh->getCells()->size()/nNodesPCell << std::endl;
     multiplyIndexes(nFacesPCell, &locIndexes, &indexes2Del);
     remover.setValues(&indexes2Del);
     myMesh->modifyCell2FaceMap(&remover);
@@ -331,23 +345,12 @@ void ZoltanPartitioner::update(){
     }
     remover.setValues(&locIndexes);
     remover.modify(&elementIDs);
-    //std::cout << "number of elementIDs after removal: " << elementIDs.size() << std::endl;
-    //std::cout << "finished cell removal" << std::endl;
     //face associated removal
     locIndexes.resize(itMap->second[Face].size());
     global2LocalFaceSlice(itMap->second[Face], &locIndexes);
     multiplyIndexes(nNodesPFace, &locIndexes, &indexes2Del);
-    std::cout << "rank: " << rank << "\n";
-    std::cout << "export to: " << itMap->first << "\n";
-    std::cout << "nFaces: " << itMap->second[Face].size() << std::endl;
-    std::cout << "nFaces actually removing: " << indexes2Del.size()/nNodesPFace << "\n";
-    //std::cout << "indexes to remove" << std::endl;
-    //for(int i = 0; i < indexes2Del.size(); i++){
-      //std::cout << indexes2Del[i] << std::endl;
-    //}
     remover.setValues(&indexes2Del);
     myMesh->modifyFaces(&remover);
-    std::cout << "number of faces after removal: " << myMesh->getFaces()->size()/nNodesPFace << std::endl;
     multiplyIndexes(2, &locIndexes, &indexes2Del);
     remover.setValues(&indexes2Del);
     myMesh->modifyFace2CellMap(&remover);
@@ -368,8 +371,6 @@ void ZoltanPartitioner::update(){
     }
     remover.setValues(&locIndexes);
     remover.modify(&faceIDs);
-    std::cout << "number of faceIDs after removal: " << faceIDs.size() << std::endl;
-    //std::cout << "finished face removal" << std::endl;
     //node associated removal
     locIndexes.resize(itMap->second[Node].size());
     global2LocalNodeSlice(itMap->second[Node], &locIndexes);
@@ -385,7 +386,6 @@ void ZoltanPartitioner::update(){
     }
     remover.setValues(&locIndexes);
     remover.modify(&nodeIDs);
-    //std::cout << "finished node removal" << std::endl;
     myMesh->update();
   }
   std::vector<int> iBuffData;
@@ -394,9 +394,6 @@ void ZoltanPartitioner::update(){
   for(itMap = importMap.begin(); itMap != importMap.end(); itMap++){
     //populating cell data
     int nCells = itMap->second[Cell].size();
-    //std::cout << "rank: " << rank << "\n";
-    //std::cout << "import from: " << itMap->first << "\n";
-    //std::cout << "nCells: " << nCells << std::endl;
     iAppender.setValues(&(itMap->second[Cell]));
     iAppender.modify(&elementIDs);
     int nImpCells = nCells * nNodesPCell;
@@ -434,7 +431,7 @@ void ZoltanPartitioner::update(){
     int nImpFace2Cells = nFaces * 2;
     iBuffData.resize(nImpFace2Cells);
     offset += nImpFaces;
-    std::copy(iRecvBuffer[itMap->first].begin() + offset, iRecvBuffer[itMap->first].begin() + offset + nImpCell2Faces, iBuffData.begin());
+    std::copy(iRecvBuffer[itMap->first].begin() + offset, iRecvBuffer[itMap->first].begin() + offset + nImpFace2Cells, iBuffData.begin());
     iAppender.setValues(&iBuffData);
     myMesh->modifyFace2CellMap(&iAppender);
     offset += nImpFace2Cells;

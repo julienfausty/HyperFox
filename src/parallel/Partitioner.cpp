@@ -10,6 +10,12 @@ void Partitioner::initialize(){
   }
   MPI_Comm_size(MPI_COMM_WORLD, &nPartitions);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  //if(exportMap != NULL){
+    //delete exportMap;
+  //}
+  //if(importMap != NULL){
+    //delete importMap;
+  //}
   int locNNodes = myMesh->getNumberPoints();
   int locNFaces = myMesh->getNumberFaces();
   int locNCells = myMesh->getNumberCells();
@@ -87,7 +93,12 @@ void Partitioner::computeSharedFaces(){
 };//computeSharedFaces
 
 Partitioner::~Partitioner(){
-
+  //if(exportMap != NULL){
+    //delete exportMap;
+  //}
+  //if(importMap != NULL){
+    //delete importMap;
+  //}
 };//destructor
 
 void Partitioner::setMesh(Mesh * pMesh){
@@ -105,9 +116,9 @@ int Partitioner::getTotalNumberFaces() const{
   int nFaces = myMesh->getNumberFaces();
   int totnFaces = 0;
   MPI_Allreduce(&nFaces, &totnFaces, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-  std::cout << "rank: " << rank << "\n";
-  std::cout << "loc Faces: " << nFaces << "\n";
-  std::cout << "glob Faces: " << totnFaces << std::endl;
+  //std::cout << "rank: " << rank << "\n";
+  //std::cout << "loc Faces: " << nFaces << "\n";
+  //std::cout << "glob Faces: " << totnFaces << std::endl;
   return totnFaces;
 };//getTotalNumberFaces
 
@@ -145,7 +156,7 @@ int Partitioner::global2LocalNode(int glob) const{
 int Partitioner::global2LocalFace(int glob) const{
   std::vector<int>::const_iterator it = std::find(faceIDs.begin(), faceIDs.end(), glob);
   int loc = -1;
-  if(it != nodeIDs.end()){
+  if(it != faceIDs.end()){
     loc = std::distance(faceIDs.begin(), it);
   }
   return loc;
@@ -154,7 +165,7 @@ int Partitioner::global2LocalFace(int glob) const{
 int Partitioner::global2LocalElement(int glob) const{
   std::vector<int>::const_iterator it = std::find(elementIDs.begin(), elementIDs.end(), glob);
   int loc = -1;
-  if(it != nodeIDs.end()){
+  if(it != elementIDs.end()){
     loc = std::distance(elementIDs.begin(), it);
   }
   return loc;

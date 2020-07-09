@@ -184,6 +184,14 @@ class Partitioner{
      * \brief boolean tracking the intialization of the class
      */
     bool initialized = 0;
+    /*!
+     * \brief a pointer to a map holding the indexes of the cells, faces and nodes to export to another partition exportMap[procToExport][TypeOfObj][index]
+     */
+    //std::map<int, std::map< FieldType, std::vector<int> > > * exportMap = NULL;//allocated dynamically
+    /*!
+     * \brief a pointer to a map holding the indexes of the cells, faces and nodes to import from another partition importMap[procToImport][TypeOfObj][index]
+     */
+    //std::map<int, std::map< FieldType, std::vector<int> > > * importMap = NULL;//allocated dynamically
 
 };//Partitioner
 
