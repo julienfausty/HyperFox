@@ -74,6 +74,15 @@ class Mesh{
     /*! \brief A method for geting a const pointer to the connectivity fo the faces of the mesh.
      */
     const std::vector<int> * getFaces() const;
+    /*! \brief A method for geting a const pointer to the ghost nodes of the mesh.
+     */
+    const std::vector<double> * getGhostPoints() const {return &ghostNodes;};
+    /*! \brief A method for geting a const pointer to the ghost connectivity of the mesh.
+     */
+    const std::vector<int> * getGhostCells() const{return &ghostCells;};
+    /*! \brief A method for geting a const pointer to the connectivity fo the faces of the mesh.
+     */
+    const std::vector<int> * getGhostFaces() const{return &ghostFaces;};
     /*! \brief A method for geting a const pointer to the nodes of the mesh.
      *
      * @param points the pointer to the vector to fill with vertices
@@ -109,6 +118,26 @@ class Mesh{
      * @param face pointer to fill with node indexes of face
      */
     void getFace(int i, std::vector<int> * face) const;
+    /*! \brief A method for accessing a specific ghost node of the mesh.
+     *
+     * @param i index of the ghost point one wishes to acquire.
+     * @param point pointer to the vector to fill with the coordinates
+     */
+    void getGhostPoint(int i, std::vector<double> * point) const;
+    /*! \brief A method for accessing an individual ghost cell.
+     *
+     * @param i index of the cell of which one wishes to get the connectivity 
+     * information. 
+     * @param cell pointer to fill with node indexes
+     */
+    void getGhostCell(int i, std::vector<int> * cell) const;
+    /*! \brief A method for accessing an individual ghost face.
+     *
+     * @param i index of the face of which one wishes to get the connectivity 
+     * information. 
+     * @param face pointer to fill with node indexes of face
+     */
+    void getGhostFace(int i, std::vector<int> * face) const;
     /*!
      * \brief get a const pointer to the reference element
      */
@@ -189,6 +218,24 @@ class Mesh{
     template<class T>
     void modifyFace2CellMap(Modifier< std::vector<T> > * face2CellMod){face2CellMod->modify(&face2CellMap);};
     /*!
+     * \brief modify mesh ghost nodes
+     * @param nodeMod a modifier configured for the ghost nodes
+     */
+    template<class T>
+    void modifyGhostNodes(Modifier< std::vector<T> > * nodeMod){nodeMod->modify(&ghostNodes);};
+    /*!
+     * \brief modify mesh ghost cells
+     * @param cellMod a modifier configured for the ghost cells
+     */
+    template<class T>
+    void modifyGhostCells(Modifier< std::vector<T> > * cellMod){cellMod->modify(&ghostCells);};
+    /*!
+     * \brief modify mesh ghost faces
+     * @param faceMod a modifier configured for the ghost faces
+     */
+    template<class T>
+    void modifyGhostFaces(Modifier< std::vector<T> > * faceMod){faceMod->modify(&ghostFaces);};
+    /*!
      * \brief update the members after modication
      */
     void update(){ 
@@ -230,6 +277,10 @@ class Mesh{
      */
     std::vector<double> nodes;
     /*!
+     * \brief information of adjacent nodes held on adjacent partitions (partition globalIndex coordinates)
+     */
+    std::vector<double> ghostNodes;
+    /*!
      * \brief dimension of the space of the nodes
      */
     int dimNodeSpace;
@@ -242,6 +293,10 @@ class Mesh{
      */
     std::vector<int> cells;
     /*!
+     * \brief information of adjacent cells held on adjacent partitions (partition globalIndex nodeIndexes)
+     */
+    std::vector<int> ghostCells;
+    /*!
      * \brief the number of nodes per cell
      */
     int nNodesPerCell;
@@ -253,6 +308,10 @@ class Mesh{
      * \brief where the connectivity of the faces are stored
      */
     std::vector<int> faces;
+    /*!
+     * \brief information of adjacent faces held on adjacent partitions (partition globalIndex nodeIndexes)
+     */
+    std::vector<int> ghostFaces;
     /*!
      * \brief the number of nodes per face
      */

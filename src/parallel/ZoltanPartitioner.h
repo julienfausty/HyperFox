@@ -39,10 +39,6 @@ class ZoltanPartitioner : public Partitioner{
      * \brief method for computing the partition
      */
     virtual void computePartition();
-    /*!
-     * \brief method that updates both the mesh and fields with current computed partition
-     */
-    //virtual void update();
 
   private:
     /*!

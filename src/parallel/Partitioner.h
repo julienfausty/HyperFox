@@ -38,6 +38,10 @@ class Partitioner{
      */
     virtual void update();
     /*!
+     * \brief method that updates the shared information on each partition
+     */
+    virtual void updateSharedInformation();
+    /*!
      * \brief set the mesh pointer
      * @param pmesh pointer to the mesh
      */
@@ -153,6 +157,12 @@ class Partitioner{
      * \brief a method for empyting out the import and export maps
      */
     void emptyImportExportMaps();
+    /*!
+     * \brief transmit mesh and field data based on what is indicated in the import and export maps
+     * @param iRecvBuffer a map from process to integer data to recieve
+     * @param dRecvBuffer a map from process to double data to recieve
+     */
+    void transmitData(std::map<int, std::vector<int> > * iRecvBuffer, std::map<int, std::vector<double> > * dRecvBuffer, std::map<FieldType, std::vector<Field*> > & fieldMap);
     /*!
      * \brief pointer to the partitioned mesh
      */

@@ -30,11 +30,11 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
   };
 
   SECTION("Test a mesh partition"){
-    std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-1e-1_ord-1.h5";
-    Mesh seqMesh(2, 1, "simplex");
+    std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-5e-2_ord-3.h5";
+    Mesh seqMesh(2, 3, "simplex");
     HDF5Io hdf5io(&seqMesh);
     hdf5io.load(meshLocation);
-    Mesh parMesh(2, 1, "simplex");
+    Mesh parMesh(2, 3, "simplex");
     HDF5Io parhdf5io(&parMesh);
     parhdf5io.load(meshLocation);
     ZoltanOpts myOpts;
@@ -150,61 +150,64 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     }
   };
 
-  //SECTION("Testing a field partition"){
-    //std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-1e-1_ord-1.h5";
-    //Mesh seqMesh(2, 1, "simplex");
-    //HDF5Io hdf5io(&seqMesh);
-    //hdf5io.load(meshLocation);
-    //Mesh parMesh(2, 1, "simplex");
-    //HDF5Io parhdf5io(&parMesh);
-    //parhdf5io.load(meshLocation);
-    //Field nodeField(&parMesh, Node, 1, 1);
-    //std::iota(nodeField.getValues()->begin(), nodeField.getValues()->end(), 0);
-    //Field cellField(&parMesh, Cell, 1, 1);
-    //std::iota(cellField.getValues()->begin(), cellField.getValues()->end(), 0);
-    //Field faceField(&parMesh, Face, 1, 1);
-    //std::iota(faceField.getValues()->begin(), faceField.getValues()->end(), 0);
-    //std::vector<Field*> fieldList = {&nodeField, &cellField, &faceField};
-    //ZoltanPartitioner zPart(&parMesh);
-    //zPart.initialize();
-    //zPart.setMesh(&parMesh);
-    //zPart.setFields(fieldList);
-    //zPart.computePartition();
-    //zPart.update();
-    //int totNodes = zPart.getTotalNumberNodes();
-    //int totFaces = zPart.getTotalNumberFaces();
-    //int totCells = zPart.getTotalNumberEls();
-    //int globIndex;
-    //for(int i = 0; i < parMesh.getNumberPoints(); i++){
-      //globIndex = zPart.local2GlobalNode(i);
-      //CHECK(globIndex == nodeField.getValues()->at(i));
-    //}
-    //for(int i = 0; i < parMesh.getNumberCells(); i++){
-      //globIndex = zPart.local2GlobalEl(i);
-      //CHECK(globIndex == cellField.getValues()->at(i));
-    //}
-    //for(int i = 0; i < parMesh.getNumberFaces(); i++){
-      //globIndex = zPart.local2GlobalFace(i);
-      //CHECK(globIndex == faceField.getValues()->at(i));
-    //}
-    //int locIndex;
-    //for(int i = 0; i < totNodes; i++){
-      //locIndex = zPart.global2LocalNode(i);
-      //if(locIndex != -1){
-        //CHECK(i == nodeField.getValues()->at(locIndex));
-      //}
-    //}
-    //for(int i = 0; i < totFaces; i++){
-      //locIndex = zPart.global2LocalFace(i);
-      //if(locIndex != -1){
-        //CHECK(i == faceField.getValues()->at(locIndex));
-      //}
-    //}
-    //for(int i = 0; i < totCells; i++){
-      //locIndex = zPart.global2LocalElement(i);
-      //if(locIndex != -1){
-        //CHECK(i == cellField.getValues()->at(locIndex));
-      //}
-    //}
-  //};
+  SECTION("Testing a field partition"){
+    std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-5e-2_ord-3.h5";
+    Mesh seqMesh(2, 3, "simplex");
+    HDF5Io hdf5io(&seqMesh);
+    hdf5io.load(meshLocation);
+    Mesh parMesh(2, 3, "simplex");
+    HDF5Io parhdf5io(&parMesh);
+    parhdf5io.load(meshLocation);
+    Field nodeField(&parMesh, Node, 1, 1);
+    std::iota(nodeField.getValues()->begin(), nodeField.getValues()->end(), 0);
+    Field cellField(&parMesh, Cell, 1, 1);
+    std::iota(cellField.getValues()->begin(), cellField.getValues()->end(), 0);
+    Field faceField(&parMesh, Face, 1, 1);
+    std::iota(faceField.getValues()->begin(), faceField.getValues()->end(), 0);
+    std::vector<Field*> fieldList = {&nodeField, &cellField, &faceField};
+    ZoltanPartitioner zPart(&parMesh);
+    zPart.initialize();
+    zPart.setFields(fieldList);
+    zPart.computePartition();
+    zPart.update();
+    int totNodes = zPart.getTotalNumberNodes();
+    int totFaces = zPart.getTotalNumberFaces();
+    int totCells = zPart.getTotalNumberEls();
+    int globIndex;
+    for(int i = 0; i < parMesh.getNumberPoints(); i++){
+      globIndex = zPart.local2GlobalNode(i);
+      CHECK(globIndex == nodeField.getValues()->at(i));
+    }
+    for(int i = 0; i < parMesh.getNumberCells(); i++){
+      globIndex = zPart.local2GlobalEl(i);
+      CHECK(globIndex == cellField.getValues()->at(i));
+    }
+    for(int i = 0; i < parMesh.getNumberFaces(); i++){
+      globIndex = zPart.local2GlobalFace(i);
+      CHECK(globIndex == faceField.getValues()->at(i));
+    }
+    int locIndex;
+    for(int i = 0; i < totNodes; i++){
+      locIndex = zPart.global2LocalNode(i);
+      if(locIndex != -1){
+        CHECK(i == nodeField.getValues()->at(locIndex));
+      }
+    }
+    for(int i = 0; i < totFaces; i++){
+      locIndex = zPart.global2LocalFace(i);
+      if(locIndex != -1){
+        CHECK(i == faceField.getValues()->at(locIndex));
+      }
+    }
+    for(int i = 0; i < totCells; i++){
+      locIndex = zPart.global2LocalElement(i);
+      if(locIndex != -1){
+        CHECK(i == cellField.getValues()->at(locIndex));
+      }
+    }
+  };
+
+  SECTION("Testing shared information"){
+    //test the mesh ghost objects and the field par objects
+  };
 };
