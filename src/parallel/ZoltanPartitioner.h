@@ -42,7 +42,7 @@ class ZoltanPartitioner : public Partitioner{
     /*!
      * \brief method that updates both the mesh and fields with current computed partition
      */
-    virtual void update();
+    //virtual void update();
 
   private:
     /*!

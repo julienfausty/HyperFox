@@ -7,6 +7,7 @@
 #include "Mesh.h"
 #include "Field.h"
 #include "ErrorHandle.h"
+#include "Modifier.h"
 #include "Utils.h"
 
 namespace hfox{
@@ -29,13 +30,13 @@ class Partitioner{
      */
     virtual void initialize();
     /*!
-     * \brief method for computing the partition
+     * \brief method for computing the partition, populates the impotMap and exportMap with relevant partition information
      */
     virtual void computePartition()=0;
     /*!
-     * \brief method that updates both the mesh and fields with current computed partition
+     * \brief method that updates both the mesh and fields with current computed partition using the importMap/exportMap computed by the computePartition method
      */
-    virtual void update()=0;
+    virtual void update();
     /*!
      * \brief set the mesh pointer
      * @param pmesh pointer to the mesh
@@ -191,11 +192,11 @@ class Partitioner{
     /*!
      * \brief a pointer to a map holding the indexes of the cells, faces and nodes to export to another partition exportMap[procToExport][TypeOfObj][index]
      */
-    std::map<int, std::map< FieldType, std::vector<int> > > exportMap;//allocated dynamically
+    std::map<int, std::map< FieldType, std::vector<int> > > exportMap;
     /*!
      * \brief a pointer to a map holding the indexes of the cells, faces and nodes to import from another partition importMap[procToImport][TypeOfObj][index]
      */
-    std::map<int, std::map< FieldType, std::vector<int> > > importMap;//allocated dynamically
+    std::map<int, std::map< FieldType, std::vector<int> > > importMap;
 
 };//Partitioner
 
