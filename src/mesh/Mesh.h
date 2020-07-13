@@ -20,6 +20,9 @@ namespace hfox{
  * time). This class is represents that discretization. 
  */
 
+//forward declaration
+class Partitioner;
+
 class Mesh{
   public:
     //Constructors
@@ -65,6 +68,15 @@ class Mesh{
      */
     void setMesh(int dimPointSpace, std::vector<double> & points_candidate, 
         std::vector<int> & connectivity_candidate);
+    /*!
+     * \brief set the pointer to the Partioner of the mesh
+     * @partCand a pointer to the Partitioner of the mesh
+     */
+    void setPartitioner(Partitioner * partCand){part = partCand;};
+    /*!
+     * \brief get the partitioner
+     */
+    Partitioner * getPartitioner(){return part;};
     /*! \brief A method for geting a const pointer to the nodes of the mesh.
      */
     const std::vector<double> * getPoints() const;
@@ -324,6 +336,10 @@ class Mesh{
      * \brief the reference element of the mesh
      */
     ReferenceElement * refElement;
+    /*!
+     * \brief the mesh partitioner if needed
+     */
+    Partitioner * part;
     /*!
      * \brief the face 2 cell map
      */

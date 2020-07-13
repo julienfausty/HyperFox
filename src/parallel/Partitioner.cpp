@@ -88,6 +88,7 @@ Partitioner::~Partitioner(){
 
 void Partitioner::setMesh(Mesh * pMesh){
   myMesh = pMesh;
+  myMesh->setPartitioner(this);
 };//setMesh
 
 void Partitioner::emptyImportExportMaps(){
@@ -563,7 +564,7 @@ void Partitioner::updateSharedInformation(){
   std::vector<int> cell;
   for(itMap = exportMap.begin(); itMap != exportMap.end(); itMap++){
     for(int i = 0; i < itMap->second[Face].size(); i++){
-      localCellIndex = global2LocalFace(i);
+      localCellIndex = global2LocalFace(itMap->second[Face][i]);
       myMesh->getFace(localCellIndex, &cell);
       for(int k = 0; k < cell.size(); k++){
         nodeSet.insert(cell[k]);
@@ -678,11 +679,15 @@ void Partitioner::updateSharedInformation(){
       for(int i = 0; i < pFList->size(); i++){
         Field * F = pFList->at(i);
         int nFVals = (*(F->getNumObjPerEnt())) * (*(F->getNumValsPerObj()));
-        F->getParIds()->resize(itMap->second[fts[fti]].size(), 0);
-        F->getParIds()->assign(itMap->second[fts[fti]].begin(), itMap->second[fts[fti]].end());
-        F->getParValues()->resize(itMap->second[fts[fti]].size()*nFVals, 0);
-        F->getParValues()->assign(dRecvBuffer[itMap->first].begin() + offset, dRecvBuffer[itMap->first].begin() + offset + F->getParValues()->size());
-        offset += F->getParValues()->size();
+        iApp.resize(itMap->second[fts[fti]].size(), 0);
+        iApp.assign(itMap->second[fts[fti]].begin(), itMap->second[fts[fti]].end());
+        iAppender.setValues(&iApp);
+        iAppender.modify(F->getParIds());
+        dApp.resize(itMap->second[fts[fti]].size()*nFVals, 0);
+        dApp.assign(dRecvBuffer[itMap->first].begin() + offset, dRecvBuffer[itMap->first].begin() + offset + dApp.size());
+        dAppender.setValues(&dApp);
+        dAppender.modify(F->getParValues());
+        offset += dApp.size();
       }
     }
   }

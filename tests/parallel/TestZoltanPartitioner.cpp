@@ -208,6 +208,66 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
   };
 
   SECTION("Testing shared information"){
-    //test the mesh ghost objects and the field par objects
+    std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-5e-2_ord-3.h5";
+    Mesh seqMesh(2, 3, "simplex");
+    HDF5Io hdf5io(&seqMesh);
+    hdf5io.load(meshLocation);
+    Mesh parMesh(2, 3, "simplex");
+    HDF5Io parhdf5io(&parMesh);
+    parhdf5io.load(meshLocation);
+    Field nodeField(&parMesh, Node, 1, 1);
+    std::iota(nodeField.getValues()->begin(), nodeField.getValues()->end(), 0);
+    Field cellField(&parMesh, Cell, 1, 1);
+    std::iota(cellField.getValues()->begin(), cellField.getValues()->end(), 0);
+    Field faceField(&parMesh, Face, 1, 1);
+    std::iota(faceField.getValues()->begin(), faceField.getValues()->end(), 0);
+    std::vector<Field*> fieldList = {&nodeField, &cellField, &faceField};
+    ZoltanPartitioner zPart(&parMesh);
+    zPart.initialize();
+    zPart.setFields(fieldList);
+    zPart.computePartition();
+    zPart.update();
+    int totNodes = zPart.getTotalNumberNodes();
+    int totFaces = zPart.getTotalNumberFaces();
+    int totCells = zPart.getTotalNumberEls();
+    std::vector<double> nodes(totNodes*2);
+    std::copy(seqMesh.getPoints()->begin(), seqMesh.getPoints()->end(), nodes.begin());
+    MPI_Bcast(nodes.data(), nodes.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    std::vector<int> cells(totCells*(parMesh.getReferenceElement()->getNumNodes()));
+    std::copy(seqMesh.getCells()->begin(), seqMesh.getCells()->end(), cells.begin());
+    MPI_Bcast(cells.data(), cells.size(), MPI_INT, 0, MPI_COMM_WORLD);
+    std::vector<int> faces(totFaces*(parMesh.getReferenceElement()->getFaceElement()->getNumNodes()));
+    std::copy(seqMesh.getFaces()->begin(), seqMesh.getFaces()->end(), faces.begin());
+    MPI_Bcast(faces.data(), faces.size(), MPI_INT, 0, MPI_COMM_WORLD);
+    int dimSpace = parMesh.getNodeSpaceDimension();
+    int nNodesPFace = parMesh.getReferenceElement()->getFaceElement()->getNumNodes();
+    int globIndex, locIndex;
+    std::vector<int> cell;
+    std::vector<int> cell2Face;
+    std::vector<int> face2Cell;
+    std::vector<double> point;
+    std::vector<double> fVals;
+    for(int iEl = 0; iEl < parMesh.getNumberCells(); iEl++){
+      parMesh.getCell2Face(iEl, &cell2Face);
+      for(int i = 0; i < cell2Face.size(); i++){
+        locIndex = zPart.global2LocalFace(cell2Face[i]);
+        if(locIndex == -1){
+          CHECK_NOTHROW(parMesh.getGhostFace(cell2Face[i], &cell));
+          for(int k = 0; k < cell.size(); k++){
+            CHECK(cell[k] == faces[cell2Face[i]*nNodesPFace + k]);
+            CHECK_NOTHROW(parMesh.getGhostPoint(cell[k], &point));
+            for(int j = 0; j < dimSpace; j++){
+              CHECK(point[j] == nodes[cell[k]*dimSpace + j]);
+            }
+          } 
+          CHECK_NOTHROW(faceField.getParValues(cell2Face[i], &fVals));
+          CHECK(fVals[0] == cell2Face[i]);
+          for(int k = 0; k < cell.size(); k++){
+            CHECK_NOTHROW(nodeField.getParValues(cell[k], &fVals));
+            CHECK(fVals[0] == cell[k]);
+          }
+        }
+      }
+    }
   };
 };

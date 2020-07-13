@@ -2,10 +2,10 @@
 
 namespace hfox{
 
-Mesh::Mesh(): refElement(NULL){
+Mesh::Mesh(): refElement(NULL), part(NULL){
 };//Empty constructor
 
-Mesh::Mesh(int dim, int order, std::string geom): refElement(NULL){
+Mesh::Mesh(int dim, int order, std::string geom): refElement(NULL), part(NULL){
   setReferenceElement(dim, order, geom);
 };//refElement constructor
 
