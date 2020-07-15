@@ -28,10 +28,13 @@ void CGSolver::allocate(){
   if(*(it->second->getFieldType()) != Node){
     throw(ErrorHandle("CGSolver", "allocate", "the Solution field must be a nodal field."));
   }
+  std::cout << "finished checking fields" << std::endl;
   nDOFsPerNode = (*(it->second->getNumObjPerEnt()))*(*(it->second->getNumValsPerObj()));
   calcSparsityPattern();
+  std::cout << "finished sparsity pattern" << std::endl;
   int nNodes = myMesh->getNumberPoints();
   linSystem->allocate(nNodes*nDOFsPerNode, &diagSparsePattern, &offSparsePattern);
+  std::cout << "finished linear system allocation" << std::endl;
   model->allocate(nDOFsPerNode);
   boundaryModel->allocate(nDOFsPerNode);
   allocated = 1;
@@ -44,11 +47,13 @@ void CGSolver::assemble(){
   if(assembled){
     linSystem->clearSystem();
   }
+  Partitioner * part = myMesh->getPartitioner();
   const ReferenceElement * refEl = myMesh->getReferenceElement();
   std::map<std::string, std::vector<double> > nodalFieldMap = prepareLocalFieldMap(Node);
   std::map<std::string, std::vector<double> > faceFieldMap = prepareLocalFieldMap(Face);
 
   std::vector<int> cell(refEl->getNumNodes());
+  std::vector<int> locCell(refEl->getNumNodes());
   std::vector< std::vector<double> > nodes(refEl->getNumNodes(), std::vector<double>(myMesh->getNodeSpaceDimension(), 0.0));
   const AssemblyType * modAssemble = model->getAssemblyType();
   //element loop
@@ -63,8 +68,20 @@ void CGSolver::assemble(){
   EMatrix modelT(model->getLocalMatrix()->rows(), model->getLocalMatrix()->cols());
   for(iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
     myMesh->getCell(iEl, &cell);
-    myMesh->getSlicePoints(cell, &nodes);
-    constructLocalFields(cell, &nodalFieldMap);
+    if(part == NULL){
+      constructLocalFields(cell, &nodalFieldMap);
+      myMesh->getSlicePoints(cell, &nodes);
+    } else {
+      part->global2LocalNodeSlice(cell, &locCell);
+      constructLocalFields(cell, locCell, &nodalFieldMap);
+      for(int i = 0; i < locCell.size(); i++){
+        if(locCell[i] != -1){
+          myMesh->getPoint(locCell[i], &(nodes[i]));
+        } else {
+          myMesh->getGhostPoint(cell[i], &(nodes[i]));
+        }
+      }
+    }
     model->setElementNodes(&nodes);
     model->setFieldMap(&nodalFieldMap);
     model->compute();
@@ -96,11 +113,13 @@ void CGSolver::assemble(){
   linSystem->assemble();
 
   cell.resize(refEl->getFaceElement()->getNumNodes());
+  locCell.resize(refEl->getFaceElement()->getNumNodes());
   nodes.resize(0);
   nodes.resize(cell.size(), std::vector<double>(myMesh->getNodeSpaceDimension(), 0.0));
   modelT.resize(boundaryModel->getLocalMatrix()->rows(), boundaryModel->getLocalMatrix()->cols());
   modAssemble = boundaryModel->getAssemblyType();
   std::vector<int> slice(1, 0);
+  std::vector<int> locSlice(1, 0);
   const std::set<int> * boundaryFaces = myMesh->getBoundaryFaces();
   std::set<int>::const_iterator itFace;
   int index = 0;
@@ -130,9 +149,23 @@ void CGSolver::assemble(){
   }
   for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
     myMesh->getFace(*itFace, &cell);
-    myMesh->getSlicePoints(cell, &nodes);
-    slice[0] = *itFace;
-    constructLocalFields(slice, &faceFieldMap);
+    if(part == NULL){
+      myMesh->getSlicePoints(cell, &nodes);
+      slice[0] = *itFace;
+      constructLocalFields(slice, &faceFieldMap);
+    } else {
+      part->global2LocalNodeSlice(cell, &locCell);
+      slice[0] = *itFace;
+      locSlice[0] = part->global2LocalFace(*itFace);
+      constructLocalFields(slice, locSlice, &faceFieldMap);
+      for(int i = 0; i < locCell.size(); i++){
+        if(locCell[i] != -1){
+          myMesh->getPoint(locCell[i], &(nodes[i]));
+        } else {
+          myMesh->getGhostPoint(cell[i], &(nodes[i]));
+        }
+      }
+    }
     boundaryModel->setElementNodes(&nodes);
     boundaryModel->setFieldMap(&faceFieldMap);
     boundaryModel->compute();
@@ -174,25 +207,60 @@ void CGSolver::solve(){
 };//solve
 
 void CGSolver::calcSparsityPattern(){
+  Partitioner * part = myMesh->getPartitioner();
   diagSparsePattern.resize(myMesh->getNumberPoints()*nDOFsPerNode, 0);
   offSparsePattern.resize(myMesh->getNumberPoints()*nDOFsPerNode, 0);
+  std::map<int, std::vector<int> > ghostSparse;
   std::vector< std::set<int> > sparsity(myMesh->getNumberPoints());
   int nNodesEl = myMesh->getReferenceElement()->getNumNodes();
   std::vector<int> cell(nNodesEl, 0);
+  std::vector<int> locCell(nNodesEl, 0);
   for(int iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
     myMesh->getCell(iEl, &cell);
+    part->global2LocalNodeSlice(cell, &locCell);
     for(int iCell = 0; iCell < nNodesEl; iCell++){
-      std::set<int> * nodeSet = &(sparsity[cell[iCell]]);
-      for(int i = 0; i < nNodesEl; i++){
-        nodeSet->insert(cell[i]);
-      }
+      if(locCell[iCell] != -1){
+        std::set<int> * nodeSet = &(sparsity[locCell[iCell]]);
+        for(int i = 0; i < nNodesEl; i++){
+          nodeSet->insert(cell[i]);
+        }
+      } 
     }
   }
-  for(int iRow = 0; iRow < sparsity.size(); iRow++){
-    for(int kDof = 0; kDof < nDOFsPerNode; kDof++){
-      diagSparsePattern[iRow*nDOFsPerNode + kDof] = sparsity[iRow].size()*nDOFsPerNode;
+  //iterate through ghost cells to add to sparsity pattern
+  int nVals = 2 + nNodesEl;
+  const std::vector<int> * pGhostCells = myMesh->getGhostCells();
+  for(int i = 0; i < pGhostCells->size()/nVals; i++){
+    std::copy(pGhostCells->begin() + nVals*i + 2, pGhostCells->begin() + nVals*(i+1), cell.begin());
+    part->global2LocalNodeSlice(cell, &locCell);
+    for(int iCell = 0; iCell < nNodesEl; iCell++){
+      if(locCell[iCell] != -1){
+        std::set<int> * nodeSet = &(sparsity[locCell[iCell]]);
+        for(int i = 0; i < nNodesEl; i++){
+          nodeSet->insert(cell[i]);
+        }
+      } 
     }
-    //in parallel we have to divide the set into diagonal and off diagonal parts
+  }
+  std::cout << "calculated sparsity" << std::endl;
+  std::vector<int> locBuff;
+  for(int iRow = 0; iRow < sparsity.size(); iRow++){
+    int rowSize = sparsity[iRow].size()*nDOFsPerNode;
+    cell.resize(sparsity[iRow].size());
+    std::copy(sparsity[iRow].begin(), sparsity[iRow].end(), cell.begin());
+    locBuff.resize(cell.size());
+    part->global2LocalNodeSlice(cell, &locBuff);
+    int offDiag = 0;
+    for(int k = 0; k < locBuff.size(); k++){
+      if(locBuff[k] == -1){
+        offDiag += nDOFsPerNode;
+      }
+    }
+    rowSize -= offDiag;
+    for(int kDof = 0; kDof < nDOFsPerNode; kDof++){
+      diagSparsePattern[iRow*nDOFsPerNode + kDof] = rowSize;
+      offSparsePattern[iRow*nDOFsPerNode + kDof] = offDiag;
+    }
   }
 };//calcSparsityPattern
 

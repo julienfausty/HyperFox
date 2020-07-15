@@ -7,6 +7,7 @@
 #include "FEModel.h"
 #include "Field.h"
 #include "Mesh.h"
+#include "Partitioner.h"
 
 namespace hfox{
 
@@ -87,12 +88,20 @@ class Solver{
      */
     std::map<std::string, std::vector<double> > prepareLocalFieldMap(FieldType ft);
     /*!
-     * \brief a helper method for constructing local fields
+     * \brief a helper method for constructing local fields (sequential)
      *
      * @param entities indexes of the local entities
      * @param fm the field map to fill
      */
     void constructLocalFields(std::vector<int> & entities, std::map<std::string, std::vector<double> > * fm);
+    /*!
+     * \brief a helper method for constructing local fields (parallel)
+     *
+     * @param entities global indexes of the entities
+     * @param locentities local indexes of the entities
+     * @param fm the field map to fill
+     */
+    void constructLocalFields(std::vector<int> & entities, std::vector<int> locEntities, std::map<std::string, std::vector<double> > * fm);
     /*!
      * \brief the interface to the linear algebra package
      */

@@ -13,6 +13,7 @@
 #include "Field.h"
 #include "Mesh.h"
 #include "Operator.h"
+#include "Partitioner.h"
 
 
 namespace hfox{
@@ -95,9 +96,14 @@ class TestUtils{
   };
   
   static double l2ProjectionNodeField(Field * field1, Field * field2, Mesh * mesh){
+    Partitioner * part = mesh->getPartitioner();
     double integral = 0;
     const ReferenceElement * refEl = mesh->getReferenceElement();
     std::vector<int> cell(refEl->getNumNodes(), 0);
+    std::vector<int> locCell(refEl->getNumNodes(), 0);
+    std::vector<double> field1Vals(refEl->getNumNodes(), 0);
+    std::vector<double> field2Vals(refEl->getNumNodes(), 0);
+    std::vector<double> fieldBuff(1, 0.0);
     std::vector< std::vector<double> > nodes(cell.size(), 
         std::vector<double>(mesh->getNodeSpaceDimension(), 0.0));
     const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
@@ -105,24 +111,44 @@ class TestUtils{
     std::vector<double> detJacs(refEl->getNumIPs(), 0.0);
     for(int i = 0; i < mesh->getNumberCells(); i++){
       mesh->getCell(i, &cell);
-      mesh->getSlicePoints(cell, &nodes);
+      part->global2LocalNodeSlice(cell, &locCell);
+      for(int k = 0; k < locCell.size(); k++){
+        if(locCell[k] != -1){
+          mesh->getPoint(locCell[k], &(nodes[k]));
+          field1->getValues(locCell[k], &fieldBuff);
+          field1Vals[k] = fieldBuff[0];
+          field2->getValues(locCell[k], &fieldBuff);
+          field2Vals[k] = fieldBuff[0];
+        } else {
+          mesh->getGhostPoint(cell[k], &(nodes[k]));
+          field1->getParValues(cell[k], &fieldBuff);
+          field1Vals[k] = fieldBuff[0];
+          field2->getParValues(cell[k], &fieldBuff);
+          field2Vals[k] = fieldBuff[0];
+        }
+      }
       detJacs = Operator::calcDetJacobians(Operator::calcJacobians(nodes, refEl));
       for(int j = 0; j < refEl->getNumIPs(); j++){
         double dV = detJacs[j]*ipWeights->at(j);
         for(int k = 0; k < cell.size(); k++){
           for(int l = 0; l < cell.size(); l++){
-            integral += ipShapes->at(j)[l]*(ipShapes->at(j)[k])*(field1->getValues()->at(cell[k]))*(field2->getValues()->at(cell[l]))*dV;
+            integral += ipShapes->at(j)[l]*(ipShapes->at(j)[k])*(field1Vals[k])*(field2Vals[l])*dV;
           }
         }
       }
     }
+    double errBuff = 0;
+    MPI_Allreduce(&integral, &errBuff, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    integral = errBuff;
     return integral;
   };
 
   static double l2ProjectionCellField(Field * field1, Field * field2, Mesh * mesh){
+    Partitioner * part = mesh->getPartitioner();
     double integral = 0;
     const ReferenceElement * refEl = mesh->getReferenceElement();
     std::vector<int> cell(refEl->getNumNodes(), 0);
+    std::vector<int> locCell(refEl->getNumNodes(), 0);
     std::vector< std::vector<double> > nodes(cell.size(), 
         std::vector<double>(mesh->getNodeSpaceDimension(), 0.0));
     const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
@@ -130,7 +156,14 @@ class TestUtils{
     std::vector<double> detJacs(refEl->getNumIPs(), 0.0);
     for(int i = 0; i < mesh->getNumberCells(); i++){
       mesh->getCell(i, &cell);
-      mesh->getSlicePoints(cell, &nodes);
+      part->global2LocalNodeSlice(cell, &locCell);
+      for(int k = 0; k < locCell.size(); k++){
+        if(locCell[k] != -1){
+          mesh->getPoint(locCell[k], &(nodes[k]));
+        } else {
+          mesh->getGhostPoint(cell[k], &(nodes[k])); 
+        }
+      }
       detJacs = Operator::calcDetJacobians(Operator::calcJacobians(nodes, refEl));
       for(int j = 0; j < refEl->getNumIPs(); j++){
         double dV = detJacs[j]*ipWeights->at(j);
@@ -141,6 +174,9 @@ class TestUtils{
         }
       }
     }
+    double errBuff = 0;
+    MPI_Allreduce(&integral, &errBuff, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    integral = errBuff;
     return integral;
   };
 
