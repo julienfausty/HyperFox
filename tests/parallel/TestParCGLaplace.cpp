@@ -73,10 +73,10 @@ void runSimulation(SimRun * thisRun){
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-16;
-  myOpts.verbose = false;
+  myOpts.verbose = true;
   PetscInterface petsciface(myOpts);
   CGSolver mySolver;
-  mySolver.setVerbosity(false);
+  mySolver.setVerbosity(true);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
@@ -91,6 +91,9 @@ void runSimulation(SimRun * thisRun){
   std::cout << "finished assembly" << std::endl;
   mySolver.solve();
   std::cout << "finished solve" << std::endl;
+  for(int i = 0; i < myMesh.getNumberPoints(); i++){
+    residual.getValues()->at(i) = anaSol.getValues()->at(i) - sol.getValues()->at(i);
+  }
   zPart.updateSharedInformation();
   //get linalg err
   const KSP * ksp = petsciface.getKSP();
@@ -98,7 +101,6 @@ void runSimulation(SimRun * thisRun){
   //calculate l2 err
   double sumRes = 0, sumAna = 0;
   for(int i = 0; i < myMesh.getNumberPoints(); i++){
-    residual.getValues()->at(i) = anaSol.getValues()->at(i) - sol.getValues()->at(i);
     sumRes += std::pow(residual.getValues()->at(i), 2);
     sumAna += std::pow(anaSol.getValues()->at(i), 2);
   }
@@ -107,12 +109,12 @@ void runSimulation(SimRun * thisRun){
   double errBuff = 0;
   MPI_Allreduce(&(thisRun->dL2Err), &errBuff, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   thisRun->dL2Err = errBuff;
-  //hdfio.setField("Solution", &sol);
-  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/LaplaceConvergence/CG/";
-  //hdfio.write(writePath + meshName);
+  hdfio.setField("Solution", &sol);
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/parallel/CG/";
+  hdfio.write(writePath + meshName);
 };
 
-TEST_CASE("Testing regression CGLaplace", "[parallel][CG][Laplace]"){
+TEST_CASE("Testing parallel regression CGLaplace", "[parallel][CG][Laplace]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
@@ -131,10 +133,15 @@ TEST_CASE("Testing regression CGLaplace", "[parallel][CG][Laplace]"){
       }
     }
   }
-  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/LaplaceConvergence/";
-  //std::string writeFile = "CG/CGLaplace.csv";
-  //std::ofstream f; f.open(writePath + writeFile);
-  //f << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/parallel/";
+  std::string writeFile = "CG/CGLaplace.csv";
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  std::ofstream f;
+  if(rank == 0){
+    f.open(writePath + writeFile);
+    f << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
+  }
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runSimulation(&(*it));
@@ -144,14 +151,18 @@ TEST_CASE("Testing regression CGLaplace", "[parallel][CG][Laplace]"){
     double timeBuff, runtime;
     timeBuff = it->runtime.count();
     MPI_Allreduce(&timeBuff, &runtime, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-    //f << it->dim << ", ";
-    //f << it->order << ", ";
-    //f << it->meshSize << ", ";
-    //f << it->linAlgErr << ", ";
-    //f << it->l2Err << ", ";
-    //f << it->dL2Err << ", ";
-    //f << it->runtime.count() << "\n";
+    if(rank == 0){
+      f << it->dim << ", ";
+      f << it->order << ", ";
+      f << it->meshSize << ", ";
+      f << it->linAlgErr << ", ";
+      f << it->l2Err << ", ";
+      f << it->dL2Err << ", ";
+      f << runtime << "\n";
+    }
   }
-  //f.close();
+  if(rank == 0){
+    f.close();
+  }
 
 };

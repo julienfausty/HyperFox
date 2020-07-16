@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <mpi.h>
 
 /*!
  * \brief A (hopefully) easy to use progress bar
@@ -15,7 +16,7 @@ class ProgressBar{
     /*!
      * \brief empty constructor
      */
-    ProgressBar(){};
+    ProgressBar(){MPI_Comm_rank(MPI_COMM_WORLD, &rank);MPI_Comm_size(MPI_COMM_WORLD, &nPartitions);};
     /*!
      * \brief function for updating the bar
      */
@@ -29,7 +30,7 @@ class ProgressBar{
     /*!
      * \brief set the total number of iterations
      */
-    void setNumIterations(int numIters){nIters = numIters;};
+    void setNumIterations(int numIters);
   protected:
     /*!
      * \brief method to update display
@@ -40,9 +41,25 @@ class ProgressBar{
      */
     int * index;
     /*!
+     * \brief the total index
+     */
+    int totalIndex;
+    /*!
      * \brief number of total iterations
      */
     int nIters;
+    /*!
+     * \brief number of local iterations
+     */
+    int locIters;
+    /*!
+     * \brief process rank
+     */
+    int rank;
+    /*!
+     * \brief process rank
+     */
+    int nPartitions;
     /*!
      * \brief update frequency (i.e. update every freq seconds)
      */

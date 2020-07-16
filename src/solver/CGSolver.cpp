@@ -28,13 +28,10 @@ void CGSolver::allocate(){
   if(*(it->second->getFieldType()) != Node){
     throw(ErrorHandle("CGSolver", "allocate", "the Solution field must be a nodal field."));
   }
-  std::cout << "finished checking fields" << std::endl;
   nDOFsPerNode = (*(it->second->getNumObjPerEnt()))*(*(it->second->getNumValsPerObj()));
   calcSparsityPattern();
-  std::cout << "finished sparsity pattern" << std::endl;
   int nNodes = myMesh->getNumberPoints();
   linSystem->allocate(nNodes*nDOFsPerNode, &diagSparsePattern, &offSparsePattern);
-  std::cout << "finished linear system allocation" << std::endl;
   model->allocate(nDOFsPerNode);
   boundaryModel->allocate(nDOFsPerNode);
   allocated = 1;
@@ -62,7 +59,17 @@ void CGSolver::assemble(){
   if(verbose){
     pb.setIterIndex(&iEl);
     pb.setNumIterations(myMesh->getNumberCells());
-    std::cout << "Assembly - Element loop (nElements = " << myMesh->getNumberCells() << ", nNodes/El = " << cell.size() << "):" << std::endl;
+    int totCells = myMesh->getNumberCells();
+    bool speak = 1;
+    if(part != NULL){
+      totCells = part->getTotalNumberEls();
+      if(part->getRank() != 0){
+        speak = 0;
+      }
+    }
+    if(speak){
+      std::cout << "Assembly - Element loop (nElements = " << totCells << ", nNodes/El = " << cell.size() << "):" << std::endl;
+    }
     pb.update();
   }
   EMatrix modelT(model->getLocalMatrix()->rows(), model->getLocalMatrix()->cols());
@@ -111,7 +118,6 @@ void CGSolver::assemble(){
     }
   }
   linSystem->assemble();
-
   cell.resize(refEl->getFaceElement()->getNumNodes());
   locCell.resize(refEl->getFaceElement()->getNumNodes());
   nodes.resize(0);
@@ -129,22 +135,50 @@ void CGSolver::assemble(){
   }
   if(modAssemble->matrix == Set){
     if(verbose){
-      std::cout << "Assembly - Zero loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << cell.size() << "):" << std::endl;
+      int totCells = boundaryFaces->size();
+      bool speak = 1;
+      if(part != NULL){
+        int locBs = boundaryFaces->size();
+        MPI_Reduce(&locBs, &totCells, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+        if(part->getRank() != 0){
+          speak = 0;
+        }
+      }
+      if(speak){
+        std::cout << "Assembly - Zero loop (nFaces = " << totCells << ", nNodes/Face = " << cell.size() << "):" << std::endl;
+      }
       pb.update();
     }
+    std::set<int> zeroSet;
     for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
       myMesh->getFace(*itFace, &cell);
-      linSystem->zeroOutRows(cell);
+      for(int i = 0; i < cell.size(); i++){ 
+        zeroSet.insert(cell[i]);
+      }
       if(verbose){
         index += 1;
         pb.update();
       }
     }
-    linSystem->assembleFlush();
+    std::vector<int> zeroRows(zeroSet.size(), 0);
+    std::copy(zeroSet.begin(), zeroSet.end(), zeroRows.begin());
+    linSystem->zeroOutRows(zeroRows);
+    linSystem->assemble();
   }
   if(verbose){
     index = 0;
-    std::cout << "Assembly - Boundary loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << cell.size() << "):" << std::endl;
+    int totCells = boundaryFaces->size();
+    bool speak = 1;
+    if(part != NULL){
+      int locBs = boundaryFaces->size();
+      MPI_Reduce(&locBs, &totCells, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+      if(part->getRank() != 0){
+        speak = 0;
+      }
+    }
+    if(speak){
+      std::cout << "Assembly - Boundary loop (nFaces = " << totCells << ", nNodes/Face = " << cell.size() << "):" << std::endl;
+    }
     pb.update();
   }
   for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
@@ -217,7 +251,11 @@ void CGSolver::calcSparsityPattern(){
   std::vector<int> locCell(nNodesEl, 0);
   for(int iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
     myMesh->getCell(iEl, &cell);
-    part->global2LocalNodeSlice(cell, &locCell);
+    if(part != NULL){
+      part->global2LocalNodeSlice(cell, &locCell);
+    } else {
+      locCell = cell;
+    }
     for(int iCell = 0; iCell < nNodesEl; iCell++){
       if(locCell[iCell] != -1){
         std::set<int> * nodeSet = &(sparsity[locCell[iCell]]);
@@ -242,14 +280,17 @@ void CGSolver::calcSparsityPattern(){
       } 
     }
   }
-  std::cout << "calculated sparsity" << std::endl;
   std::vector<int> locBuff;
   for(int iRow = 0; iRow < sparsity.size(); iRow++){
     int rowSize = sparsity[iRow].size()*nDOFsPerNode;
     cell.resize(sparsity[iRow].size());
     std::copy(sparsity[iRow].begin(), sparsity[iRow].end(), cell.begin());
     locBuff.resize(cell.size());
-    part->global2LocalNodeSlice(cell, &locBuff);
+    if(part != NULL){
+      part->global2LocalNodeSlice(cell, &locBuff);
+    } else {
+      locBuff = cell;
+    }
     int offDiag = 0;
     for(int k = 0; k < locBuff.size(); k++){
       if(locBuff[k] == -1){

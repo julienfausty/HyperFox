@@ -5,6 +5,7 @@
 #include <hdf5.h>
 #include <mpi.h>
 #include "Io.h"
+#include "Partitioner.h"
 #include "ErrorHandle.h"
 
 namespace hfox{

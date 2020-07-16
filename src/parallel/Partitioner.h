@@ -141,6 +141,18 @@ class Partitioner{
      * @param loc list to fill with local indeces
      */
     virtual void global2LocalElementSlice(const std::vector<int> & glob, std::vector<int> * loc) const;
+    /*!
+     * \brief get pointer to the node id list
+     */
+    virtual const std::vector<int> * getNodeIds() const{return &nodeIDs;};
+    /*!
+     * \brief get pointer to the face id list
+     */
+    virtual const std::vector<int> * getFaceIds() const{return &faceIDs;};
+    /*!
+     * \brief get pointer to the cell id list
+     */
+    virtual const std::vector<int> * getCellIds() const{return &elementIDs;};
   protected:
     /*!
      * \brief helper function for multiplying indexes

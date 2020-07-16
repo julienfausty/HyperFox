@@ -111,21 +111,27 @@ class TestUtils{
     std::vector<double> detJacs(refEl->getNumIPs(), 0.0);
     for(int i = 0; i < mesh->getNumberCells(); i++){
       mesh->getCell(i, &cell);
-      part->global2LocalNodeSlice(cell, &locCell);
-      for(int k = 0; k < locCell.size(); k++){
-        if(locCell[k] != -1){
-          mesh->getPoint(locCell[k], &(nodes[k]));
-          field1->getValues(locCell[k], &fieldBuff);
-          field1Vals[k] = fieldBuff[0];
-          field2->getValues(locCell[k], &fieldBuff);
-          field2Vals[k] = fieldBuff[0];
-        } else {
-          mesh->getGhostPoint(cell[k], &(nodes[k]));
-          field1->getParValues(cell[k], &fieldBuff);
-          field1Vals[k] = fieldBuff[0];
-          field2->getParValues(cell[k], &fieldBuff);
-          field2Vals[k] = fieldBuff[0];
+      if(part != NULL){
+        part->global2LocalNodeSlice(cell, &locCell);
+        for(int k = 0; k < locCell.size(); k++){
+          if(locCell[k] != -1){
+            mesh->getPoint(locCell[k], &(nodes[k]));
+            field1->getValues(locCell[k], &fieldBuff);
+            field1Vals[k] = fieldBuff[0];
+            field2->getValues(locCell[k], &fieldBuff);
+            field2Vals[k] = fieldBuff[0];
+          } else {
+            mesh->getGhostPoint(cell[k], &(nodes[k]));
+            field1->getParValues(cell[k], &fieldBuff);
+            field1Vals[k] = fieldBuff[0];
+            field2->getParValues(cell[k], &fieldBuff);
+            field2Vals[k] = fieldBuff[0];
+          }
         }
+      } else {
+        mesh->getSlicePoints(cell, &nodes);
+        field1->getSliceValues(cell, &field1Vals);
+        field2->getSliceValues(cell, &field2Vals);
       }
       detJacs = Operator::calcDetJacobians(Operator::calcJacobians(nodes, refEl));
       for(int j = 0; j < refEl->getNumIPs(); j++){
@@ -156,13 +162,17 @@ class TestUtils{
     std::vector<double> detJacs(refEl->getNumIPs(), 0.0);
     for(int i = 0; i < mesh->getNumberCells(); i++){
       mesh->getCell(i, &cell);
-      part->global2LocalNodeSlice(cell, &locCell);
-      for(int k = 0; k < locCell.size(); k++){
-        if(locCell[k] != -1){
-          mesh->getPoint(locCell[k], &(nodes[k]));
-        } else {
-          mesh->getGhostPoint(cell[k], &(nodes[k])); 
+      if(part != NULL){
+        part->global2LocalNodeSlice(cell, &locCell);
+        for(int k = 0; k < locCell.size(); k++){
+          if(locCell[k] != -1){
+            mesh->getPoint(locCell[k], &(nodes[k]));
+          } else {
+            mesh->getGhostPoint(cell[k], &(nodes[k])); 
+          }
         }
+      } else {
+        mesh->getSlicePoints(cell, &nodes);
       }
       detJacs = Operator::calcDetJacobians(Operator::calcJacobians(nodes, refEl));
       for(int j = 0; j < refEl->getNumIPs(); j++){
