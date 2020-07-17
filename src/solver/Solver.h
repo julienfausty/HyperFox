@@ -8,6 +8,7 @@
 #include "Field.h"
 #include "Mesh.h"
 #include "Partitioner.h"
+#include "Utils.h"
 
 namespace hfox{
 

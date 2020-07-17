@@ -122,6 +122,11 @@ class LinAlgebraInterface{
      */
     virtual void solve(std::vector<double> * solution)=0;
     /*!
+     * \brief get the solution ownership range of the partition
+     * @param range vector of indexes to fill with the range
+     */
+    virtual void getSolutionOwnership(std::vector<int> * range)=0;
+    /*!
      * \brief clear the values set in the system but keep the structure if possible
      */
     virtual void clearSystem()=0;

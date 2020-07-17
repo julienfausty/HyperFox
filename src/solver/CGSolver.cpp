@@ -237,7 +237,85 @@ void CGSolver::solve(){
   if(!assembled){
     throw(ErrorHandle("CGSolver", "solve", "system must be assembled before solving"));
   }
-  linSystem->solve((*fieldMap)["Solution"]->getValues());
+  std::vector<double> * solutionVec = (*fieldMap)["Solution"]->getValues();
+  linSystem->solve(solutionVec);
+  Partitioner * part = myMesh->getPartitioner();
+  if(part != NULL){
+    std::vector<int> thisRange;
+    linSystem->getSolutionOwnership(&thisRange);
+    //int nSendDofs = thisRange.size();
+    //std::vector<int> nDofs(part->getNumPartitions());
+    //std::vector<int> offsets(part->getNumPartitions());
+    //MPI_Allgather(&nSendDofs, 1, MPI_INT, nDofs.data(), 1, MPI_INT, MPI_COMM_WORLD);
+    //for(int i = 0; i < nDofs.size(); i++){
+      //offsets[i] = std::accumulate(nDofs.begin(), nDofs.begin() + i, 0);
+    //}
+    //std::vector<int> allDofIds(std::accumulate(nDofs.begin(), nDofs.end(), 0));
+    //std::vector<double> allDofVals(allDofIds.size());
+    //MPI_Allgatherv(thisRange.data(), thisRange.size(), MPI_INT, allDofIds.data(), nDofs.data(), offsets.data(), MPI_INT, MPI_COMM_WORLD);
+    //MPI_Allgatherv(solutionVec->data(), solutionVec->size(), MPI_DOUBLE, allDofVals.data(), nDofs.data(), offsets.data(), MPI_DOUBLE, MPI_COMM_WORLD);
+    //std::vector<int>::iterator it;
+    //for(int i = 0; i < part->getNodeIds()->size(); i++){
+      //for(int k = 0; k < nDOFsPerNode; k++){
+        //it = std::find(allDofIds.begin(), allDofIds.end(), part->getNodeIds()->at(i)*nDOFsPerNode + k);
+        //if(it != allDofIds.end()){
+          //(*solutionVec)[i*nDOFsPerNode + k] = allDofVals[std::distance(allDofIds.begin(), it)];
+        //} else {
+          //throw(ErrorHandle("CGSolver", "solve", "one of the dof indexes of the partition could not be found in the communication structure."));
+        //}
+      //}
+    //}
+    std::vector<int> dofsWeNeed(myMesh->getNumberPoints() * nDOFsPerNode, 0);
+    Utils::multiplyIndexes(nDOFsPerNode, part->getNodeIds(), &dofsWeNeed);
+    std::vector<int> currentMap, sendIds;
+    std::vector<double> sendVals;
+    std::vector<int>::iterator it;
+    for(int i = 0; i < thisRange.size(); i++){
+      it = std::find(dofsWeNeed.begin(), dofsWeNeed.end(), thisRange[i]);
+      if(it != dofsWeNeed.end()){
+        currentMap.push_back(i);
+        currentMap.push_back(std::distance(dofsWeNeed.begin(), it));
+      } else {
+        sendIds.push_back(thisRange[i]);
+        sendVals.push_back(solutionVec->at(i));
+      }
+    }
+    //do the reordering we can currently do on this partition
+    std::vector<double> buffer(solutionVec->size(), 0.0);
+    for(int i = 0; i < currentMap.size()/2; i++){
+      buffer[currentMap[2*i+1]] = solutionVec->at(currentMap[2*i]);
+    }
+    std::copy(buffer.begin(), buffer.end(), solutionVec->begin());
+    buffer.clear();
+    std::vector<int> recvIds;
+    for(int i = 0; i < dofsWeNeed.size(); i++){
+      it = std::find(thisRange.begin(), thisRange.end(), dofsWeNeed[i]);
+      if(it == thisRange.end()){
+        recvIds.push_back(dofsWeNeed[i]);
+        recvIds.push_back(i);
+      }
+    }
+    //gather the mismatched dofs to all nodes
+    int nSendDofs = sendIds.size();
+    std::vector<int> nDofs(part->getNumPartitions());
+    std::vector<int> offsets(part->getNumPartitions());
+    MPI_Allgather(&nSendDofs, 1, MPI_INT, nDofs.data(), 1, MPI_INT, MPI_COMM_WORLD);
+    for(int i = 0; i < nDofs.size(); i++){
+      offsets[i] = std::accumulate(nDofs.begin(), nDofs.begin() + i, 0);
+    }
+    std::vector<int> allDofIds(std::accumulate(nDofs.begin(), nDofs.end(), 0));
+    std::vector<double> allDofVals(allDofIds.size());
+    MPI_Allgatherv(sendIds.data(), sendIds.size(), MPI_INT, allDofIds.data(), nDofs.data(), offsets.data(), MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgatherv(sendVals.data(), sendVals.size(), MPI_DOUBLE, allDofVals.data(), nDofs.data(), offsets.data(), MPI_DOUBLE, MPI_COMM_WORLD);
+    for(int i = 0; i < recvIds.size()/2; i++){
+      it = std::find(allDofIds.begin(), allDofIds.end(), recvIds[2*i]);
+      if(it != allDofIds.end()){
+        (*solutionVec)[recvIds[2*i + 1]] = allDofVals[std::distance(allDofIds.begin(), it)];
+      } else {
+        throw(ErrorHandle("CGSolver", "solve", "one of the dof indexes of the partition could not be found in the communication structure."));
+      }
+    }
+  }
 };//solve
 
 void CGSolver::calcSparsityPattern(){

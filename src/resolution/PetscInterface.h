@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <string>
+#include <numeric>
 #include "petscksp.h"
 #include "petscerror.h"
 #include "LinAlgebraInterface.h"
@@ -124,6 +125,11 @@ class PetscInterface : public LinAlgebraInterface{
      */
     void solve(std::vector<double> * solution);
     /*!
+     * \brief get the column ownership range of the partition
+     * @param range vector of indexes to fill with the range
+     */
+    void getSolutionOwnership(std::vector<int> * range);
+    /*!
      * \brief assemble the system
      */
     void assemble();
@@ -192,6 +198,14 @@ class PetscInterface : public LinAlgebraInterface{
      * \brief buffer PETSC error code to not deal with the setup and teardown all the time
      */
     PetscErrorCode pErr;
+    /*!
+     * \brief low range for sol partition
+     */
+    int solLow;
+    /*!
+     * \brief high range for sol partition
+     */
+    int solHigh;
 
 };//PetscInterface
 

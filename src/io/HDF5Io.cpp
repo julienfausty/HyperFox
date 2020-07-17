@@ -260,18 +260,22 @@ void HDF5Io::writeMesh(hid_t meshGrp){
     std::cout << "gather cells" << std::endl;
     MPI_Gatherv(myMesh->getCells()->data(), nLocObj, MPI_INT, cells.data(), nObjPPart.data(), offsets.data(), MPI_INT, 0, MPI_COMM_WORLD);
     if(part->getRank() == 0){
+      std::vector<double> dbuffer(nodes.size(), 0.0);
       for(int i = 0; i < nNodes; i++){
         for(int k = 0; k < dimSpace; k++){
-          std::swap(nodes[i*dimSpace + k], nodes[nodeIds[i]*dimSpace + k]);
+          dbuffer[nodeIds[i]*dimSpace + k] = nodes[i*dimSpace + k];
         }
-        std::swap(nodeIds[i], nodeIds[nodeIds[i]]);
       }
+      std::copy(dbuffer.begin(), dbuffer.end(), nodes.begin());
+      dbuffer.clear();
+      std::vector<int> ibuffer(cells.size(), 0);
       for(int i = 0; i < nCells; i++){
         for(int k = 0; k < nNodesPCell; k++){
-          std::swap(cells[i*nNodesPCell + k], cells[cellIds[i]*nNodesPCell + k]);
+          ibuffer[cellIds[i]*nNodesPCell + k] = cells[i*nNodesPCell + k];
         }
-        std::swap(cellIds[i], cellIds[cellIds[i]]);
       }
+      std::copy(ibuffer.begin(), ibuffer.end(), cells.begin());
+      ibuffer.clear();
     }
   }
   bool is_master = 1;
@@ -356,12 +360,14 @@ void HDF5Io::writeFields(hid_t fieldGrp){
       nLocObj *= nFVals;
       MPI_Gatherv(it->second->getValues()->data(), nLocObj, MPI_DOUBLE, vals.data(), nObjPPart.data(), offsets.data(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
       if(part->getRank() == 0){
+        std::vector<double> dbuffer(vals.size(), 0.0);
         for(int i = 0; i < nEntities; i++){
           for(int k = 0; k < nFVals; k++){
-            std::swap(vals[i*nFVals + k], vals[fIds[i]*nFVals + k]);
+            dbuffer[fIds[i]*nFVals + k] = vals[i*nFVals + k];
           }
-          std::swap(fIds[i], fIds[fIds[i]]);
         }
+        std::copy(dbuffer.begin(), dbuffer.end(), vals.begin());
+        dbuffer.clear();
       }
     }
     bool is_master = 1;

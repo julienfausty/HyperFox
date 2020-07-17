@@ -57,10 +57,10 @@ void runSimulation(SimRun * thisRun){
   std::vector<Field*> fieldList = {&sol, &anaSol, &dirichlet, &residual};
   //calculate analytical solution
   std::vector<double> node(myMesh.getNodeSpaceDimension());
-  for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
-    myMesh.getPoint(iNode, &node);
-    anaSol.getValues()->at(iNode) = analyticalSolution(node);
-  }
+  //for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
+    //myMesh.getPoint(iNode, &node);
+    //anaSol.getValues()->at(iNode) = analyticalSolution(node);
+  //}
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
   fieldMap["Dirichlet"] = &dirichlet;
@@ -68,6 +68,10 @@ void runSimulation(SimRun * thisRun){
   zPart.computePartition();
   zPart.update();
   std::cout << "out of partitioning" << std::endl;
+  for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
+    myMesh.getPoint(iNode, &node);
+    (*anaSol.getValues())[iNode] = analyticalSolution(node);
+  }
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   LaplaceModel lapMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
@@ -110,6 +114,7 @@ void runSimulation(SimRun * thisRun){
   MPI_Allreduce(&(thisRun->dL2Err), &errBuff, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   thisRun->dL2Err = errBuff;
   hdfio.setField("Solution", &sol);
+  hdfio.setField("Analytical", &anaSol);
   std::string writePath = "/home/jfausty/workspace/Postprocess/results/parallel/CG/";
   hdfio.write(writePath + meshName);
 };
@@ -118,9 +123,10 @@ TEST_CASE("Testing parallel regression CGLaplace", "[parallel][CG][Laplace]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
-  meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"3e-1", "2e-1", "1e-1"};
-  std::vector<std::string> orders = {"1", "2", "3"};
+  //meshSizes["3"] = {"3e-1"};
+  //meshSizes["2"] = {"3e-1", "2e-1", "1e-1"};
+  meshSizes["2"] = {"1e-1"};
+  std::vector<std::string> orders = {"3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -147,7 +153,7 @@ TEST_CASE("Testing parallel regression CGLaplace", "[parallel][CG][Laplace]"){
     runSimulation(&(*it));
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
-    CHECK(it->l2Err < 1e-2);
+    CHECK(it->dL2Err < 1e-2);
     double timeBuff, runtime;
     timeBuff = it->runtime.count();
     MPI_Allreduce(&timeBuff, &runtime, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);

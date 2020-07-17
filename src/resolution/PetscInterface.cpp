@@ -234,6 +234,8 @@ void PetscInterface::solve(std::vector<double> * solution){
     Vec sol;
     pErr = VecCreateMPIWithArray(PETSC_COMM_WORLD, blocksize, nDOFs, PETSC_DETERMINE, solution->data(), &sol);
     CHKERRXX(pErr);
+    pErr = VecGetOwnershipRange(sol, &solLow, &solHigh);
+    CHKERRXX(pErr);
     pErr = KSPSolve(kspSolver, b, sol);
     CHKERRXX(pErr);
     pErr = VecDestroy(&sol);
@@ -242,6 +244,14 @@ void PetscInterface::solve(std::vector<double> * solution){
     throw(ErrorHandle("PetscInterface", "solve", "the matrix needs to be assembled before solving."));
   }
 };//solve
+
+void PetscInterface::getSolutionOwnership(std::vector<int> * range){
+  if(!assembled){
+    throw(ErrorHandle("PetscInterface", "getRowOwnership", "the matrix needs to be assembled before querying ownership."));
+  }
+  range->resize(solHigh - solLow, 0);
+  std::iota(range->begin(), range->end(), solLow);
+};//getRowOwnership
 
 void PetscInterface::clearSystem(){
   if(assembled){
