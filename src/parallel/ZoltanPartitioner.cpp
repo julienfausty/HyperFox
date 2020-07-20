@@ -3,13 +3,10 @@
 namespace hfox{
 
 ZoltanPartitioner::~ZoltanPartitioner(){
-  //std::cout << "Destroying" << std::endl;
   if(!(zChanges.isfree)){
-    //std::cout << "trying to free zChanges" << std::endl;
     freeZChanges();
   }
   if(zObj != NULL){
-    //std::cout << "trying to free zObj" <<std::endl;
     delete zObj;
   }
 };//destructor
@@ -171,35 +168,27 @@ void ZoltanPartitioner::computePartition(){
 
 
 int ZoltanPartitioner::getNumberCells(void * data, int * ierr){
-  //std::cout << "Getting number of cells... " << std::endl;
   Mesh * thisMesh = (Mesh*) data;
   *ierr = ZOLTAN_OK;
-  //std::cout << "nCells = " << thisMesh->getNumberCells() << std::endl;
   return thisMesh->getNumberCells();
 };//getNumberCells
 
 void ZoltanPartitioner::getListCells(void * data, int num_gid_entries, int num_lid_entries, ZOLTAN_ID_PTR global_ids, ZOLTAN_ID_PTR local_ids, int wgt_dim, float * obj_weights, int * ierr){
-  //std::cout << "Getting list of cells..." << std::endl;
   std::vector<unsigned int> * elIDs = (std::vector<unsigned int>*) data;
   *ierr = ZOLTAN_OK;
   std::copy(elIDs->begin(), elIDs->end(), global_ids);
   std::vector<unsigned int> locIds(elIDs->size());
   std::iota(locIds.begin(), locIds.end(), 0);
   std::copy(locIds.begin(), locIds.end(), local_ids);
-  //std::cout << "... finished list of cells" << std::endl;
 };//getListCells
 
 void ZoltanPartitioner::getNumNeighborsCellSlice(void * data, int num_gid_entries, int num_lid_entries, int num_obj, ZOLTAN_ID_PTR global_ids, ZOLTAN_ID_PTR local_ids, int * num_edges, int * ierr){
-  //std::cout << "Getting num of neighbors for cell slice..." << std::endl;
   std::pair<Mesh*, Partitioner*> * myPair = (std::pair<Mesh*, Partitioner*> *) data;
   *ierr = ZOLTAN_OK;
   std::vector<int> cell2Face(myPair->first->getReferenceElement()->getNumFaces());
   std::vector<int> face2Cell;
   int numNeighbors;
   int locFace;
-  //std::cout << "Cell Number/Number of neighbors:\n";
-  //for(int i = 0; i < num_obj; i++){std::cout << global_ids[i] << " ";}
-  //std::cout << "\n";
   for(int i = 0; i < num_obj; i++){
     numNeighbors = 0;
     myPair->first->getCell2Face(local_ids[i], &cell2Face);
@@ -213,22 +202,17 @@ void ZoltanPartitioner::getNumNeighborsCellSlice(void * data, int num_gid_entrie
       }
     }
     num_edges[i] = numNeighbors;
-    //std::cout << num_edges[i] << " ";
   }
-  //std::cout << std::endl;
 };//getNumNeighborsCellSlice
 
 void ZoltanPartitioner::getListNeighborsCellSlice(void * data, int num_gid_entries, int num_lid_entries, int num_obj, ZOLTAN_ID_PTR global_ids, ZOLTAN_ID_PTR local_ids, int * num_edges, ZOLTAN_ID_PTR nbor_global_ids, int * nbor_procs, int wgt_dim, float * ewgts, int * ierr){
-  //std::cout << "Getting neighbors for cell slice..." << std::endl;
   std::pair<Mesh*, Partitioner*> * myPair = (std::pair<Mesh*, Partitioner*> *) data;
   *ierr = ZOLTAN_OK;
   std::vector<int> cell2Face(myPair->first->getReferenceElement()->getNumFaces());
   std::vector<int> face2Cell;
   int locFace;
   int posNbors = 0;
-  //std::cout << "Cell - Neigbors : " << std::endl;
   for(int i = 0; i < num_obj; i++){// for the cells
-    //std::cout << global_ids[i] << " - ";
     myPair->first->getCell2Face(local_ids[i], &cell2Face);
     for(int j = 0; j < cell2Face.size(); j++){ //for the faces on the cells
       locFace = myPair->second->global2LocalFace(cell2Face[j]);// get the local index of the face
@@ -238,10 +222,8 @@ void ZoltanPartitioner::getListNeighborsCellSlice(void * data, int num_gid_entri
           nbor_procs[posNbors] = myPair->second->getRank();
           if(face2Cell[0] == global_ids[i]){//if the current cell is the first adjacency
             nbor_global_ids[posNbors] = face2Cell[1];//take the second adjacency
-            //std::cout << face2Cell[1] << " ";
           } else if(face2Cell[1] == global_ids[i]){//if the current cell is the second adjacency
             nbor_global_ids[posNbors] = face2Cell[0];//take the first
-            //std::cout << face2Cell[0] << " ";
           } else {
             throw(ErrorHandle("ZoltanPartitioner", "getListNeighborsCellSlice", "big issue: one of the faces of the element does not have the element as an adjacency in the face2Cell map"));
           }
@@ -255,7 +237,6 @@ void ZoltanPartitioner::getListNeighborsCellSlice(void * data, int num_gid_entri
             foundEl = 1;
             nbor_procs[posNbors] = myPair->second->getSharedFaceList()->at(k*3 + 1);
             nbor_global_ids[posNbors] = myPair->second->getSharedFaceList()->at(k*3 + 2);
-            //std::cout << nbor_global_ids[posNbors] << " ";
             posNbors += 1;
             break;
           }
@@ -265,9 +246,7 @@ void ZoltanPartitioner::getListNeighborsCellSlice(void * data, int num_gid_entri
         }
       }
     }
-    //std::cout << std::endl;
   }
-  //std::cout << "finished getting neighbors for slice" << std::endl;
 };//getListNeighborsCellSlice
 
 void ZoltanPartitioner::freeZChanges(){

@@ -30,7 +30,7 @@ void Solver::constructLocalFields(std::vector<int> & entities, std::vector<int> 
     for(int i = 0; i < entities.size(); i++){
       if(locEntities[i] != -1){
         F->getValues(locEntities[i], &buffer);
-      } else {
+      } else { 
         F->getParValues(entities[i], &buffer);
       }
       std::copy(buffer.begin(), buffer.end(), it->second.begin() + buffSize*i);

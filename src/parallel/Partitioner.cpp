@@ -707,6 +707,8 @@ void Partitioner::updateSharedInformation(){
       }
     }
   }
+  emptyImportExportMaps();
+  //do a last lookup of all the elements in partition to make sure all faces and nodes are available
 };//updateSharedInformation
 
 
@@ -730,9 +732,11 @@ void Partitioner::findLostEntities(FieldType ft, std::vector<int> * ents, std::v
       if(exportMap.find(globLostEnts[i*2]) == exportMap.end()){
         exportMap[globLostEnts[i*2]] = {{ft, std::vector<int>()}};
       }
-      exportMap[globLostEnts[i*2]][ft].push_back(globLostEnts[i*2 + 1]);
-      foundEnts.push_back(globLostEnts[i*2]);
-      foundEnts.push_back(rank);
+      if(std::find(exportMap[globLostEnts[i*2]][ft].begin(), exportMap[globLostEnts[i*2]][ft].end(), globLostEnts[i*2 + 1]) == exportMap[globLostEnts[i*2]][ft].end()){
+        exportMap[globLostEnts[i*2]][ft].push_back(globLostEnts[i*2 + 1]);
+        foundEnts.push_back(globLostEnts[i*2]);
+        foundEnts.push_back(rank);
+      }
     }
   }
   std::vector<int> globalFoundEnts;

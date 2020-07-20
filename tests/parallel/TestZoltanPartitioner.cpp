@@ -233,11 +233,11 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
   };
 
   SECTION("Testing shared information"){
-    std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-5e-2_ord-3.h5";
-    Mesh seqMesh(2, 3, "simplex");
+    std::string meshLocation = TestUtils::getRessourcePath() + "/meshes/regression/regression_dim-2_h-1e-1_ord-1.h5";
+    Mesh seqMesh(2, 1, "simplex");
     HDF5Io hdf5io(&seqMesh);
     hdf5io.load(meshLocation);
-    Mesh parMesh(2, 3, "simplex");
+    Mesh parMesh(2, 1, "simplex");
     HDF5Io parhdf5io(&parMesh);
     parhdf5io.load(meshLocation);
     Field nodeField(&parMesh, Node, 1, 1);

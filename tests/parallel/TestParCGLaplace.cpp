@@ -55,8 +55,9 @@ void runSimulation(SimRun * thisRun){
   }
   Field sol(&myMesh, Node, 1, 1);
   Field anaSol(&myMesh, Node, 1, 1);
+  Field partition(&myMesh, Node, 1, 1);
   Field residual(&myMesh, Node, 1, 1);
-  std::vector<Field*> fieldList = {&sol, &anaSol, &dirichlet, &residual};
+  std::vector<Field*> fieldList = {&sol, &anaSol, &dirichlet, &residual, &partition};
   //calculate analytical solution
   std::vector<double> node(myMesh.getNodeSpaceDimension());
   for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
@@ -69,15 +70,18 @@ void runSimulation(SimRun * thisRun){
   zPart.setFields(fieldList);
   zPart.computePartition();
   zPart.update(); 
+  for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
+    partition.getValues()->at(iNode) = zPart.getRank();
+  }
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   LaplaceModel lapMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-16;
-  myOpts.verbose = false;
+  myOpts.verbose = true;
   PetscInterface petsciface(myOpts);
   CGSolver mySolver;
-  mySolver.setVerbosity(false);
+  mySolver.setVerbosity(true);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
@@ -85,7 +89,18 @@ void runSimulation(SimRun * thisRun){
   mySolver.setBoundaryModel(&dirMod);
   mySolver.initialize();
   mySolver.allocate();
+  std::cout << "ParIds: " << zPart.getRank() << std::endl;
+  for(int i = 0; i < anaSol.getParIds()->size(); i++){
+    std::cout << anaSol.getParIds()->at(i) << " ";
+  }
+  std::cout << std::endl;
+  std::cout << "SharedNodes: " << zPart.getRank() << std::endl;
+  for(int i = 0; i < myMesh.getGhostPoints()->size(); i++){
+    std::cout << myMesh.getGhostPoints()->at(i) << " ";
+  }
+  std::cout << std::endl;
   mySolver.assemble();
+  std::cout << "finished assembly" << std::endl;
   mySolver.solve();
   for(int i = 0; i < myMesh.getNumberPoints(); i++){
     residual.getValues()->at(i) = anaSol.getValues()->at(i) - sol.getValues()->at(i);
@@ -107,6 +122,7 @@ void runSimulation(SimRun * thisRun){
   thisRun->dL2Err = errBuff;
   hdfio.setField("Solution", &sol);
   hdfio.setField("Analytical", &anaSol);
+  hdfio.setField("Partition", &partition);
   std::string writePath = "/home/jfausty/workspace/Postprocess/results/parallel/CG/";
   hdfio.write(writePath + meshName);
 };
@@ -157,9 +173,11 @@ TEST_CASE("Testing parallel regression CGLaplace", "[parallel][CG][Laplace]"){
       f << it->l2Err << ", ";
       f << it->dL2Err << ", ";
       f << runtime << "\n";
+      f << std::flush;
     }
   }
   if(rank == 0){
+    f << std::endl;
     f.close();
   }
 
