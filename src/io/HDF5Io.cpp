@@ -64,7 +64,6 @@ void HDF5Io::load(std::string filename){
 };//load
 
 void HDF5Io::write(std::string filename){
-  std::cout << "entering write" << std::endl;
   hid_t file;
   hid_t meshGrp;
   hid_t fieldGrp;
@@ -78,7 +77,6 @@ void HDF5Io::write(std::string filename){
     is_master = (mpiRank == 0);
   }
   if(is_master){
-    std::cout << "creating file" << std::endl;
     file = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
   }
   bool meshExists, fieldExists;
@@ -86,15 +84,11 @@ void HDF5Io::write(std::string filename){
   fieldExists = (!(fieldMap.empty()));
   if(meshExists){
     if(is_master){
-      std::cout << "creating meshGroup" << std::endl;
       meshGrp = H5Gcreate(file, "Mesh", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     }
-    std::cout << "calling writeMesh" << std::endl;
     writeMesh(meshGrp);
-    std::cout << "finished writeMesh" << std::endl;
     if(is_master){
       H5Gclose(meshGrp);
-      std::cout << "closed meshGroup" << std::endl;
     }
   }
   if(fieldExists){
@@ -112,7 +106,6 @@ void HDF5Io::write(std::string filename){
   if(is_master){
     H5Fclose(file);
   }
-  std::cout << "finished write" << std::endl;
 };//write
 
 void HDF5Io::loadMesh(hid_t meshGrp){
@@ -207,7 +200,6 @@ void HDF5Io::writeMesh(hid_t meshGrp){
   int dimSpace = myMesh->getNodeSpaceDimension();
   int nNodes;
   int nCells;
-  std::cout << "finished init writeMesh" << std::endl;
   if(part == NULL){
     nNodes = myMesh->getNumberPoints();
     nCells = myMesh->getNumberCells();
@@ -216,7 +208,6 @@ void HDF5Io::writeMesh(hid_t meshGrp){
     nodes.resize(meshNodes->size());
     std::copy(meshNodes->begin(), meshNodes->end(), nodes.begin());
   } else {
-    std::cout << "starting gathering" << std::endl;
     std::vector<int> nodeIds;
     std::vector<int> cellIds;
     nNodes = part->getTotalNumberNodes();
@@ -230,34 +221,28 @@ void HDF5Io::writeMesh(hid_t meshGrp){
     std::vector<int> nObjPPart(part->getNumPartitions());
     std::vector<int> offsets(part->getNumPartitions());
     int nLocObj = myMesh->getNumberPoints();
-    std::cout << "gather sizes" << std::endl;
     MPI_Allgather(&nLocObj, 1, MPI_INT, nObjPPart.data(), 1, MPI_INT, MPI_COMM_WORLD);
     for(int i = 0; i < part->getNumPartitions(); i++){
       offsets[i] = std::accumulate(nObjPPart.begin(), nObjPPart.begin() + i, 0);
     }
-    std::cout << "gather nodeId" << std::endl;
     MPI_Gatherv(part->getNodeIds()->data(), nLocObj, MPI_INT, nodeIds.data(), nObjPPart.data(), offsets.data(), MPI_INT, 0, MPI_COMM_WORLD);
     for(int i = 0; i < part->getNumPartitions(); i++){
       offsets[i] *= myMesh->getNodeSpaceDimension();
       nObjPPart[i] *= myMesh->getNodeSpaceDimension();
     }
     nLocObj *= myMesh->getNodeSpaceDimension();
-    std::cout << "gather nodes" << std::endl;
     MPI_Gatherv(myMesh->getPoints()->data(), nLocObj, MPI_DOUBLE, nodes.data(), nObjPPart.data(), offsets.data(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
     nLocObj = myMesh->getNumberCells();
-    std::cout << "gather sizes" << std::endl;
     MPI_Allgather(&nLocObj, 1, MPI_INT, nObjPPart.data(), 1, MPI_INT, MPI_COMM_WORLD);
     for(int i = 0; i < part->getNumPartitions(); i++){
       offsets[i] = std::accumulate(nObjPPart.begin(), nObjPPart.begin() + i, 0);
     }
-    std::cout << "gather cellIds" << std::endl;
     MPI_Gatherv(part->getCellIds()->data(), nLocObj, MPI_INT, cellIds.data(), nObjPPart.data(), offsets.data(), MPI_INT, 0, MPI_COMM_WORLD);
     for(int i = 0; i < part->getNumPartitions(); i++){
       offsets[i] *= nNodesPCell;
       nObjPPart[i] *= nNodesPCell;
     }
     nLocObj *= nNodesPCell;
-    std::cout << "gather cells" << std::endl;
     MPI_Gatherv(myMesh->getCells()->data(), nLocObj, MPI_INT, cells.data(), nObjPPart.data(), offsets.data(), MPI_INT, 0, MPI_COMM_WORLD);
     if(part->getRank() == 0){
       std::vector<double> dbuffer(nodes.size(), 0.0);

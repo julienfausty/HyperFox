@@ -38,7 +38,7 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     HDF5Io parhdf5io(&parMesh);
     parhdf5io.load(meshLocation);
     ZoltanOpts myOpts;
-    myOpts.debugLevel = "1";
+    myOpts.debugLevel = "0";
     ZoltanPartitioner zPart(&parMesh, myOpts);
     zPart.initialize();
     zPart.computePartition();
@@ -55,6 +55,12 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     int seqFaces = seqMesh.getNumberFaces();
     MPI_Bcast(&seqFaces, 1, MPI_INT, 0, MPI_COMM_WORLD);
     CHECK(totFaces == seqFaces);
+    int totBFaces = seqMesh.getBoundaryFaces()->size();
+    MPI_Bcast(&totBFaces, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    int locBFaces = parMesh.getBoundaryFaces()->size();
+    int sumBFaces = 0;
+    MPI_Allreduce(&locBFaces, &sumBFaces, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    CHECK(sumBFaces == totBFaces);
     std::vector<double> nodes(totNodes*2);
     std::copy(seqMesh.getPoints()->begin(), seqMesh.getPoints()->end(), nodes.begin());
     MPI_Bcast(nodes.data(), nodes.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -70,6 +76,9 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     std::vector<int> cell2FaceMap(totCells*3);
     std::copy(seqMesh.getCell2FaceMap()->begin(), seqMesh.getCell2FaceMap()->end(), cell2FaceMap.begin());
     MPI_Bcast(cell2FaceMap.data(), cell2FaceMap.size(), MPI_INT, 0, MPI_COMM_WORLD);
+    std::vector<int> boundaryFaces(totBFaces);
+    std::copy(seqMesh.getBoundaryFaces()->begin(), seqMesh.getBoundaryFaces()->end(), boundaryFaces.begin());
+    MPI_Bcast(boundaryFaces.data(), boundaryFaces.size(), MPI_INT, 0, MPI_COMM_WORLD);
     std::vector<double> point;
     std::vector<int> cell;
     //local checking
@@ -102,6 +111,14 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
       globIndex = zPart.local2GlobalFace(i);
       for(int k = 0; k < cell.size(); k++){
         CHECK(cell[k] == face2CellMap[globIndex*2 + k]);
+      }
+    }
+    for(std::set<int>::const_iterator it = parMesh.getBoundaryFaces()->begin(); it != parMesh.getBoundaryFaces()->end(); it++){
+      CHECK(std::find(boundaryFaces.begin(), boundaryFaces.end(), *it) != boundaryFaces.end());
+      int locIndex = zPart.global2LocalFace(*it);
+      parMesh.getFace(locIndex, &cell);
+      for(int i = 0; i < cell.size(); i++){
+        CHECK(cell[i] == faces[(*it) * nNodesPFace + i]);
       }
     }
     for(int i = 0; i < parMesh.getNumberCells(); i++){
@@ -165,7 +182,9 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     Field faceField(&parMesh, Face, 1, 1);
     std::iota(faceField.getValues()->begin(), faceField.getValues()->end(), 0);
     std::vector<Field*> fieldList = {&nodeField, &cellField, &faceField};
-    ZoltanPartitioner zPart(&parMesh);
+    ZoltanOpts myOpts;
+    myOpts.debugLevel = "0";
+    ZoltanPartitioner zPart(&parMesh, myOpts);
     zPart.initialize();
     zPart.setFields(fieldList);
     zPart.computePartition();
@@ -228,7 +247,9 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     Field faceField(&parMesh, Face, 1, 1);
     std::iota(faceField.getValues()->begin(), faceField.getValues()->end(), 0);
     std::vector<Field*> fieldList = {&nodeField, &cellField, &faceField};
-    ZoltanPartitioner zPart(&parMesh);
+    ZoltanOpts myOpts;
+    myOpts.debugLevel = "0";
+    ZoltanPartitioner zPart(&parMesh, myOpts);
     zPart.initialize();
     zPart.setFields(fieldList);
     zPart.computePartition();

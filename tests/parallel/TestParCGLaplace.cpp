@@ -36,7 +36,9 @@ void runSimulation(SimRun * thisRun){
   Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
   HDF5Io hdfio(&myMesh);
   hdfio.load(thisRun->meshLocation);
-  ZoltanPartitioner zPart(&myMesh);
+  ZoltanOpts zOpts;
+  zOpts.debugLevel = "0";
+  ZoltanPartitioner zPart(&myMesh, zOpts);
   zPart.initialize();
   int nNodesPerFace = myMesh.getReferenceElement()->getFaceElement()->getNumNodes();
   Field dirichlet(&myMesh, Face, nNodesPerFace, 1);
@@ -57,44 +59,34 @@ void runSimulation(SimRun * thisRun){
   std::vector<Field*> fieldList = {&sol, &anaSol, &dirichlet, &residual};
   //calculate analytical solution
   std::vector<double> node(myMesh.getNodeSpaceDimension());
-  //for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
-    //myMesh.getPoint(iNode, &node);
-    //anaSol.getValues()->at(iNode) = analyticalSolution(node);
-  //}
+  for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
+    myMesh.getPoint(iNode, &node);
+    anaSol.getValues()->at(iNode) = analyticalSolution(node);
+  }
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
   fieldMap["Dirichlet"] = &dirichlet;
   zPart.setFields(fieldList);
   zPart.computePartition();
-  zPart.update();
-  std::cout << "out of partitioning" << std::endl;
-  for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
-    myMesh.getPoint(iNode, &node);
-    (*anaSol.getValues())[iNode] = analyticalSolution(node);
-  }
+  zPart.update(); 
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   LaplaceModel lapMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-16;
-  myOpts.verbose = true;
+  myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   CGSolver mySolver;
-  mySolver.setVerbosity(true);
+  mySolver.setVerbosity(false);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
   mySolver.setModel(&lapMod);
   mySolver.setBoundaryModel(&dirMod);
-  std::cout << "finished set up" << std::endl;
   mySolver.initialize();
-  std::cout << "finished initialize" << std::endl;
   mySolver.allocate();
-  std::cout << "finished allocation" << std::endl;
   mySolver.assemble();
-  std::cout << "finished assembly" << std::endl;
   mySolver.solve();
-  std::cout << "finished solve" << std::endl;
   for(int i = 0; i < myMesh.getNumberPoints(); i++){
     residual.getValues()->at(i) = anaSol.getValues()->at(i) - sol.getValues()->at(i);
   }
@@ -124,9 +116,9 @@ TEST_CASE("Testing parallel regression CGLaplace", "[parallel][CG][Laplace]"){
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  //meshSizes["2"] = {"3e-1", "2e-1", "1e-1"};
-  meshSizes["2"] = {"1e-1"};
-  std::vector<std::string> orders = {"3"};
+  meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
+  //meshSizes["2"] = {"1e-1"};
+  std::vector<std::string> orders = {"1", "2", "3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){

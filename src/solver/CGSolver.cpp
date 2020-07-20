@@ -151,7 +151,11 @@ void CGSolver::assemble(){
     }
     std::set<int> zeroSet;
     for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
-      myMesh->getFace(*itFace, &cell);
+      if(part == NULL){
+        myMesh->getFace(*itFace, &cell);
+      } else {
+        myMesh->getFace(part->global2LocalFace(*itFace), &cell);
+      }
       for(int i = 0; i < cell.size(); i++){ 
         zeroSet.insert(cell[i]);
       }
@@ -182,15 +186,16 @@ void CGSolver::assemble(){
     pb.update();
   }
   for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
-    myMesh->getFace(*itFace, &cell);
     if(part == NULL){
+      myMesh->getFace(*itFace, &cell);
       myMesh->getSlicePoints(cell, &nodes);
       slice[0] = *itFace;
       constructLocalFields(slice, &faceFieldMap);
     } else {
+      locSlice[0] = part->global2LocalFace(*itFace);
+      myMesh->getFace(locSlice[0], &cell);
       part->global2LocalNodeSlice(cell, &locCell);
       slice[0] = *itFace;
-      locSlice[0] = part->global2LocalFace(*itFace);
       constructLocalFields(slice, locSlice, &faceFieldMap);
       for(int i = 0; i < locCell.size(); i++){
         if(locCell[i] != -1){

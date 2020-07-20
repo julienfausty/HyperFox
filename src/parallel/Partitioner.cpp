@@ -107,9 +107,6 @@ int Partitioner::getTotalNumberFaces() const{
   int nFaces = myMesh->getNumberFaces();
   int totnFaces = 0;
   MPI_Allreduce(&nFaces, &totnFaces, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-  //std::cout << "rank: " << rank << "\n";
-  //std::cout << "loc Faces: " << nFaces << "\n";
-  //std::cout << "glob Faces: " << totnFaces << std::endl;
   return totnFaces;
 };//getTotalNumberFaces
 
@@ -117,9 +114,6 @@ int Partitioner::getTotalNumberEls() const{
   int nCells = myMesh->getNumberCells();
   int totnCells = 0;
   MPI_Allreduce(&nCells, &totnCells, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-  //std::cout << "rank: " << rank << "\n";
-  //std::cout << "loc Cells: " << nCells << "\n";
-  //std::cout << "glob Cells: " << totnCells << std::endl;
   return totnCells;
 };//getTotalNumberEls
 
@@ -342,6 +336,9 @@ void Partitioner::update(){
     iAppender.setValues(&iBuffData);
     myMesh->modifyFace2CellMap(&iAppender);
     offset += nImpFace2Cells;
+    for(int k = offset; k < iRecvBuffer[itMap->first].size(); k++){
+      myMesh->getBoundaryFaces()->insert(iRecvBuffer[itMap->first][k]);
+    }
     for(int k = 0; k < fieldMap[Face].size(); k++){
       Field * F = fieldMap[Face][k];
       nFVals = (*(F->getNumObjPerEnt())) * (*(F->getNumValsPerObj()));
@@ -467,6 +464,7 @@ void Partitioner::transmitData(std::map<int, std::vector<int> > * iRecvBuffer, s
     }
     offset += nExpFaces + nExpFace2Cell;
     std::copy(boundaryBuffer.begin(), boundaryBuffer.end(), iSendBuffer[itMap->first].begin() + offset);
+    boundaryBuffer.clear();
     const std::vector<double> * pNodes = myMesh->getPoints();
     for(int i = 0; i < nNodes; i++){
       localCellIndex = global2LocalNode(itMap->second[Node][i]);
