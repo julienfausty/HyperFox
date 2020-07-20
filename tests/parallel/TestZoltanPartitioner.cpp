@@ -173,6 +173,12 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     int totNodes = zPart.getTotalNumberNodes();
     int totFaces = zPart.getTotalNumberFaces();
     int totCells = zPart.getTotalNumberEls();
+    CHECK(*(nodeField.getNumEntities()) == parMesh.getNumberPoints());
+    CHECK(*(faceField.getNumEntities()) == parMesh.getNumberFaces());
+    CHECK(*(cellField.getNumEntities()) == parMesh.getNumberCells());
+    CHECK((nodeField.getValues()->size()) == parMesh.getNumberPoints());
+    CHECK((faceField.getValues()->size()) == parMesh.getNumberFaces());
+    CHECK((cellField.getValues()->size()) == parMesh.getNumberCells());
     int globIndex;
     for(int i = 0; i < parMesh.getNumberPoints(); i++){
       globIndex = zPart.local2GlobalNode(i);

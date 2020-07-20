@@ -176,6 +176,12 @@ class Partitioner{
      */
     void transmitData(std::map<int, std::vector<int> > * iRecvBuffer, std::map<int, std::vector<double> > * dRecvBuffer, std::map<FieldType, std::vector<Field*> > & fieldMap);
     /*!
+     * \brief a last ditch effort to find some global entities that have gone missing and modify the import/export maps accordingly
+     * @param ents pointer to the ids of the entities on this partition
+     * @param lostEnts a list of pairs [ rankThatNeedsEnt EntId ]
+     */
+    void findLostEntities(FieldType ft, std::vector<int> * ents, std::vector<int> * lostEnts);
+    /*!
      * \brief pointer to the partitioned mesh
      */
     Mesh * myMesh = NULL;

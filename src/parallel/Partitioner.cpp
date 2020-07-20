@@ -291,6 +291,9 @@ void Partitioner::update(){
     remover.setValues(&locIndexes);
     remover.modify(&nodeIDs);
     myMesh->update();
+    for(int i = 0; i < fields.size(); i++){
+      fields[i]->computeNumEntities();
+    }
   }
   std::vector<int> iBuffData;
   std::vector<double> dBuffData;
@@ -368,6 +371,9 @@ void Partitioner::update(){
       foffset += nField;
     }
     myMesh->update();
+    for(int i = 0; i < fields.size(); i++){
+      fields[i]->computeNumEntities();
+    }
   }
   emptyImportExportMaps();
   //compute the shared faces list
@@ -559,7 +565,8 @@ void Partitioner::updateSharedInformation(){
     tag += 1;
     MPI_Recv(itMap->second[Face].data(), itMap->second[Face].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
-  std::set<int> nodeSet;
+  std::set<int> nodeSet, lostNodeSet;
+  std::vector<int> lostNodes;
   int localCellIndex;
   std::vector<int> cell;
   for(itMap = exportMap.begin(); itMap != exportMap.end(); itMap++){
@@ -567,13 +574,24 @@ void Partitioner::updateSharedInformation(){
       localCellIndex = global2LocalFace(itMap->second[Face][i]);
       myMesh->getFace(localCellIndex, &cell);
       for(int k = 0; k < cell.size(); k++){
-        nodeSet.insert(cell[k]);
+        localCellIndex = global2LocalNode(cell[k]);
+        if(localCellIndex != -1){
+          nodeSet.insert(cell[k]);
+        } else {
+          lostNodeSet.insert(cell[k]);
+        }
       }
     }
+    for(std::set<int>::iterator itSet = lostNodeSet.begin(); itSet != lostNodeSet.end(); itSet++){
+      lostNodes.push_back(itMap->first);
+      lostNodes.push_back(*itSet);
+    }
+    lostNodeSet.clear();
     itMap->second[Node] = std::vector<int>(nodeSet.size(), 0);
     std::copy(nodeSet.begin(), nodeSet.end(), itMap->second[Node].begin());
     nodeSet.clear();
   }
+  findLostEntities(Node, &nodeIDs, &lostNodes);
   for(itMap = exportMap.begin(); itMap != exportMap.end(); itMap++){
     tag = 2;
     int s = itMap->second[Node].size();
@@ -703,4 +721,31 @@ void Partitioner::multiplyIndexes(int dim, const std::vector<int> * indexes, std
   }
 };
 
-}
+void Partitioner::findLostEntities(FieldType ft, std::vector<int> * ents, std::vector<int> * lostEnts){
+  std::vector<int> globLostEnts;
+  Utils::allGather(lostEnts, &globLostEnts, MPI_COMM_WORLD);
+  std::vector<int>::iterator it;
+  std::vector<int> foundEnts;
+  for(int i = 0; i < globLostEnts.size()/2; i++){
+    it = std::find(ents->begin(), ents->end(), globLostEnts[i*2 + 1]);
+    if(it != ents->end()){
+      if(exportMap.find(globLostEnts[i*2]) == exportMap.end()){
+        exportMap[globLostEnts[i*2]] = {{ft, std::vector<int>()}};
+      }
+      exportMap[globLostEnts[i*2]][ft].push_back(globLostEnts[i*2 + 1]);
+      foundEnts.push_back(globLostEnts[i*2]);
+      foundEnts.push_back(rank);
+    }
+  }
+  std::vector<int> globalFoundEnts;
+  Utils::allGather(&foundEnts, &globalFoundEnts, MPI_COMM_WORLD);
+  for(int i = 0; i < globalFoundEnts.size()/2; i++){
+    if(globalFoundEnts[2*i] == rank){
+      if(importMap.find(globalFoundEnts[2*i + 1]) == importMap.end()){
+        importMap[globalFoundEnts[2*i + 1]] = {{ft, std::vector<int>()}};
+      }
+    }
+  }
+};//findLostEntities
+
+}//hfox
