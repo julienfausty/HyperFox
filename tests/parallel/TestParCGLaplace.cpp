@@ -113,8 +113,8 @@ void runSimulation(SimRun * thisRun){
   hdfio.setField("Analytical", &anaSol);
   hdfio.setField("Partition", &partition);
   //std::string writePath = "/home/jfausty/workspace/Postprocess/results/parallel/CG/";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/parallel/CG/";
-  hdfio.write(writePath + meshName);
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/parallel/CG/";
+  //hdfio.write(writePath + meshName);
 };
 
 TEST_CASE("Testing parallel regression CGLaplace", "[parallel][CG][Laplace]"){
@@ -142,11 +142,11 @@ TEST_CASE("Testing parallel regression CGLaplace", "[parallel][CG][Laplace]"){
   std::string writeFile = "Laplace.csv";
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  std::ofstream f;
-  if(rank == 0){
-    f.open(writePath + writeFile);
-    f << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
-  }
+  //std::ofstream f;
+  //if(rank == 0){
+    //f.open(writePath + writeFile);
+    //f << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
+  //}
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runSimulation(&(*it));
@@ -156,20 +156,20 @@ TEST_CASE("Testing parallel regression CGLaplace", "[parallel][CG][Laplace]"){
     double timeBuff, runtime;
     timeBuff = it->runtime.count();
     MPI_Allreduce(&timeBuff, &runtime, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-    if(rank == 0){
-      f << it->dim << ", ";
-      f << it->order << ", ";
-      f << it->meshSize << ", ";
-      f << it->linAlgErr << ", ";
-      f << it->l2Err << ", ";
-      f << it->dL2Err << ", ";
-      f << runtime << "\n";
-      f << std::flush;
-    }
+    //if(rank == 0){
+      //f << it->dim << ", ";
+      //f << it->order << ", ";
+      //f << it->meshSize << ", ";
+      //f << it->linAlgErr << ", ";
+      //f << it->l2Err << ", ";
+      //f << it->dL2Err << ", ";
+      //f << runtime << "\n";
+      //f << std::flush;
+    //}
   }
-  if(rank == 0){
-    f << std::endl;
-    f.close();
-  }
+  //if(rank == 0){
+    //f << std::endl;
+    //f.close();
+  //}
 
 };

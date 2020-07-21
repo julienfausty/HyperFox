@@ -123,7 +123,7 @@ void runHDGSimulation(SimRun * thisRun){
   hdfio.setField("Solution", &sol);
   hdfio.setField("Analytical", &anaSol);
   std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/parallel/HDG/";
-  hdfio.write(writePath + meshName);
+  //hdfio.write(writePath + meshName);
 };
 
 TEST_CASE("Testing regression HDGLaplace", "[parallel][HDG][Laplace]"){
@@ -150,11 +150,11 @@ TEST_CASE("Testing regression HDGLaplace", "[parallel][HDG][Laplace]"){
   std::string writeFile = "Laplace.csv";
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  std::ofstream f;
-  if(rank == 0){
-    f.open(writePath + writeFile);
-    f << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
-  }
+  //std::ofstream f;
+  //if(rank == 0){
+    //f.open(writePath + writeFile);
+    //f << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
+  //}
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runHDGSimulation(&(*it));
@@ -164,20 +164,20 @@ TEST_CASE("Testing regression HDGLaplace", "[parallel][HDG][Laplace]"){
     double timeBuff, runtime;
     timeBuff = it->runtime.count();
     MPI_Allreduce(&timeBuff, &runtime, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-    if(rank == 0){
-      f << it->dim << ", ";
-      f << it->order << ", ";
-      f << it->meshSize << ", ";
-      f << it->linAlgErr << ", ";
-      f << it->l2Err << ", ";
-      f << it->dL2Err << ", ";
-      f << runtime << "\n";
-      f << std::flush;
-    }
+    //if(rank == 0){
+      //f << it->dim << ", ";
+      //f << it->order << ", ";
+      //f << it->meshSize << ", ";
+      //f << it->linAlgErr << ", ";
+      //f << it->l2Err << ", ";
+      //f << it->dL2Err << ", ";
+      //f << runtime << "\n";
+      //f << std::flush;
+    //}
   }
-  if(rank == 0){
-    f << std::endl;
-    f.close();
-  }
+  //if(rank == 0){
+    //f << std::endl;
+    //f.close();
+  //}
 
 };
