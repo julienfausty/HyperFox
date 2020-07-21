@@ -74,7 +74,6 @@ void CGSolver::assemble(){
   }
   EMatrix modelT(model->getLocalMatrix()->rows(), model->getLocalMatrix()->cols());
   for(iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
-    std::cout << "iEl/totEl: " << iEl << "/" << myMesh->getNumberCells() << std::endl;
     myMesh->getCell(iEl, &cell);
     if(part == NULL){
       constructLocalFields(cell, &nodalFieldMap);
@@ -186,7 +185,6 @@ void CGSolver::assemble(){
     }
     pb.update();
   }
-  std::cout << "starting boundary assembly" << std::endl;
   for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
     if(part == NULL){
       myMesh->getFace(*itFace, &cell);

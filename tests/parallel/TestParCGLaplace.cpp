@@ -78,10 +78,10 @@ void runSimulation(SimRun * thisRun){
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-16;
-  myOpts.verbose = true;
+  myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   CGSolver mySolver;
-  mySolver.setVerbosity(true);
+  mySolver.setVerbosity(false);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
@@ -89,18 +89,7 @@ void runSimulation(SimRun * thisRun){
   mySolver.setBoundaryModel(&dirMod);
   mySolver.initialize();
   mySolver.allocate();
-  std::cout << "ParIds: " << zPart.getRank() << std::endl;
-  for(int i = 0; i < anaSol.getParIds()->size(); i++){
-    std::cout << anaSol.getParIds()->at(i) << " ";
-  }
-  std::cout << std::endl;
-  std::cout << "SharedNodes: " << zPart.getRank() << std::endl;
-  for(int i = 0; i < myMesh.getGhostPoints()->size(); i++){
-    std::cout << myMesh.getGhostPoints()->at(i) << " ";
-  }
-  std::cout << std::endl;
   mySolver.assemble();
-  std::cout << "finished assembly" << std::endl;
   mySolver.solve();
   for(int i = 0; i < myMesh.getNumberPoints(); i++){
     residual.getValues()->at(i) = anaSol.getValues()->at(i) - sol.getValues()->at(i);
@@ -123,7 +112,8 @@ void runSimulation(SimRun * thisRun){
   hdfio.setField("Solution", &sol);
   hdfio.setField("Analytical", &anaSol);
   hdfio.setField("Partition", &partition);
-  std::string writePath = "/home/jfausty/workspace/Postprocess/results/parallel/CG/";
+  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/parallel/CG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/parallel/CG/";
   hdfio.write(writePath + meshName);
 };
 
@@ -147,8 +137,9 @@ TEST_CASE("Testing parallel regression CGLaplace", "[parallel][CG][Laplace]"){
       }
     }
   }
-  std::string writePath = "/home/jfausty/workspace/Postprocess/results/parallel/";
-  std::string writeFile = "CG/CGLaplace.csv";
+  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/parallel/CG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/parallel/CG/";
+  std::string writeFile = "Laplace.csv";
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   std::ofstream f;

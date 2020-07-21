@@ -583,6 +583,8 @@ void Partitioner::updateSharedInformation(){
     for(std::set<int>::iterator itSet = lostNodeSet.begin(); itSet != lostNodeSet.end(); itSet++){
       lostNodes.push_back(itMap->first);
       lostNodes.push_back(*itSet);
+      lostNodes.push_back(rank);
+      lostNodes.push_back(*itSet);
     }
     lostNodeSet.clear();
     itMap->second[Node] = std::vector<int>(nodeSet.size(), 0);
@@ -708,7 +710,9 @@ void Partitioner::updateSharedInformation(){
     }
   }
   emptyImportExportMaps();
-  //do a last lookup of all the elements in partition to make sure all faces and nodes are available
+  std::vector<int> cell2Face;
+  //do a last lookup of all the elements in partition to make sure all nodes are available
+
 };//updateSharedInformation
 
 
@@ -726,9 +730,11 @@ void Partitioner::findLostEntities(FieldType ft, std::vector<int> * ents, std::v
   Utils::allGather(lostEnts, &globLostEnts, MPI_COMM_WORLD);
   std::vector<int>::iterator it;
   std::vector<int> foundEnts;
+  int locFoundCounter = 0;
   for(int i = 0; i < globLostEnts.size()/2; i++){
     it = std::find(ents->begin(), ents->end(), globLostEnts[i*2 + 1]);
     if(it != ents->end()){
+      locFoundCounter += 1;
       if(exportMap.find(globLostEnts[i*2]) == exportMap.end()){
         exportMap[globLostEnts[i*2]] = {{ft, std::vector<int>()}};
       }
@@ -738,6 +744,11 @@ void Partitioner::findLostEntities(FieldType ft, std::vector<int> * ents, std::v
         foundEnts.push_back(rank);
       }
     }
+  }
+  int globFoundCounter;
+  MPI_Allreduce(&locFoundCounter, &globFoundCounter, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  if(globFoundCounter != globLostEnts.size()/2){
+    throw(ErrorHandle("Partitioner", "findLostEntities", "some lost entities could not be found."));
   }
   std::vector<int> globalFoundEnts;
   Utils::allGather(&foundEnts, &globalFoundEnts, MPI_COMM_WORLD);
