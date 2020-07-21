@@ -104,6 +104,13 @@ class Solver{
      */
     void constructLocalFields(std::vector<int> & entities, std::vector<int> locEntities, std::map<std::string, std::vector<double> > * fm);
     /*!
+     * \brief a helper method for reordering a vector in parallel
+     * @param solutionVec pointer to the vector
+     * @param thisRange the current indexes of the DOFs of the solution
+     * @param dofsWeNeed the indexes this partition requires
+     */
+    virtual void reorder(std::vector<double> * solutionVec, std::vector<int> * thisRange, std::vector<int> * dofsWeNeed);
+    /*!
      * \brief the interface to the linear algebra package
      */
     LinAlgebraInterface * linSystem = NULL;

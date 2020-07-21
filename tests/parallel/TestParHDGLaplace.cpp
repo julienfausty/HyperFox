@@ -57,14 +57,22 @@ void runHDGSimulation(SimRun * thisRun){
   Field trace(&myMesh, Face, nNodesPerFace, 1);
   Field tau(&myMesh, Face, nNodesPerFace, 1);
   std::fill(tau.getValues()->begin(), tau.getValues()->end(), 1.0);
-  Field anaSol(&myMesh, Node, 1, 1);
+  Field anaSol(&myMesh, Cell, nNodes, 1);
   Field residual(&myMesh, Cell, nNodes, 1);
   std::vector<Field*> fieldList = {&sol, &flux, &trace, &tau, &anaSol, &dirichlet, &residual};
   //calculate analytical solution
   std::vector<double> node(myMesh.getNodeSpaceDimension());
-  for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
-    myMesh.getPoint(iNode, &node);
-    anaSol.getValues()->at(iNode) = sinExp(node);
+  for(int iCell = 0; iCell < myMesh.getNumberCells(); iCell++){
+    myMesh.getCell(iCell, &cell);
+    for(int k = 0; k < cell.size(); k++){
+      int iNode = zPart.global2LocalNode(cell[k]);
+      if(iNode != -1){
+        myMesh.getPoint(iNode, &node);
+      } else {
+        myMesh.getGhostPoint(cell[k], &node);
+      }
+      anaSol.getValues()->at(iCell*nNodes + k) = sinExp(node);
+    }
   }
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
@@ -80,10 +88,10 @@ void runHDGSimulation(SimRun * thisRun){
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-16;
-  myOpts.verbose = false;
+  myOpts.verbose = true;
   PetscInterface petsciface(myOpts);
   HDGSolver mySolver;
-  mySolver.setVerbosity(false);
+  mySolver.setVerbosity(true);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
@@ -101,11 +109,10 @@ void runHDGSimulation(SimRun * thisRun){
   cell.resize(nNodes);
   double sumRes = 0, sumAna = 0;
   for(int i = 0; i < myMesh.getNumberCells(); i++){
-    myMesh.getCell(i, &cell);
     for(int j = 0; j < nNodes; j++){
-      residual.getValues()->at(i*nNodes + j) = anaSol.getValues()->at(cell[j]) - sol.getValues()->at(i*nNodes + j);
+      residual.getValues()->at(i*nNodes + j) = anaSol.getValues()->at(i*nNodes + j) - sol.getValues()->at(i*nNodes + j);
       sumRes += std::pow(residual.getValues()->at(i*nNodes + j), 2);
-      sumAna += std::pow(anaSol.getValues()->at(cell[j]), 2);
+      sumAna += std::pow(anaSol.getValues()->at(i*nNodes + j), 2);
     }
   }
   thisRun->l2Err = std::sqrt(TestUtils::l2ProjectionCellField(&residual, &residual, &myMesh));
@@ -113,17 +120,18 @@ void runHDGSimulation(SimRun * thisRun){
   double errBuff = 0;
   MPI_Allreduce(&(thisRun->dL2Err), &errBuff, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   thisRun->dL2Err = errBuff;
-  //hdfio.setField("Solution", &sol);
-  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/LaplaceConvergence/HDG/";
-  //hdfio.write(writePath + meshName);
+  hdfio.setField("Solution", &sol);
+  hdfio.setField("Analytical", &anaSol);
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/parallel/HDG/";
+  hdfio.write(writePath + meshName);
 };
 
 TEST_CASE("Testing regression HDGLaplace", "[parallel][HDG][Laplace]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
-  meshSizes["3"] = {"2e-1"};
-  meshSizes["2"] = {"3e-1", "2e-1", "1e-1"};
+  //meshSizes["3"] = {"2e-1"};
+  meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
   std::vector<std::string> orders = {"1", "2", "3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
@@ -138,10 +146,15 @@ TEST_CASE("Testing regression HDGLaplace", "[parallel][HDG][Laplace]"){
     }
   }
 
-  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/LaplaceConvergence/";
-  //std::string writeFile = "HDG/HDGLaplace.csv";
-  //std::ofstream f; f.open(writePath + writeFile);
-  //f << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/parallel/HDG/";
+  std::string writeFile = "Laplace.csv";
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  std::ofstream f;
+  if(rank == 0){
+    f.open(writePath + writeFile);
+    f << "dim, order, h, linAlgErr, l2Err, dL2Err, runtime\n";
+  }
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runHDGSimulation(&(*it));
@@ -151,14 +164,20 @@ TEST_CASE("Testing regression HDGLaplace", "[parallel][HDG][Laplace]"){
     double timeBuff, runtime;
     timeBuff = it->runtime.count();
     MPI_Allreduce(&timeBuff, &runtime, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-    //f << it->dim << ", ";
-    //f << it->order << ", ";
-    //f << it->meshSize << ", ";
-    //f << it->linAlgErr << ", ";
-    //f << it->l2Err << ", ";
-    //f << it->dL2Err << ", ";
-    //f << it->runtime.count() << "\n";
+    if(rank == 0){
+      f << it->dim << ", ";
+      f << it->order << ", ";
+      f << it->meshSize << ", ";
+      f << it->linAlgErr << ", ";
+      f << it->l2Err << ", ";
+      f << it->dL2Err << ", ";
+      f << runtime << "\n";
+      f << std::flush;
+    }
   }
-  //f.close();
+  if(rank == 0){
+    f << std::endl;
+    f.close();
+  }
 
 };
