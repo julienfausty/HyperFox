@@ -88,10 +88,10 @@ void runHDGSimulation(SimRun * thisRun){
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-16;
-  myOpts.verbose = true;
+  myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   HDGSolver mySolver;
-  mySolver.setVerbosity(true);
+  mySolver.setVerbosity(false);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);

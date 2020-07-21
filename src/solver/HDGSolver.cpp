@@ -81,6 +81,11 @@ void HDGSolver::allocate(){
     calcSparsityPattern();
     linSystem->allocate(nDOFsPerNode*nNodesPFace*nFaces, &diagSparsePattern, &offSparsePattern);
   } else{
+    int nParts;
+    MPI_Comm_size(MPI_COMM_WORLD, &nParts);
+    if(nParts != 1){
+      throw(ErrorHandle("HDGSolver", "allocate", "the SEXPLICIT mode is currently unsuported in parallel, please use the WEXPLICIT mode instead."));
+    }
     if(S != NULL){delete S;}
     S = new Field(myMesh, Face, 1, std::pow(nDOFsPerNode*nNodesPFace, 2));
     if(S0 != NULL){delete S0;}
