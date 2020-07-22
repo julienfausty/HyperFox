@@ -182,9 +182,9 @@ void Partitioner::update(){
   if(!initialized){
     throw(ErrorHandle("Partitioner", "update", "must compute initialize the Partitioner and compute the Partition before updating the fields"));
   }
-  if(rank == 0){
-    std::cout << "Updating mesh and fields with new partition..." << std::endl;
-  }
+  //if(rank == 0){
+    //std::cout << "Updating mesh and fields with new partition..." << std::endl;
+  //}
   std::map<int, std::map<FieldType, std::vector<int> > >::iterator itMap;
   std::vector<int> cell;
   std::vector<int> cell2Face;
@@ -204,16 +204,16 @@ void Partitioner::update(){
     }
     fieldMap[*fT].push_back(fields[i]);
   }
-  if(rank == 0){
-    std::cout << "Generating send and recieve buffers for data" << std::endl;
-  }
+  //if(rank == 0){
+    //std::cout << "Generating send and recieve buffers for data" << std::endl;
+  //}
   //generate send/recieve buffers
   std::map<int, std::vector<int> > iRecvBuffer;
   std::map<int, std::vector<double> > dRecvBuffer;
   transmitData(&iRecvBuffer, &dRecvBuffer, fieldMap);
-  if(rank == 0){
-    std::cout << "Making modifications to mesh and fields" << std::endl;
-  }
+  //if(rank == 0){
+    //std::cout << "Making modifications to mesh and fields" << std::endl;
+  //}
   //make modifications to mesh and fields
   Modifier< std::vector<int> > remover;
   remover.setType(REMOVE);
@@ -378,9 +378,9 @@ void Partitioner::update(){
   computeSharedFaces();
   //update the mesh/fields with shared information
   updateSharedInformation();
-  if(rank == 0){
-    std::cout << "... finished updating partition" << std::endl;
-  }
+  //if(rank == 0){
+    //std::cout << "... finished updating partition" << std::endl;
+  //}
 };//update
 
 void Partitioner::transmitData(std::map<int, std::vector<int> > * iRecvBuffer, std::map<int, std::vector<double> > * dRecvBuffer, std::map<FieldType, std::vector<Field*> > & fieldMap){
@@ -479,9 +479,9 @@ void Partitioner::transmitData(std::map<int, std::vector<int> > * iRecvBuffer, s
       }
     }
   }
-  if(rank == 0){
-    std::cout << "Communicating send buffers of data" << std::endl;
-  }
+  //if(rank == 0){
+    //std::cout << "Communicating send buffers of data" << std::endl;
+  //}
   std::vector<int> sizes(exportMap.size()*2);
   std::vector<MPI_Request> requests(exportMap.size()*4);
   std::vector<MPI_Status> statuses(exportMap.size()*4);
@@ -527,9 +527,9 @@ void Partitioner::updateSharedInformation(){
   if(!initialized){
     throw(ErrorHandle("Partitioner", "updateSharedInformation", "must initialize the Partitioner before updating the shared information"));
   }
-  if(rank == 0){
-    std::cout << "Updating shared information" << std::endl;
-  }
+  //if(rank == 0){
+    //std::cout << "Updating shared information" << std::endl;
+  //}
   emptyImportExportMaps();
   for(int i = 0; i < sharedFaceList.size()/3; i++){
     if(importMap.find(sharedFaceList[i*3+1]) == importMap.end()){
@@ -646,9 +646,9 @@ void Partitioner::updateSharedInformation(){
   std::map<int, std::vector<int> > iRecvBuffer;
   std::map<int, std::vector<double> > dRecvBuffer;
   transmitData(&iRecvBuffer, &dRecvBuffer, fieldMap);
-  if(rank == 0){
-    std::cout << "Modifying shared information" << std::endl;
-  }
+  //if(rank == 0){
+    //std::cout << "Modifying shared information" << std::endl;
+  //}
   //make modifications to mesh and fields
   Modifier< std::vector<int> > remover;
   remover.setType(REMOVE);

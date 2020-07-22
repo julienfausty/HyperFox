@@ -593,12 +593,6 @@ void HDGSolver::solve(){
       EMap<EVector> S0Map(S0->getValues()->data() + iFace*lenT, lenT);
       EMap<EVector> trace(fieldMap->at("Trace")->getValues()->data() + iFace*lenT, lenT);
       trace = invS.solve(S0Map);
-      //std::cout << "Trace face " << iFace << std::endl;
-      //std::cout << trace << std::endl;
-      //std::cout << "S face " << iFace << std::endl;
-      //std::cout << SMap << std::endl;
-      //std::cout << "S0 face " << iFace << std::endl;
-      //std::cout << S0Map << std::endl;
       if(verbose){
         pb.update();
       }

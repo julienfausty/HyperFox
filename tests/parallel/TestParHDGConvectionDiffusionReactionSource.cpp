@@ -60,7 +60,15 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   std::string meshName = "regression_dim-" + thisRun->dim + "_h-" + thisRun->meshSize;
   meshName += "_ord-" + thisRun->order;
   thisRun->meshLocation += meshName + ".h5";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/parallel/CDRS/";
+  Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
+  HDF5Io hdfio(&myMesh);
+  hdfio.load(thisRun->meshLocation);
+  ZoltanOpts zOpts;
+  zOpts.debugLevel = "0";
+  ZoltanPartitioner zPart(&myMesh, zOpts);
+  zPart.initialize();
+  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/parallel/CDRS/";
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/parallel/CDRS/";
   if(globType == WEXPLICIT){
     writeDir += "WExp/";
   } else if(globType == SEXPLICIT){
@@ -92,12 +100,8 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
     writeDir += "Misc/";
     rkType = BEuler;
   }
+  writeDir += std::to_string(zPart.getNumPartitions()) + "/";
   writeDir += meshName + "_dt-" + thisRun->timeStep;
-  Mesh myMesh(std::stoi(thisRun->dim), std::stoi(thisRun->order), "simplex");
-  HDF5Io hdfio(&myMesh);
-  hdfio.load(thisRun->meshLocation);
-  ZoltanPartitioner zPart(&myMesh);
-  zPart.initialize();
   if(zPart.getRank() == 0){
     boost::filesystem::create_directory(writeDir);
   }
@@ -118,6 +122,7 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   Field oldTrace(&myMesh, Face, nNodesPerFace, 1);
   std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, 1));
   Field vel(&myMesh, Node, 1, nodeDim);
+  Field partition(&myMesh, Node, 1, 1);
   std::vector<double> node(nodeDim);
   double timeStep = std::stod(thisRun->timeStep);
   double v = 4.0; std::vector<double> cvel = {0.5, 0.5};
@@ -150,6 +155,7 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   fieldMap["Velocity"] = &vel;
   fieldMap["DiffusionTensor"] = &diff;
   hdfio.setField("Solution", &sol);
+  hdfio.setField("Partition", &partition);
   const std::set<int> * boundary = myMesh.getBoundaryFaces();
   std::vector<int> cell(nNodesPerFace, 0);
   std::vector< std::vector<double> > nodes(nNodesPerFace, std::vector<double>(nodeDim, 0.0));
@@ -165,17 +171,17 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
       projV = normals[j].dot(EMap<EVector>(locV.data(), locV.size()));
       //tau.getValues()->at(2*(i*nNodesPerFace + j)) = 0.0;
       //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0;
-      //tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV);
-      //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV);
-      if(projV > 0){
-        tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV) + D/carLen;
-        //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0; //Imp
-        tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = D/carLen; //Exp
-      } else {
-        //tau.getValues()->at(2*(i*nNodesPerFace + j)) = 0.0; //Imp
-        tau.getValues()->at(2*(i*nNodesPerFace + j)) = D/carLen; //Exp
-        tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV) + D/carLen;
-      }
+      tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV) + D/carLen;
+      tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV) + D/carLen;
+      //if(projV > 0){
+        //tau.getValues()->at(2*(i*nNodesPerFace + j)) = std::fabs(projV) + D/carLen;
+        ////tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = 0.0; //Imp
+        //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = D/carLen; //Exp
+      //} else {
+        ////tau.getValues()->at(2*(i*nNodesPerFace + j)) = 0.0; //Imp
+        //tau.getValues()->at(2*(i*nNodesPerFace + j)) = D/carLen; //Exp
+        //tau.getValues()->at(2*(i*nNodesPerFace + j) + 1) = std::fabs(projV) + D/carLen;
+      //}
     }
   }
   for(int i = 0; i < myMesh.getNumberCells(); i++){
@@ -201,9 +207,13 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   }
   fieldList.push_back(&anaSol);
   fieldList.push_back(&residual);
+  fieldList.push_back(&partition);
   zPart.setFields(fieldList);
   zPart.computePartition();
   zPart.update();
+  for(int i = 0; i < myMesh.getNumberPoints(); i++){
+    partition.getValues()->at(i) = zPart.getRank();
+  }
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   HDGConvectionDiffusionReactionSource transportMod(myMesh.getReferenceElement());
   ts.setTimeStep(timeStep);
@@ -370,7 +380,8 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[pa
     }
   }
 
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/parallel/CDRS/";
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/parallel/CDRS/";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/parallel/CDRS/";
   //HDGSolverType globType = WEXPLICIT;
   HDGSolverType globType = IMPLICIT;
   //HDGSolverType globType = SEXPLICIT;
@@ -397,6 +408,9 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[pa
   } else{
     writePath += "Misc/";
   }
+  int nParts;
+  MPI_Comm_size(MPI_COMM_WORLD, &nParts);
+  writePath += std::to_string(nParts) + "/";
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   std::ofstream f;
@@ -415,8 +429,6 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[pa
     MPI_Allreduce(&timeBuff, &maxRuntime, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(&timeBuff, &minRuntime, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(&timeBuff, &avgRuntime, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    int nParts;
-    MPI_Comm_size(MPI_COMM_WORLD, &nParts);
     avgRuntime /= nParts;
     if(rank == 0){
       f << it->dim << ", ";
