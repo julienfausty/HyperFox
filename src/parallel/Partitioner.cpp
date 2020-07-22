@@ -52,32 +52,33 @@ void Partitioner::computeSharedFaces(){
           globalFaceInd = local2GlobalFace(i);
           localSharedFaces.push_back(globalFaceInd);
           localSharedFaces.push_back(rank);
+          localSharedFaces.push_back((cell[(int) !j]));
           localSharedFaces.push_back(cell[j]);
           break;
         }
       }
     }
   }
-  int nSharedFaces = localSharedFaces.size()/3;
+  int nSharedFaces = localSharedFaces.size()/4;
   std::vector<int> nSharedFacesPerProc(nPartitions, 0);
   MPI_Allgather(&nSharedFaces, 1, MPI_INT, nSharedFacesPerProc.data(), 1, MPI_INT, MPI_COMM_WORLD);
   int totNSharedFaces = std::accumulate(nSharedFacesPerProc.begin(), nSharedFacesPerProc.end(), 0);
-  std::vector<int> allSharedFaces(totNSharedFaces*3, 0);
+  std::vector<int> allSharedFaces(totNSharedFaces*4, 0);
   std::vector<int> faceOffsets(nPartitions, 0);
   for(int i = 0; i < nPartitions; i++){
-    faceOffsets[i] = std::accumulate(nSharedFacesPerProc.begin(), nSharedFacesPerProc.begin()+i, 0) * 3;
+    faceOffsets[i] = std::accumulate(nSharedFacesPerProc.begin(), nSharedFacesPerProc.begin()+i, 0) * 4;
   }
   for(int i = 0; i < nPartitions; i++){
-    nSharedFacesPerProc[i] *= 3;
+    nSharedFacesPerProc[i] *= 4;
   }
   MPI_Allgatherv(localSharedFaces.data(), localSharedFaces.size(), MPI_INT, allSharedFaces.data(), nSharedFacesPerProc.data(), faceOffsets.data(), MPI_INT, MPI_COMM_WORLD);
   int adjEl;
   sharedFaceList.resize(0);
   for(int i = 0; i < totNSharedFaces; i++){
-    adjEl = global2LocalElement(allSharedFaces[i*3+2]);
+    adjEl = global2LocalElement(allSharedFaces[i*4+3]);
     if(adjEl != -1){
       for(int k = 0; k < 3; k++){
-        sharedFaceList.push_back(allSharedFaces[i*3 + k]);
+        sharedFaceList.push_back(allSharedFaces[i*4 + k]);
       }
     }
   }
@@ -182,7 +183,7 @@ void Partitioner::update(){
     throw(ErrorHandle("Partitioner", "update", "must compute initialize the Partitioner and compute the Partition before updating the fields"));
   }
   if(rank == 0){
-    //std::cout << "Updating mesh and fields with new partition..." << std::endl;
+    std::cout << "Updating mesh and fields with new partition..." << std::endl;
   }
   std::map<int, std::map<FieldType, std::vector<int> > >::iterator itMap;
   std::vector<int> cell;
@@ -204,14 +205,14 @@ void Partitioner::update(){
     fieldMap[*fT].push_back(fields[i]);
   }
   if(rank == 0){
-    //std::cout << "Generating send and recieve buffers for data" << std::endl;
+    std::cout << "Generating send and recieve buffers for data" << std::endl;
   }
   //generate send/recieve buffers
   std::map<int, std::vector<int> > iRecvBuffer;
   std::map<int, std::vector<double> > dRecvBuffer;
   transmitData(&iRecvBuffer, &dRecvBuffer, fieldMap);
   if(rank == 0){
-    //std::cout << "Making modifications to mesh and fields" << std::endl;
+    std::cout << "Making modifications to mesh and fields" << std::endl;
   }
   //make modifications to mesh and fields
   Modifier< std::vector<int> > remover;
@@ -378,7 +379,7 @@ void Partitioner::update(){
   //update the mesh/fields with shared information
   updateSharedInformation();
   if(rank == 0){
-    //std::cout << "... finished updating partition" << std::endl;
+    std::cout << "... finished updating partition" << std::endl;
   }
 };//update
 
@@ -479,20 +480,30 @@ void Partitioner::transmitData(std::map<int, std::vector<int> > * iRecvBuffer, s
     }
   }
   if(rank == 0){
-    //std::cout << "Communicating send buffers of data" << std::endl;
+    std::cout << "Communicating send buffers of data" << std::endl;
   }
+  std::vector<int> sizes(exportMap.size()*2);
+  std::vector<MPI_Request> requests(exportMap.size()*4);
+  std::vector<MPI_Status> statuses(exportMap.size()*4);
+  int s = 0; int r = 0;
   //send/recieve the buffers
   for(itMap = exportMap.begin(); itMap != exportMap.end(); itMap++){
     tag = 0;
-    int s = iSendBuffer[itMap->first].size();
-    MPI_Send(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    sizes[s] = iSendBuffer[itMap->first].size();
+    MPI_Isend(&(sizes[s]), 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD, &(requests[r]));
     tag += 1;
-    s = dSendBuffer[itMap->first].size();
-    MPI_Send(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    s += 1;
+    r += 1;
+    sizes[s] = dSendBuffer[itMap->first].size();
+    MPI_Isend(&(sizes[s]), 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD, &(requests[r]));
+    s += 1;
+    r += 1;
     tag += 1;
-    MPI_Send(iSendBuffer[itMap->first].data(), iSendBuffer[itMap->first].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    MPI_Isend(iSendBuffer[itMap->first].data(), iSendBuffer[itMap->first].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD, &(requests[r]));
     tag += 1;
-    MPI_Send(dSendBuffer[itMap->first].data(), dSendBuffer[itMap->first].size(), MPI_DOUBLE, itMap->first, tag, MPI_COMM_WORLD);
+    r += 1;
+    MPI_Isend(dSendBuffer[itMap->first].data(), dSendBuffer[itMap->first].size(), MPI_DOUBLE, itMap->first, tag, MPI_COMM_WORLD, &(requests[r]));
+    r += 1;
   }
   for(itMap = importMap.begin(); itMap != importMap.end(); itMap++){
     (*iRecvBuffer)[itMap->first] = std::vector<int>();
@@ -509,6 +520,7 @@ void Partitioner::transmitData(std::map<int, std::vector<int> > * iRecvBuffer, s
     tag += 1;
     MPI_Recv(dRecvBuffer->at(itMap->first).data(), dRecvBuffer->at(itMap->first).size(), MPI_DOUBLE, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
+  MPI_Waitall(requests.size(), requests.data(), statuses.data());
 };//transmitData
 
 void Partitioner::updateSharedInformation(){
@@ -516,7 +528,7 @@ void Partitioner::updateSharedInformation(){
     throw(ErrorHandle("Partitioner", "updateSharedInformation", "must initialize the Partitioner before updating the shared information"));
   }
   if(rank == 0){
-    //std::cout << "Updating shared information" << std::endl;
+    std::cout << "Updating shared information" << std::endl;
   }
   emptyImportExportMaps();
   for(int i = 0; i < sharedFaceList.size()/3; i++){
@@ -551,11 +563,16 @@ void Partitioner::updateSharedInformation(){
     }
   }
   int tag;
+  std::vector<MPI_Request> requests(importMap.size()*2);
+  std::vector<MPI_Status> statuses(requests.size());
+  int r = 0;
   for(itMap = importMap.begin(); itMap != importMap.end(); itMap++){
     tag = 0;
-    MPI_Send(itMap->second[Cell].data(), itMap->second[Cell].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    MPI_Isend(itMap->second[Cell].data(), itMap->second[Cell].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD, &(requests[r]));
+    r += 1;
     tag += 1;
-    MPI_Send(itMap->second[Face].data(), itMap->second[Face].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    MPI_Isend(itMap->second[Face].data(), itMap->second[Face].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD, &(requests[r]));
+    r += 1;
   }
   for(itMap = exportMap.begin(); itMap != exportMap.end(); itMap++){
     tag = 0;
@@ -563,6 +580,7 @@ void Partitioner::updateSharedInformation(){
     tag += 1;
     MPI_Recv(itMap->second[Face].data(), itMap->second[Face].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
+  MPI_Waitall(requests.size(), requests.data(), statuses.data());
   std::set<int> nodeSet, lostNodeSet;
   std::vector<int> lostNodes;
   int localCellIndex;
@@ -592,12 +610,20 @@ void Partitioner::updateSharedInformation(){
     nodeSet.clear();
   }
   findLostEntities(Node, &nodeIDs, &lostNodes);
+  std::vector<int> sizes(exportMap.size());
+  requests.resize(exportMap.size()*2);
+  statuses.resize(requests.size());
+  r = 0;
+  int s = 0;
   for(itMap = exportMap.begin(); itMap != exportMap.end(); itMap++){
     tag = 2;
-    int s = itMap->second[Node].size();
-    MPI_Send(&s, 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    sizes[s] = itMap->second[Node].size();
+    MPI_Isend(&(sizes[s]), 1, MPI_INT, itMap->first, tag, MPI_COMM_WORLD, &(requests[r]));
+    s += 1;
+    r += 1;
     tag += 1;
-    MPI_Send(itMap->second[Node].data(), itMap->second[Node].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD);
+    MPI_Isend(itMap->second[Node].data(), itMap->second[Node].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD, &(requests[r]));
+    r += 1;
   }
   for(itMap = importMap.begin(); itMap != importMap.end(); itMap++){
     tag = 2;
@@ -607,6 +633,7 @@ void Partitioner::updateSharedInformation(){
     tag += 1;
     MPI_Recv(itMap->second[Node].data(), itMap->second[Node].size(), MPI_INT, itMap->first, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
+  MPI_Waitall(requests.size(), requests.data(), statuses.data());
   std::map<FieldType, std::vector<Field*> > fieldMap;
   FieldType * fT;
   for(int i = 0; i < fields.size(); i++){
@@ -620,7 +647,7 @@ void Partitioner::updateSharedInformation(){
   std::map<int, std::vector<double> > dRecvBuffer;
   transmitData(&iRecvBuffer, &dRecvBuffer, fieldMap);
   if(rank == 0){
-    //std::cout << "Modifying shared information" << std::endl;
+    std::cout << "Modifying shared information" << std::endl;
   }
   //make modifications to mesh and fields
   Modifier< std::vector<int> > remover;

@@ -152,7 +152,7 @@ TEST_CASE("Testing parallel regression CGLaplace", "[parallel][CG][Laplace]"){
     runSimulation(&(*it));
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
-    CHECK(it->dL2Err < 1e-2);
+    CHECK(it->dL2Err < 1e-1);
     double timeBuff, runtime;
     timeBuff = it->runtime.count();
     MPI_Allreduce(&timeBuff, &runtime, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
