@@ -236,7 +236,7 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   mySolver.initialize();
   mySolver.allocate();
   hdfio.write(writeDir + "/res_0.h5");
-  double timeEnd = 1.0;
+  double timeEnd = 0.2;
   int nIters = timeEnd / timeStep;
   //int nIters = 2;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
@@ -354,7 +354,7 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[pa
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"7e-2"};
+  meshSizes["2"] = {"5e-2"};
   //meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
   std::vector<std::string> timeSteps = {"1e-4"};
