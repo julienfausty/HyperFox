@@ -59,7 +59,8 @@ void HDGBurgersModel::computeLocalMatrix(){
   ((HDGConvection*)operatorMap["Convection"])->setVelocity(parseSolutionVals());
   ((HDGConvection*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
   operatorMap["Convection"]->assemble(dV, invJacobians);
-  localMatrix += *(operatorMap["Convection"]->getMatrix()) + (*(operatorMap["Convection"]->getMatrix())).transpose();
+  localMatrix += *(operatorMap["Convection"]->getMatrix());
+  localMatrix.block(0, 0, refEl->getNumNodes()*nDOFsPNode, refEl->getNumNodes()*nDOFsPNode) += operatorMap["Convection"]->getMatrix()->block(0, 0, refEl->getNumNodes()*nDOFsPNode, refEl->getNumNodes()*nDOFsPNode).transpose();
   if(fieldMap.find("DiffusionTensor") != fieldMap.end()){
     ((HDGDiffusion*)operatorMap["Diffusion"])->setDiffusionTensor(parseDiffusionVals());
     ((HDGDiffusion*)operatorMap["Diffusion"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
@@ -73,7 +74,7 @@ void HDGBurgersModel::computeLocalRHS(){
     throw("HDGBurgersModel", "computeLocalRHS", "the nodes and the fields should be set before computing");
   }
   localRHS = EVector::Zero(localRHS.size());
-  localRHS.segment(0, operatorMap["Source"]->getMatrix()->rows()) += *(operatorMap["Convection"]->getMatrix()) * EMap<const EVector>(fieldMap["BufferSolution"]->data(), fieldMap["BufferSolution"]->size());
+  localRHS.segment(0, refEl->getNumNodes()*nDOFsPNode) += operatorMap["Convection"]->getMatrix()->block(0, 0, refEl->getNumNodes()*nDOFsPNode, refEl->getNumNodes()*nDOFsPNode) * EMap<const EVector>(fieldMap["BufferSolution"]->data(), fieldMap["BufferSolution"]->size());
 };//computeLocalRHS
 
 
