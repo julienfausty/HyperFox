@@ -102,9 +102,9 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   }
   writeDir += std::to_string(zPart.getNumPartitions()) + "/";
   writeDir += meshName + "_dt-" + thisRun->timeStep;
-  if(zPart.getRank() == 0){
-    boost::filesystem::create_directory(writeDir);
-  }
+  //if(zPart.getRank() == 0){
+    //boost::filesystem::create_directory(writeDir);
+  //}
   std::vector<std::string> auxiliaries = {"Flux", "Trace"};
   RungeKutta ts(myMesh.getReferenceElement(), rkType, auxiliaries);
   int nStages = ts.getNumStages();
@@ -235,20 +235,20 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   mySolver.setBoundaryModel(&dirMod);
   mySolver.initialize();
   mySolver.allocate();
-  hdfio.write(writeDir + "/res_0.h5");
+  //hdfio.write(writeDir + "/res_0.h5");
   double timeEnd = 0.2;
   int nIters = timeEnd / timeStep;
   //int nIters = 2;
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   int i = 0;
-  ProgressBar pbar;
-  pbar.setIterIndex(&i);
-  pbar.setNumIterations(nIters);
-  if(zPart.getRank() == 0){
-    std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
-  }
-  pbar.update();
+  //ProgressBar pbar;
+  //pbar.setIterIndex(&i);
+  //pbar.setNumIterations(nIters);
+  //if(zPart.getRank() == 0){
+    //std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
+  //}
+  //pbar.update();
   for(i = 0; i < nIters; i++){
     t += timeStep;
     //analytical sol
@@ -338,11 +338,11 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
     if(rem < timeStep/(5e-3)){
-      hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+      //hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
     }
     end = std::chrono::high_resolution_clock::now();
     thisRun->post += end - start;
-    pbar.update();
+    //pbar.update();
     if(thisRun->l2Err > 1.0){
       break;
     }
@@ -354,12 +354,12 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[pa
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"5e-2"};
-  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  //meshSizes["2"] = {"5e-2"};
+  meshSizes["2"] = {"2e-1", "1e-1"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-4"};
-  //std::vector<std::string> orders = {"1", "2", "3"};
-  std::vector<std::string> orders = {"3"};
+  std::vector<std::string> timeSteps = {"1e-2"};
+  std::vector<std::string> orders = {"1", "2"};
+  //std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
@@ -413,38 +413,38 @@ TEST_CASE("Testing regression cases for ConvectionDiffusionReactionSource", "[pa
   writePath += std::to_string(nParts) + "/";
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  std::ofstream f;
-  if(rank == 0){
-    f.open(writePath + writeFile);
-    f << "dim, order, h, linAlgErr, l2Err, dL2Err, avgRuntime, maxRuntime, minRuntime\n" << std::flush;
-  }
+  //std::ofstream f;
+  //if(rank == 0){
+    //f.open(writePath + writeFile);
+    //f << "dim, order, h, linAlgErr, l2Err, dL2Err, avgRuntime, maxRuntime, minRuntime\n" << std::flush;
+  //}
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runHDGCDRS(&(*it), globType);
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
-    //CHECK(it->l2Err < 1);
+    CHECK(it->l2Err < 1);
     double timeBuff, maxRuntime, avgRuntime, minRuntime;
     timeBuff = it->runtime.count();
     MPI_Allreduce(&timeBuff, &maxRuntime, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(&timeBuff, &minRuntime, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(&timeBuff, &avgRuntime, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     avgRuntime /= nParts;
-    if(rank == 0){
-      f << it->dim << ", ";
-      f << it->order << ", ";
-      f << it->meshSize << ", ";
-      f << it->linAlgErr << ", ";
-      f << it->l2Err << ", ";
-      f << it->dL2Err << ", ";
-      f << avgRuntime << ", ";
-      f << maxRuntime << ", ";
-      f << minRuntime << "\n";
-      f << std::flush;
-    }
+    //if(rank == 0){
+      //f << it->dim << ", ";
+      //f << it->order << ", ";
+      //f << it->meshSize << ", ";
+      //f << it->linAlgErr << ", ";
+      //f << it->l2Err << ", ";
+      //f << it->dL2Err << ", ";
+      //f << avgRuntime << ", ";
+      //f << maxRuntime << ", ";
+      //f << minRuntime << "\n";
+      //f << std::flush;
+    //}
   }
-  if(rank == 0){
-    f << std::endl;
-    f.close();
-  }
+  //if(rank == 0){
+    //f << std::endl;
+    //f.close();
+  //}
 };
