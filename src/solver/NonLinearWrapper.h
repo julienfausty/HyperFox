@@ -2,6 +2,7 @@
 #define NONLINEARWRAPPER_H
 
 #include <functional>
+#include <mpi.h>
 #include "Solver.h"
 #include "Field.h"
 
@@ -18,6 +19,10 @@ class NonLinearWrapper{
      * \brief default constructor
      */
     NonLinearWrapper();
+    /*!
+     * \brief destructor
+     */
+    ~NonLinearWrapper();
     /*!
      * \brief a method for solving the non linear problem
      */
@@ -37,11 +42,21 @@ class NonLinearWrapper{
      */
     void setMaxIterations(int iters){maxIters = iters;};
     /*!
+     * \brief set the verbosity
+     * @param verbosity boolean for verbose or not
+     */
+    void setVerbosity(bool verbosity){verbose = verbosity;};
+    /*!
      * \brief set the current and previous solutions
      * @param currentSol the current solution at this iteration
      * @param prevSol the solution from the previous iteration
      */
     void setSolutionFields(Field * currentSol, Field * prevSol){currentSolution = currentSol; previousSolution = prevSol;};
+    /*!
+     * \brief set the solver
+     * @param solver the solver
+     */
+    void setSolver(Solver * solver){mySolver = solver;};
     /*!
      * \brief set residual computer
      * @param resCom a method for computing the residual from the current and previous fields (optional)
@@ -49,20 +64,29 @@ class NonLinearWrapper{
     void setResidualComputer(std::function<double(Field*, Field*)> resComp){residualComputer = resComp;};
     /*!
      * \brief set the linearized solver method
-     * @param solCom a method for solving the linearized problem (mandatory)
+     * @param solCom a method for solving the linearized problem (optional)
      */
-    void setLinearizedSolver(std::function<void()> solComp){linearizedSolver = solComp;};
+    void setLinearizedSolver(std::function<void(Solver*)> solComp){linearizedSolver = solComp;};
   protected:
     /*!
      * \brief the vanilla residual computation (currentField - prevField)^2/(currentField)^2
      * @param currentSol the current solution at this iteration
      * @param prevSol the solution from the previous iteration
      */
-    double vanillaResidualComputer(Field * currentSol, Field * prevSol) const;
+    static double vanillaResidualComputer(Field * currentSol, Field * prevSol);
+    /*!
+     * \brief the vanilla solve
+     * @param solver the solver
+     */
+    static void vanillaLinearizedSolver(Solver * solver);
     /*!
      * \brief a pointer to the Solver one is wrapping around
      */
-    std::function<void()> linearizedSolver;
+    std::function<void(Solver*)> linearizedSolver;
+    /*!
+     * \brief the solver to solve for
+     */
+    Solver * mySolver;
     /*!
      * \brief pointer to the previous solution
      */
@@ -90,7 +114,7 @@ class NonLinearWrapper{
     /*!
      * \brief a boolean controling verbosity
      */
-    bool verbosity = true;
+    bool verbose = true;
 };//NonLinearWrapper
 
 }//hfox

@@ -97,7 +97,7 @@ void HDGConvectionDiffusionReactionSource::computeLocalMatrix(){
 
 void HDGConvectionDiffusionReactionSource::computeLocalRHS(){
   if(!(nodeSet and fieldSet)){
-    throw("HDGTransport", "computeLocalRHS", "the nodes and the fields should be set before computing");
+    throw("HDGConvectionDiffusionReactionSource", "computeLocalRHS", "the nodes and the fields should be set before computing");
   }
   localRHS = EVector::Zero(localRHS.size());
   if(sourceSet){

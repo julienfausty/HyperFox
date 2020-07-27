@@ -255,6 +255,7 @@ void CGSolver::solve(){
     std::vector<int> dofsWeNeed(myMesh->getNumberPoints() * nDOFsPerNode, 0);
     Utils::multiplyIndexes(nDOFsPerNode, part->getNodeIds(), &dofsWeNeed);
     reorder(solutionVec, &thisRange, &dofsWeNeed);
+    part->updateSharedInformation();
   }
 };//solve
 

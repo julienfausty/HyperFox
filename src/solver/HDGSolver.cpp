@@ -641,6 +641,9 @@ void HDGSolver::solve(){
       pb.update();
     }
   }
+  if(part != NULL){
+    part->updateSharedInformation();
+  }
 };//solve
 
 void HDGSolver::setOptions(HDGSolverOpts opts){
