@@ -55,7 +55,7 @@ void HDGSolver::allocate(){
   if(*(it->second->getNumObjPerEnt()) != myMesh->getReferenceElement()->getFaceElement()->getNumNodes()){
     throw(ErrorHandle("HDGSolver", "allocate", "the Tau field must have an object per element node."));
   }
-  if(((*(it->second->getNumValsPerObj()) != nDOFsPerNode) and (*(it->second->getNumValsPerObj()) != 2*nDOFsPerNode))){
+  if(((*(it->second->getNumValsPerObj()) != nDOFsPerNode*nDOFsPerNode) and (*(it->second->getNumValsPerObj()) != 2*nDOFsPerNode*nDOFsPerNode))){
     throw(ErrorHandle("HDGSolver", "allocate", "the Tau field must have the same or twice the number of values per object as the Solution field."));
   }
   it = fieldMap->find("Trace");
@@ -187,6 +187,7 @@ void HDGSolver::assemble(){
   int lenQ = lenU*dim;
   int startL = lenU + lenQ;
   int lenL = nFacesPEl*nNodesPFc*nDOFsPerNode;
+  int matLen = nDOFsPerNode*nDOFsPerNode;
   const std::vector< std::vector<int> > * nodeMap = refEl->getFaceNodes();
   const AssemblyType * modAssembly = model->getAssemblyType();
   std::map<std::string, std::vector<double> > locFieldMap;
@@ -272,33 +273,31 @@ void HDGSolver::assemble(){
         }
       }
     }
-    //check if face field is double valued and deal with it
-    for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){
-      if(*(fieldMap->at(itfm->first)->getNumValsPerObj()) == 2*nDOFsPerNode){
-        fieldBuffer.resize(lenL, 0.0);
-        for(int i = 0; i < nFacesPEl; i++){
-          if(part == NULL){
-            myMesh->getFace2Cell(facesInCell[i], &face2Cells);
+    //check if Tau field is supposed to be double valued and deal with it
+    if(myOpts.doubleValuedTau){
+      fieldBuffer.resize(faceFieldMap["Tau"].size()/2, 0.0);
+      for(int i = 0; i < nFacesPEl; i++){
+        if(part == NULL){
+          myMesh->getFace2Cell(facesInCell[i], &face2Cells);
+        } else {
+          if(locFacesInCell[i] != -1){
+            myMesh->getFace2Cell(locFacesInCell[i], &face2Cells);
           } else {
-            if(locFacesInCell[i] != -1){
-              myMesh->getFace2Cell(locFacesInCell[i], &face2Cells);
-            } else {
-              face2Cells[0] = unitCell[0];
-            }
-          }
-          offset = 1;
-          if(unitCell[0] == face2Cells[0]){
-            offset = 0;
-          }
-          for(int j = 0; j < nNodesPFc; j++){
-            for(int k = 0; k < nDOFsPerNode; k++){
-              buff = i*nNodesPFc + j*nDOFsPerNode + k;
-              fieldBuffer[buff] = itfm->second[buff*2 + offset];
-            }
+            face2Cells[0] = unitCell[0];
           }
         }
-        itfm->second = fieldBuffer;
+        offset = 1;
+        if(unitCell[0] == face2Cells[0]){
+          offset = 0;
+        }
+        for(int j = 0; j < nNodesPFc; j++){
+          for(int k = 0; k < matLen; k++){
+            buff = i*nNodesPFc + j*matLen+ k;
+            fieldBuffer[buff] = faceFieldMap["Tau"][buff*2 + offset];
+          }
+        }
       }
+      faceFieldMap["Tau"] = fieldBuffer;
     }
     //re order the face fields correctly for local ordering
     for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){

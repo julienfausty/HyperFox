@@ -134,6 +134,7 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
   solveOpts.verbosity = false;
+  solveOpts.doubleValuedTau = true;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);

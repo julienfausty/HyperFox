@@ -12,6 +12,7 @@ enum HDGSolverType{
 struct HDGSolverOpts{
   HDGSolverType type = IMPLICIT;
   bool verbosity = 1;
+  bool doubleValuedTau = 0;
 };//HDGSolverOpts
 
 }//hfox

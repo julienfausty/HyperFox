@@ -24,18 +24,21 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
         CHECK_THROWS(mod.setFieldMap(&fm));
         fm["BufferSolution"] = std::vector<double>(refEl.getNumNodes()*(i+1), 1.0);
         CHECK_THROWS(mod.setFieldMap(&fm));
-        fm["Tau"] = std::vector<double>(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()), 1.0);
+        fm["Tau"] = std::vector<double>(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * std::pow(i+1, 2), 1.0);
         CHECK_NOTHROW(mod.setFieldMap(&fm));
       };
 
       HDGBurgersModel mod(&refEl);
       std::map<std::string, std::vector<double> > fm;
-      std::vector<double> tau(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()), 1.0);
+      std::vector<double> tau(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * std::pow(i+1, 2), 0.0);
       std::vector<double> sol(refEl.getNumNodes() * (i+1), 0.0);
       std::vector<double> buffSol(refEl.getNumNodes() * (i+1), 2.0);
       std::vector<double> diff(refEl.getNumNodes()*(i+1)*(i+1), 0);
       for(int k = 0; k < refEl.getNumNodes(); k++){
         EMap<EMatrix>(diff.data() + (i+1)*(i+1)*k, (i+1), (i+1)) = EMatrix::Identity((i+1), (i+1))*3.0;
+      }
+      for(int k = 0; k < refEl.getNumFaces()*refEl.getFaceElement()->getNumNodes(); k++){
+        EMap<EMatrix>(tau.data() + (i+1)*(i+1)*k, (i+1), (i+1)) = EMatrix::Identity((i+1), (i+1));
       }
       std::iota(sol.begin(), sol.end(), 0.0);
       fm["Tau"] = tau;

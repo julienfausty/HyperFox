@@ -22,16 +22,17 @@ void HDGBase::allocate(int nDOFsPerNode){
 };//allocate
 
 void HDGBase::setTau(const std::vector<double> & userTaus){
+  int sizeTau = nDOFsPerNode * nDOFsPerNode;
   int nFaces = refEl->getNumFaces();
   const ReferenceElement * fEl = refEl->getFaceElement();
   int nNodesFace = fEl->getNumNodes();
-  taus.resize(nFaces*(fEl->getNumIPs()), 0.0);
+  taus.resize(nFaces*(fEl->getNumIPs())*sizeTau, 0.0);
   const std::vector< std::vector<double> > * ipShapes = fEl->getIPShapeFunctions();
   for(int i = 0; i < nFaces; i++){
-    EMap<const EVector> tau(userTaus.data() + i*nNodesFace, nNodesFace);
+    EMap<const EMatrix> tau(userTaus.data() + i*nNodesFace*sizeTau, nNodesFace, sizeTau);
     for(int j = 0; j < fEl->getNumIPs(); j++){
       EMap<const EVector> shape((ipShapes->at(j)).data(), (ipShapes->at(j)).size());
-      taus[i*(fEl->getNumIPs()) + j] = tau.dot(shape);
+      EMap<EMatrix>(taus.data() + (i*(fEl->getNumIPs()) + j)*sizeTau, 1, sizeTau) = shape.transpose() * tau;
     }
   }
 };//setTau
@@ -93,6 +94,7 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
   int lenUblock = nNodesEl;
   int lenQblock = nNodesEl*dim;
   int lenLblock = nFaces*nNodesFace;
+  int sizeTau = nDOFsPerNode * nDOFsPerNode;
   //Sqq
   bulkMass->assemble(dV, invJacobians);
   op.block(startQblock, startQblock, lenQblock, lenQblock) += *(bulkMass->getMatrix());
@@ -112,7 +114,6 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
   const std::vector<int> * nodeMap;
   for(int iFace = 0; iFace < nFaces; iFace++){
     std::copy(invJacobians.begin() + nIPsEl + iFace*nIPsFace, invJacobians.begin() + nIPsEl + (iFace+1)*nIPsFace, faceInvJacs.begin());
-    std::copy(taus.begin() + iFace*nIPsFace, taus.begin() + (iFace+1)*nIPsFace, faceTaus.begin());
     nodeMap = &(refEl->getFaceNodes()->at(iFace));
     int startDiag = startLblock + iFace*nNodesFace;
     //Sql
@@ -126,30 +127,66 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
         op.block(startQblock + dim*(nodeMap->at(j)) + i, startDiag, 1, nNodesFace) -= (faceMass->getMatrix()->col(j)).transpose();
       }
     }
-    //Sll
-    for(int i = 0; i < nIPsFace; i++){
-      faceTaus[i] *= dV[nIPsEl + iFace * nIPsFace + i];
-    }
-    faceMass->assemble(faceTaus, faceInvJacs);
-    op.block(startDiag, startDiag, nNodesFace, nNodesFace) -= *(faceMass->getMatrix());
-    //Slu
-    for(int k = 0; k < nNodesFace; k++){
-      op.block(startDiag, nodeMap->at(k), nNodesFace, 1) += (*(faceMass->getMatrix())).col(k);
-    }
   }
-  //Suu
-  for(int iFace = 0; iFace < nFaces; iFace++){
-    nodeMap = &(refEl->getFaceNodes()->at(iFace));
-    int startDiag = startLblock + iFace*nNodesFace;
-    for(int i = 0; i < nNodesFace; i++){
-      op.block(nodeMap->at(i), 0, 1, lenUblock) += op.block(startDiag + i, 0, 1, lenUblock);
-    }
-  }
-  //Sul
-  op.block(startUblock, startLblock, lenUblock, lenLblock) -= op.block(startLblock, startUblock, lenLblock, lenUblock).transpose();
+
   if(nDOFsPerNode > 1){
     multiplyDOFs();
   }
+  double val;
+  bool allZeros;
+  for(int dofUp = 0; dofUp < nDOFsPerNode; dofUp++){
+    for(int dofDown = 0; dofDown < nDOFsPerNode; dofDown++){
+      for(int iFace = 0; iFace < nFaces; iFace++){
+        std::copy(invJacobians.begin() + nIPsEl + iFace*nIPsFace, invJacobians.begin() + nIPsEl + (iFace+1)*nIPsFace, faceInvJacs.begin());
+        nodeMap = &(refEl->getFaceNodes()->at(iFace));
+        for(int i = 0; i < nIPsFace; i++){
+          faceTaus[i] = taus[(iFace*nIPsFace + i)*sizeTau + dofUp*nDOFsPerNode + dofDown];
+        }
+        allZeros = 1;
+        for(int i = 0; i < nIPsFace; i++){
+          if(faceTaus[i] != 0){
+            allZeros = 0;
+            break;
+          }
+        }
+        if(allZeros){
+          continue;
+        }
+        for(int i = 0; i < nIPsFace; i++){
+          faceTaus[i] *= dV[nIPsEl + iFace * nIPsFace + i];
+        } 
+        faceMass->assemble(faceTaus, faceInvJacs);
+        for(int k = 0; k < nNodesFace; k++){
+          for(int l = 0; l < nNodesFace; l++){
+            val = (*(faceMass->getMatrix()))(k,l);
+            //Sll
+            op((startLblock + iFace*nNodesFace + k)*nDOFsPerNode + dofUp, (startLblock + iFace*nNodesFace + l)*nDOFsPerNode + dofDown) -= val;
+            //Slu
+            op((startLblock + iFace*nNodesFace + k)*nDOFsPerNode + dofUp, nodeMap->at(l)*nDOFsPerNode + dofDown) += val;
+            //Suu
+            op(nodeMap->at(k)*nDOFsPerNode + dofUp, nodeMap->at(l)*nDOFsPerNode + dofDown) += val;
+            //Sul
+            op(nodeMap->at(k)*nDOFsPerNode + dofUp, (startLblock + iFace*nNodesFace + l)*nDOFsPerNode + dofDown) -= val;
+          }
+        }
+        //op.block(startDiag, startDiag, nNodesFace, nNodesFace) -= *(faceMass->getMatrix());
+        ////Slu
+        //for(int k = 0; k < nNodesFace; k++){
+          //op.block(startDiag, nodeMap->at(k), nNodesFace, 1) += (*(faceMass->getMatrix())).col(k);
+        //}
+      }
+    }
+  }
+  //Suu
+  //for(int iFace = 0; iFace < nFaces; iFace++){
+    //nodeMap = &(refEl->getFaceNodes()->at(iFace));
+    //int startDiag = startLblock + iFace*nNodesFace;
+    //for(int i = 0; i < nNodesFace; i++){
+      //op.block(nodeMap->at(i), 0, 1, lenUblock) += op.block(startDiag + i, 0, 1, lenUblock);
+    //}
+  //}
+  ////Sul
+  //op.block(startUblock, startLblock, lenUblock, lenLblock) -= op.block(startLblock, startUblock, lenLblock, lenUblock).transpose();
 };//assemble
 
 }//hfox
