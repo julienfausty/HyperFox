@@ -11,17 +11,17 @@
 #include "ZoltanPartitioner.h"
 #include "HDF5Io.h"
 #include "Operator.h"
-#include "HDGBurgersModel.h"
+#include "BurgersModel.h"
 #include "RungeKutta.h"
 #include "DirichletModel.h"
 #include "PetscInterface.h"
-#include "HDGSolver.h"
+#include "CGSolver.h"
 #include "NonLinearWrapper.h"
 #include "TestUtils.h"
 
 using namespace hfox;
 
-namespace hdg{
+namespace cg{
 
 double potentialiBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0){
   return (std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1])));
@@ -90,9 +90,9 @@ void analyticalBurgersGrad(double t, std::vector<double> x, double D, std::vecto
   res += (2.0*D/std::pow(pot, 2.0))*(gPot * gPot.transpose());
 };
 
-};//hdg
+};//cg
 
-void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
+void runCGBurgers(SimRun * thisRun){
   //setup
   //Load mesh
   std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
@@ -126,59 +126,41 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   } else{
     rkType = BEuler;
   }
-  std::vector<std::string> auxiliaries = {"Flux", "Trace"};
-  RungeKutta ts(myMesh.getReferenceElement(), rkType, auxiliaries);
+  RungeKutta ts(myMesh.getReferenceElement(), rkType);
   int nStages = ts.getNumStages();
   //initialize fields
   int nNodesPerEl = myMesh.getReferenceElement()->getNumNodes();
   int nNodesPerFace = myMesh.getReferenceElement()->getFaceElement()->getNumNodes();
   int nodeDim = myMesh.getNodeSpaceDimension();
   Field dirichlet(&myMesh, Face, nNodesPerFace, nodeDim);
-  Field sol(&myMesh, Cell, nNodesPerEl, nodeDim);
-  Field buffSol(&myMesh, Cell, nNodesPerEl, nodeDim);
-  Field oldSol(&myMesh, Cell, nNodesPerEl, nodeDim);
-  Field flux(&myMesh, Cell, nNodesPerEl, std::pow(nodeDim, 2));
-  Field oldFlux(&myMesh, Cell, nNodesPerEl, std::pow(nodeDim, 2));
-  Field trace(&myMesh, Face, nNodesPerFace, nodeDim);
-  Field oldTrace(&myMesh, Face, nNodesPerFace, nodeDim);
+  Field sol(&myMesh, Node, 1, nodeDim);
+  Field buffSol(&myMesh, Node, 1, nodeDim);
+  Field oldSol(&myMesh, Node, 1, nodeDim);
   Field partition(&myMesh, Node, 1, 1);
   Field diffCoeff(&myMesh, Node, 1, 1);
-  Field tau(&myMesh, Face, nNodesPerFace, std::pow(nodeDim, 2));
-  Field anaSol(&myMesh, Cell, nNodesPerEl, nodeDim);
-  Field residual(&myMesh, Cell, nNodesPerEl, 1);
-  std::vector<Field> rkStages(nStages, Field(&myMesh, Cell, nNodesPerEl, nodeDim));
-  std::vector<Field> rkFluxStages(nStages, Field(&myMesh, Cell, nNodesPerEl, std::pow(nodeDim, 2)));
-  std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, nodeDim));
+  Field anaSol(&myMesh, Node, 1, nodeDim);
+  Field residual(&myMesh, Node, 1, 1);
+  std::vector<Field> rkStages(nStages, Field(&myMesh, Node, 1, nodeDim));
   //create fieldMap
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
   fieldMap["BufferSolution"] = &buffSol;
   fieldMap["OldSolution"] = &oldSol;
-  fieldMap["Flux"] = &flux;
-  fieldMap["OldFlux"] = &oldFlux;
-  fieldMap["Trace"] = &trace;
-  fieldMap["OldTrace"] = &oldTrace;
   for(int i = 0; i < nStages; i++){
     fieldMap["RKStage_" + std::to_string(i)] = &(rkStages[i]);
-    fieldMap["RKStage_Flux_" + std::to_string(i)] = &(rkFluxStages[i]);
-    fieldMap["RKStage_Trace_" + std::to_string(i)] = &(rkTraceStages[i]);
   }
-  fieldMap["Tau"] = &tau;
   fieldMap["Dirichlet"] = &dirichlet;
   fieldMap["DiffusionTensor"] = &diffCoeff;
   //initialize models, solvers, etc.
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
-  HDGBurgersModel transportMod(myMesh.getReferenceElement());
+  BurgersModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 20000;
   myOpts.rtol = 1e-12;
   myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
-  HDGSolverOpts solveOpts;
-  solveOpts.type = globType;
-  solveOpts.verbosity = false;
-  HDGSolver mySolver;
-  mySolver.setOptions(solveOpts);
+  CGSolver mySolver;
+  mySolver.setVerbosity(false);
   mySolver.setMesh(&myMesh);
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
@@ -188,14 +170,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/";
-  if(globType == WEXPLICIT){
-    writeDir += "WExp/";
-  } else if(globType == SEXPLICIT){
-    writeDir += "SExp/";
-  } else {
-    writeDir += "Imp/";
-  }
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
   if(rkStr == "BEuler"){
     writeDir += "BEuler/";
   }else if(rkStr == "ALX2"){
@@ -216,7 +191,6 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
     boost::filesystem::create_directory(writeDir);
   }
   hdfio.setField("Solution", &sol);
-  hdfio.setField("Flux", &flux);
   hdfio.setField("Analytical", &anaSol);
   hdfio.setField("Residual", &residual);
   hdfio.setField("Partition", &partition);
@@ -233,18 +207,11 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   std::vector<double> node;
   std::vector<double> dbuffer;
   //initialize field values
-  for(int i = 0; i < myMesh.getNumberCells(); i++){
-    myMesh.getCell(i, &cell);
-    for(int j = 0; j < cell.size(); j++){
-      myMesh.getPoint(cell[j], &node);
-      hdg::analyticalBurgers(t, node, D, &dbuffer);
-      for(int k = 0; k < dbuffer.size(); k++){
-        sol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
-      }
-      hdg::analyticalBurgersGrad(t, node, D, &dbuffer);
-      for(int k = 0; k < dbuffer.size(); k++){
-        flux.getValues()->at((i*nNodesPerEl + j)*dimGrad + k) = dbuffer[k];
-      }
+  for(int i = 0; i < myMesh.getNumberPoints(); i++){
+    myMesh.getPoint(i, &node);
+    cg::analyticalBurgers(t, node, D, &dbuffer);
+    for(int k = 0; k < dbuffer.size(); k++){
+      sol.getValues()->at(i*nodeDim + k) = dbuffer[k];
     }
   }
   std::copy(sol.getValues()->begin(), sol.getValues()->end(), anaSol.getValues()->begin());
@@ -273,24 +240,105 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   thisRun->setup = end - start;
   //time iteration
   int i;
+  ProgressBar pbar;
+  pbar.setIterIndex(&i);
+  pbar.setNumIterations(nIters);
+  std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
+  pbar.update();
   for(i = 0; i < nIters; i++){
     //compute necessary fields
+    t += timeStep;
+    for(int j = 0; j < myMesh.getNumberPoints(); j++){
+      myMesh.getPoint(j, &node);
+      cg::analyticalBurgers(t, node, D, &dbuffer);
+      for(int k = 0; k < dbuffer.size(); k++){
+        anaSol.getValues()->at(j*nodeDim + k) = dbuffer[k];
+      }
+    }
+    std::copy(sol.getValues()->begin(), sol.getValues()->end(), buffSol.getValues()->begin());
+    std::copy(sol.getValues()->begin(), sol.getValues()->end(), oldSol.getValues()->begin());
+    for(std::set<int>::const_iterator itset = myMesh.getBoundaryFaces()->begin(); itset != myMesh.getBoundaryFaces()->end(); itset++){
+      int locFace = zPart.global2LocalFace(*itset);
+      if(locFace != -1){
+        myMesh.getFace(locFace, &cell);
+        for(int k = 0; k < cell.size(); k++){
+          int locNode = zPart.global2LocalNode(cell[k]);
+          if(locNode != -1){
+            myMesh.getPoint(locNode, &node);
+          } else {
+            myMesh.getGhostPoint(cell[k], &node);
+          }
+          cg::analyticalBurgers(t, node, D, &dbuffer);
+          for(int dof = 0; dof < nodeDim; dof++){
+            dirichlet.getValues()->at((locFace * nNodesPerFace + k)*nodeDim + dof) = dbuffer[dof];
+          }
+        }
+      }
+    }
     //solve non-linear problem
+    start = std::chrono::high_resolution_clock::now();
+    for(int k = 0; k < ts.getNumStages(); k++){
+      wrapper.solve();
+      ts.computeStage(&fieldMap);
+    }
+    ts.computeSolution(&fieldMap);
+    end = std::chrono::high_resolution_clock::now();
+    thisRun->resolution += end - start;
     //output
+    //get linalg err
+    const KSP * ksp = petsciface.getKSP();
+    double linAlgErr;
+    KSPGetResidualNorm(*ksp, &(linAlgErr));
+    //calc l2Err
+    double sumRes = 0, sumAna = 0;
+    for(int k = 0; k < myMesh.getNumberPoints(); k++){
+      residual.getValues()->at(k) = 0.0;
+      for(int dof = 0; dof < nodeDim; dof++){
+        residual.getValues()->at(k) += std::pow(anaSol.getValues()->at(k*nodeDim + dof) - sol.getValues()->at(k*nodeDim + dof), 2);
+      }
+      residual.getValues()->at(k) = std::sqrt(residual.getValues()->at(k));
+      sumRes += std::pow(residual.getValues()->at(k), 2);
+      sumAna += std::pow(anaSol.getValues()->at(k), 2); 
+    }
+    double l2Err = std::sqrt(TestUtils::l2ProjectionNodeField(&residual, &residual, &myMesh));
+    double dL2Err = std::sqrt(sumRes/sumAna);
+    //std::cout << "l2Err at time " << t << ": " << l2Err << std::endl;
+    if(i != (nIters-1)){
+      thisRun->linAlgErr += linAlgErr*timeStep;
+      thisRun->l2Err += l2Err*timeStep;
+      thisRun->dL2Err += dL2Err*timeStep;
+    } else{
+      thisRun->linAlgErr += linAlgErr*timeStep/2;
+      thisRun->l2Err += l2Err*timeStep/2;
+      thisRun->dL2Err += dL2Err*timeStep/2;
+    }
+    double quot = t/(5e-3);
+    //double quot = 0.0;
+    double rem = quot - ((int)quot);
+    //std::cout << "rem: " << rem << std::endl;
+    if(rem < timeStep/(5e-3)){
+      hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+    }
+    end = std::chrono::high_resolution_clock::now();
+    thisRun->post += end - start;
+    pbar.update();
+    if(thisRun->l2Err > 1.0){
+      break;
+    }
   }
 };
 
 
 
-TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG][BurgersModel]"){
+TEST_CASE("Testing regression cases for the BurgersModel", "[regression][CG][BurgersModel]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"5e-2"};
+  meshSizes["2"] = {"7e-2"};
   //meshSizes["2"] = {"2e-1", "1e-1"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-2"};
+  std::vector<std::string> timeSteps = {"1e-3"};
   //std::vector<std::string> orders = {"1", "2"};
   std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};
@@ -313,18 +361,8 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
     }
   }
 
-  std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/";
-  //HDGSolverType globType = WEXPLICIT;
-  HDGSolverType globType = IMPLICIT;
-  //HDGSolverType globType = SEXPLICIT;
-  std::string writeFile = "Breakdown.csv";
-  if(globType == WEXPLICIT){
-    writePath += "WExp/";
-  } else if(globType == SEXPLICIT){
-    writePath += "SExp/";
-  } else {
-    writePath += "Imp/";
-  }
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
+  std::string writeFile = "Breakdown.csv"; 
   if(rkTypes[0] == "BEuler"){
     writePath += "BEuler/";
   }else if(rkTypes[0] == "ALX2"){
@@ -342,7 +380,7 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
   }
   int nParts;
   MPI_Comm_size(MPI_COMM_WORLD, &nParts);
-  writePath += std::to_string(nParts) + "/";
+  //writePath += std::to_string(nParts) + "/";
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   std::ofstream f;
@@ -352,7 +390,7 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
   }
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
-    runHDGBurgers(&(*it), globType);
+    runCGBurgers(&(*it));
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
     CHECK(it->l2Err < 1);
