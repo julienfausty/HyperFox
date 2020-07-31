@@ -9,7 +9,7 @@ namespace hfox{
  * \brief Linearized operator for the \nabla (u \otimes u) term
  *
  * \f[
- * - \int_{e} (u^i_{(0)} u^j + u^i u^j_{(0)}) \nabla_i \varphi_j = -\int_{e} u^i_{(0)} u^j_{(0)} \nabla_i \varphi_j
+ * \int_{e} \nabla_i (u^i_{(0)} u^j + u^i u^j_{(0)}) \varphi_j = \int_{e} \nabla_i (u^i_{(0)} u^j_{(0)}) \varphi_j
  * \f]
  */
 
@@ -42,6 +42,10 @@ class NabUU : public NonLinearOperator{
      * \brief the solution vector list at the nodes
      */
     std::vector<EVector> solNodes;
+    /*!
+     * \brief the gradient of the solution at the IPs
+     */
+    std::vector<EMatrix> gradSols;
 
 };//NabUU
 

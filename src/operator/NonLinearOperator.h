@@ -2,6 +2,7 @@
 #define NONLINEAROPERATOR_H
 
 #include "Operator.h"
+#include <algorithm>
 
 namespace hfox{
 
@@ -14,6 +15,8 @@ class NonLinearOperator : public Operator{
   public:
     //default constructor
     using Operator::Operator;
+    // Destructor
+    virtual ~NonLinearOperator(){};
     /*!
      * \brief get the RHS of the operator
      */
