@@ -67,7 +67,7 @@ void analyticalBurgers(double t, std::vector<double> x, double D, std::vector<do
   double Ax0 = 3.0;
   double Ay0 = 2.0;
   double Ax1 = 2.0;
-  double Ay1 = -1.0;
+  double Ay1 = 1.0;
   std::vector<double> x0 = {0.5, 0.5};
   sol->resize(x.size());
   potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, sol);
@@ -78,7 +78,7 @@ void analyticalBurgersGrad(double t, std::vector<double> x, double D, std::vecto
   double Ax0 = 3.0;
   double Ay0 = 2.0;
   double Ax1 = 2.0;
-  double Ay1 = -1.0;
+  double Ay1 = 1.0;
   std::vector<double> x0 = {0.5, 0.5};
   double pot = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
   std::vector<double> gradPot;
@@ -167,10 +167,12 @@ void runCGBurgers(SimRun * thisRun){
   mySolver.setModel(&transportMod);
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
+  wrapper.setMaxIterations(50);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
+  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
+  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/CG/";
   if(rkStr == "BEuler"){
     writeDir += "BEuler/";
   }else if(rkStr == "ALX2"){
@@ -335,7 +337,7 @@ TEST_CASE("Testing regression cases for the BurgersModel", "[regression][CG][Bur
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"7e-2"};
+  meshSizes["2"] = {"5e-2"};
   //meshSizes["2"] = {"2e-1", "1e-1"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
   std::vector<std::string> timeSteps = {"1e-3"};
@@ -361,7 +363,8 @@ TEST_CASE("Testing regression cases for the BurgersModel", "[regression][CG][Bur
     }
   }
 
-  std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
+  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/CG/";
   std::string writeFile = "Breakdown.csv"; 
   if(rkTypes[0] == "BEuler"){
     writePath += "BEuler/";

@@ -2,6 +2,7 @@
 #define HDGNABUU_H
 
 #include "HDGNonLinearOperator.h"
+#include "Mass.h"
 
 namespace hfox{
 
@@ -45,19 +46,29 @@ class HDGNabUU : public HDGNonLinearOperator{
      * @param sol a list of solution vectors per node
      */
     void setSolution(const std::vector<EVector> & sol);
+    /*!
+     * \brief a method that borrows objects from the HDGBase operator
+     *
+     * @param ns a pointer to the normals to the faces at their IPs
+     */
+    void setFromBase(const std::vector<EVector> * ns);
   protected:
     /*!
      * \brief the solution vector list at the IPs
      */
     std::vector<EVector> sols;
     /*!
+     * \brief the solution at the face IPs
+     */
+    std::vector<EVector> faceSols;
+    /*!
      * \brief the solution vector list at the nodes
      */
     std::vector<EVector> solNodes;
     /*!
-     * \brief the gradient of the solution at the IPs
+     * \brief pointer to the list of normals to the faces at their IPs
      */
-    std::vector<EMatrix> gradSols;
+    const std::vector<EVector> * normals = NULL;
 
 };//HDGNabUU
 
