@@ -439,7 +439,7 @@ void HDGSolver::assemble(){
       }
       std::set<int> zeroSet;
       for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
-        std::iota(matRowCols.begin(), matRowCols.end(), nDOFsPerNode*(*itFace)*(matRowCols.size()));
+        std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
         for(int i = 0; i < matRowCols.size(); i++){
           zeroSet.insert(matRowCols[i]);
         }
@@ -486,7 +486,7 @@ void HDGSolver::assemble(){
     boundaryModel->compute();
     if(myOpts.type != SEXPLICIT){
       boundaryT = boundaryModel->getLocalMatrix()->transpose();
-      std::iota(matRowCols.begin(), matRowCols.end(), nDOFsPerNode*(*itFace)*(matRowCols.size()));
+      std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
       switch(modAssembly->matrix){
         case Add:{
                    linSystem->addValsMatrix(matRowCols, matRowCols, boundaryT.data());

@@ -177,6 +177,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
   solveOpts.verbosity = false;
+  solveOpts.doubleValuedTau = false;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);
@@ -188,7 +189,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/";
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
   if(globType == WEXPLICIT){
     writeDir += "WExp/";
   } else if(globType == SEXPLICIT){
@@ -231,7 +232,9 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   //create buffers
   std::vector<int> cell;
   std::vector<double> node;
+  std::vector<int> ibuffer;
   std::vector<double> dbuffer;
+  std::vector<EVector> normals(nNodesPerFace, EVector::Zero(nodeDim));
   //initialize field values
   for(int i = 0; i < myMesh.getNumberCells(); i++){
     myMesh.getCell(i, &cell);
@@ -272,11 +275,111 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   //time iteration
-  int i;
+  int i = 0;
+  ProgressBar pbar;
+  pbar.setIterIndex(&i);
+  pbar.setNumIterations(nIters);
+  std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
+  pbar.update();
   for(i = 0; i < nIters; i++){
+    t += timeStep;
     //compute necessary fields
+    for(int j = 0; j < myMesh.getNumberCells(); j++){
+      myMesh.getCell(j, &cell);
+      for(int j = 0; j < cell.size(); j++){
+        myMesh.getPoint(cell[j], &node);
+        hdg::analyticalBurgers(t, node, D, &dbuffer);
+        for(int k = 0; k < dbuffer.size(); k++){
+          anaSol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
+        }
+      }
+    }
+    std::copy(sol.getValues()->begin(), sol.getValues()->end(), buffSol.getValues()->begin());
+    std::copy(sol.getValues()->begin(), sol.getValues()->end(), oldSol.getValues()->begin());
+    for(std::set<int>::const_iterator itset = myMesh.getBoundaryFaces()->begin(); itset != myMesh.getBoundaryFaces()->end(); itset++){
+      int locFace = zPart.global2LocalFace(*itset);
+      if(locFace != -1){
+        myMesh.getFace(locFace, &cell);
+        for(int k = 0; k < cell.size(); k++){
+          int locNode = zPart.global2LocalNode(cell[k]);
+          if(locNode != -1){
+            myMesh.getPoint(locNode, &node);
+          } else {
+            myMesh.getGhostPoint(cell[k], &node);
+          }
+          hdg::analyticalBurgers(t, node, D, &dbuffer);
+          for(int dof = 0; dof < nodeDim; dof++){
+            dirichlet.getValues()->at((locFace * nNodesPerFace + k)*nodeDim + dof) = dbuffer[dof];
+          }
+        }
+      }
+    }
+    //need to try upwind tau
+    for(int iFace = 0; iFace < myMesh.getNumberFaces(); iFace++){
+      normals = TestUtils::calculateOutwardNormal(&myMesh, iFace);
+      myMesh.getFace(iFace, &cell);
+      myMesh.getFace2Cell(iFace, &ibuffer);
+      int cellInd = ibuffer[0];
+      sol.getValues(cellInd, &dbuffer);
+      myMesh.getCell(cellInd, &ibuffer);
+      for(int j = 0; j < nNodesPerFace; j++){
+        int offset = std::distance(ibuffer.begin(), std::find(ibuffer.begin(), ibuffer.end(), cell[j]));
+        EMap<EMatrix>(tau.getValues()->data() + (iFace*nNodesPerFace + j)*nodeDim*nodeDim, nodeDim, nodeDim) 
+          = EMatrix::Identity(nodeDim, nodeDim)*std::fabs(normals[j].dot(EMap<EVector>(dbuffer.data() + offset*nodeDim, nodeDim)));
+      }
+    }
     //solve non-linear problem
+    start = std::chrono::high_resolution_clock::now();
+    for(int k = 0; k < ts.getNumStages(); k++){
+      wrapper.solve();
+      ts.computeStage(&fieldMap);
+    }
+    ts.computeSolution(&fieldMap);
+    end = std::chrono::high_resolution_clock::now();
+    thisRun->resolution += end - start;
     //output
+    //get linalg err
+    const KSP * ksp = petsciface.getKSP();
+    double linAlgErr;
+    KSPGetResidualNorm(*ksp, &(linAlgErr));
+    //calc l2Err
+    double sumRes = 0, sumAna = 0;
+    for(int k = 0; k < myMesh.getNumberCells(); k++){
+      for(int n = 0; n < nNodesPerEl; n++){
+        residual.getValues()->at(k*nNodesPerEl + n) = 0.0;
+        for(int dof = 0; dof < nodeDim; dof++){
+          residual.getValues()->at(k*nNodesPerEl + n) += std::pow(anaSol.getValues()->at((k*nNodesPerEl + n)*nodeDim + dof) - sol.getValues()->at((k*nNodesPerEl + n)*nodeDim + dof), 2);
+        }
+        residual.getValues()->at(k*nNodesPerEl + n) = std::sqrt(residual.getValues()->at(k*nNodesPerEl + n));
+        sumRes += std::pow(residual.getValues()->at(k*nNodesPerEl + n), 2);
+        sumAna += std::pow(anaSol.getValues()->at(k*nNodesPerEl + n), 2);
+      }
+    }
+    double l2Err = std::sqrt(TestUtils::l2ProjectionCellField(&residual, &residual, &myMesh));
+    double dL2Err = std::sqrt(sumRes/sumAna);
+    //std::cout << "l2Err at time " << t << ": " << l2Err << std::endl;
+    if(i != (nIters-1)){
+      thisRun->linAlgErr += linAlgErr*timeStep;
+      thisRun->l2Err += l2Err*timeStep;
+      thisRun->dL2Err += dL2Err*timeStep;
+    } else{
+      thisRun->linAlgErr += linAlgErr*timeStep/2;
+      thisRun->l2Err += l2Err*timeStep/2;
+      thisRun->dL2Err += dL2Err*timeStep/2;
+    }
+    double quot = t/(5e-3);
+    //double quot = 0.0;
+    double rem = quot - ((int)quot);
+    //std::cout << "rem: " << rem << std::endl;
+    if(rem < timeStep/(5e-3)){
+      hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+    }
+    end = std::chrono::high_resolution_clock::now();
+    thisRun->post += end - start;
+    pbar.update();
+    if(thisRun->l2Err > 1.0){
+      break;
+    }
   }
 };
 
@@ -287,10 +390,10 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"5e-2"};
+  meshSizes["2"] = {"7e-2"};
   //meshSizes["2"] = {"2e-1", "1e-1"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-2"};
+  std::vector<std::string> timeSteps = {"1e-4"};
   //std::vector<std::string> orders = {"1", "2"};
   std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};
@@ -313,7 +416,7 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
     }
   }
 
-  std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
   //HDGSolverType globType = WEXPLICIT;
   HDGSolverType globType = IMPLICIT;
   //HDGSolverType globType = SEXPLICIT;
