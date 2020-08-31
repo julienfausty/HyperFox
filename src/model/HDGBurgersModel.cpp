@@ -38,7 +38,7 @@ void HDGBurgersModel::allocate(int nDOFsPerNodeUser){
 
 void HDGBurgersModel::initializeOperators(){
   if(operatorMap.find("Convection") == operatorMap.end()){
-    operatorMap["Convection"] = new HDGConvection(refEl);
+    operatorMap["Convection"] = new HDGNabUU(refEl);
   }
   if(operatorMap.find("Diffusion") == operatorMap.end()){
     operatorMap["Diffusion"] = new HDGDiffusion(refEl);
@@ -56,11 +56,10 @@ void HDGBurgersModel::computeLocalMatrix(){
   ((HDGBase*)operatorMap["Base"])->calcNormals(*elementNodes, jacobians);
   operatorMap["Base"]->assemble(dV, invJacobians);
   localMatrix = *(operatorMap["Base"]->getMatrix());
-  ((HDGConvection*)operatorMap["Convection"])->setVelocity(parseSolutionVals());
-  ((HDGConvection*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
+  ((HDGNabUU*)operatorMap["Convection"])->setSolution(parseSolutionVals());
+  ((HDGNabUU*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
   operatorMap["Convection"]->assemble(dV, invJacobians);
   localMatrix += *(operatorMap["Convection"]->getMatrix());
-  localMatrix.block(0, 0, refEl->getNumNodes()*nDOFsPNode, refEl->getNumNodes()*nDOFsPNode) += operatorMap["Convection"]->getMatrix()->block(0, 0, refEl->getNumNodes()*nDOFsPNode, refEl->getNumNodes()*nDOFsPNode).transpose();
   if(fieldMap.find("DiffusionTensor") != fieldMap.end()){
     ((HDGDiffusion*)operatorMap["Diffusion"])->setDiffusionTensor(parseDiffusionVals());
     ((HDGDiffusion*)operatorMap["Diffusion"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
@@ -73,8 +72,7 @@ void HDGBurgersModel::computeLocalRHS(){
   if(!(nodeSet and fieldSet)){
     throw("HDGBurgersModel", "computeLocalRHS", "the nodes and the fields should be set before computing");
   }
-  localRHS = EVector::Zero(localRHS.size());
-  localRHS.segment(0, refEl->getNumNodes()*nDOFsPNode) += operatorMap["Convection"]->getMatrix()->block(0, 0, refEl->getNumNodes()*nDOFsPNode, refEl->getNumNodes()*nDOFsPNode) * EMap<const EVector>(fieldMap["BufferSolution"]->data(), fieldMap["BufferSolution"]->size());
+  localRHS = *(((HDGNabUU*)operatorMap["Convection"])->getRHS()); 
 };//computeLocalRHS
 
 

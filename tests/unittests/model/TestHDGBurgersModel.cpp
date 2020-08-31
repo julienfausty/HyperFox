@@ -49,13 +49,13 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
       mod.allocate(i+1);
       HDGBase baseOp(&refEl);
       std::vector<EVector> velVectors(refEl.getNumNodes(), EVector::Constant(i+1, 2.0));
-      HDGConvection convOp(&refEl);
+      HDGNabUU convOp(&refEl);
       std::vector<EMatrix> diffTensors(refEl.getNumNodes(), EMatrix::Identity(i+1, i+1)*3.0);
       HDGDiffusion diffOp(&refEl);
       baseOp.allocate(i+1);
       baseOp.setTau(tau);
       convOp.allocate(i+1);
-      convOp.setVelocity(velVectors);
+      convOp.setSolution(velVectors);
       diffOp.allocate(i+1);
       diffOp.setDiffusionTensor(diffTensors);
       std::vector<EMatrix> elJacs(refEl.getNumIPs(), EMatrix::Identity(i+1, i+1));
@@ -91,11 +91,10 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
         CHECK_NOTHROW(mod.compute());
         EMatrix testMat = (*(baseOp.getMatrix()));
         testMat += *(convOp.getMatrix()) + *(diffOp.getMatrix());
-        testMat.block(0, 0, refEl.getNumNodes() * (i+1), refEl.getNumNodes() * (i+1)) += convOp.getMatrix()->block(0, 0, refEl.getNumNodes() * (i+1), refEl.getNumNodes() * (i+1)).transpose();
         testMat -= *(mod.getLocalMatrix());
         CHECK((testMat.transpose() * testMat).sum() < tol);
         EVector testVec = (*(mod.getLocalRHS()));
-        testVec.segment(0, refEl.getNumNodes() * (i+1)) -= convOp.getMatrix()->block(0, 0, refEl.getNumNodes() * (i+1), refEl.getNumNodes() * (i+1)) * EMap<EVector>(buffSol.data(), buffSol.size());
+        testVec -= (*(convOp.getRHS()));
         CHECK(testVec.dot(testVec) < tol);
       };
 
@@ -113,14 +112,12 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
         CHECK_NOTHROW(mod2.setElementNodes(refEl.getNodes()));
         CHECK_NOTHROW(mod2.compute());
         EMatrix testMat = *(convOp.getMatrix()) + (*(baseOp.getMatrix())) + *(diffOp.getMatrix());
-        testMat.block(0, 0, refEl.getNumNodes()*(i+1), refEl.getNumNodes()*(i+1)) += convOp.getMatrix()->block(0, 0, refEl.getNumNodes()*(i+1), refEl.getNumNodes()*(i+1)).transpose();
         testMat.block(0, 0, refEl.getNumNodes()*(i+1), testMat.cols()) *= timeStep;
         testMat.block(0, 0, refEl.getNumNodes()*(i+1), refEl.getNumNodes()*(i+1)) += (*(mass.getMatrix()));
         testMat -= *(mod2.getLocalMatrix());
         CHECK((testMat.transpose() * testMat).sum() < tol);
-        EVector testVec = EVector::Zero(testMat.rows());
-        testVec.segment(0, refEl.getNumNodes()*(i+1)) = (*(mass.getMatrix()))*EMap<EVector>(sol.data(), sol.size());
-        testVec.segment(0, refEl.getNumNodes()*(i+1)) += convOp.getMatrix()->block(0, 0, refEl.getNumNodes()*(i+1), refEl.getNumNodes()*(i+1))* EMap<EVector>(buffSol.data(), buffSol.size()) *timeStep;
+        EVector testVec = (*(convOp.getRHS()));
+        testVec.segment(0, refEl.getNumNodes()*(i+1)) = (*(mass.getMatrix()))*EMap<EVector>(sol.data(), sol.size()); 
         testVec -= (*(mod2.getLocalRHS()));
         CHECK(testVec.dot(testVec) < tol);
       };
