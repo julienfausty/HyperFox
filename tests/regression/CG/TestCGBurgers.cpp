@@ -171,8 +171,8 @@ void runCGBurgers(SimRun * thisRun){
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/CG/";
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
+  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/CG/";
   if(rkStr == "BEuler"){
     writeDir += "BEuler/";
   }else if(rkStr == "ALX2"){
@@ -363,8 +363,8 @@ TEST_CASE("Testing regression cases for the BurgersModel", "[regression][CG][Bur
     }
   }
 
-  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/CG/";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/CG/";
   std::string writeFile = "Breakdown.csv"; 
   if(rkTypes[0] == "BEuler"){
     writePath += "BEuler/";

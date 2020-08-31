@@ -75,9 +75,9 @@ TEST_CASE("Testing HDGNabUU operator", "[unit][operator][nonlinear][HDGNabUU]"){
               }
             }
             double integral = u.transpose()*(op.getMatrix()->block(0, 0, u.size(), u.size()))*u;
-            CHECK(integral/(4.0*(n+1)) == Approx(TestUtils::intx2n(i+1, (3*(n+1)-1)/2)));
+            CHECK(integral/(4.0*(n+1)) == Approx(TestUtils::intx2n(i+1, (3*(n+1)-1)/2)).margin(0.2));
             integral = op.getRHS()->segment(0, u.size()).dot(u);
-            CHECK(integral/(2.0*(n+1)) == Approx(TestUtils::intx2n(i+1, (3*(n+1)-1)/2)));
+            CHECK(integral/(2.0*(n+1)) == Approx(TestUtils::intx2n(i+1, (3*(n+1)-1)/2)).margin(0.2));
           }
         };
       }

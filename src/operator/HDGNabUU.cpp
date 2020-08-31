@@ -95,7 +95,6 @@ void HDGNabUU::assemble(const std::vector<double> & dV, const std::vector<EMatri
   int lenL = nNodesPFc * nFaces;
   //start with face integrals
   EMatrix buffMat(spaceDim, spaceDim);
-  EMatrix buffMat2(spaceDim, spaceDim);
   EVector buffVec(spaceDim);
   EVector buffVec2(spaceDim);
   EVector buffVec3(spaceDim);
@@ -103,6 +102,7 @@ void HDGNabUU::assemble(const std::vector<double> & dV, const std::vector<EMatri
   for(int iFace = 0 ; iFace < nFaces; iFace++){
     for(int ip = 0; ip < nIPsFc; ip++){
       shapes = &(fipShapes->at(ip));
+      faceNodes = &(faceNodeMap->at(iFace));
       offset = iFace*nIPsFc + ip;
       buffVec = normals->at(offset) * dV[nIPsEl + offset];
       for(int iN = 0; iN < nNodesPFc; iN++){
@@ -114,20 +114,47 @@ void HDGNabUU::assemble(const std::vector<double> & dV, const std::vector<EMatri
           for(int jN = 0; jN < nNodesPFc; jN++){
             buffVec3 = faceSols[offset] * shapes->at(jN);
             for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
-              buffMat2 = EMatrix::Zero(spaceDim, spaceDim);
-              buffMat2.row(mdof) = buffVec3;
-              double * entry = &(op(lenU + lenQ + iN*nDOFsPerNode + ndof, jN*nDOFsPerNode + mdof));
-              for(int i = 0; i < spaceDim; i++){
-                for(int j = 0; j < spaceDim; j++){
-                  *entry += buffMat(i, j)*buffMat2(i, j);
-                }
-              }
+              op(lenU + lenQ + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, faceNodes->at(jN)*nDOFsPerNode + mdof) += (double)(buffMat.row(mdof)*buffVec3); 
             }
           }
         }
       }
     }
   }
+  //sum face integrals into first equations
+  for(int iFace = 0; iFace < nFaces; iFace++){
+    faceNodes = &(faceNodeMap->at(iFace));
+    for(int iN = 0; iN < nNodesPFc; iN++){
+      for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+        op.block(faceNodes->at(iN)*nDOFsPerNode + ndof, 0, 1, lenU) += op.block(lenU + lenQ + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, 0, 1, lenU);
+      }
+    }
+  }
+  //bulk integrals
+  for(int ip = 0; ip < nIPsEl; ip++){
+    shapes = &(ipShapes->at(ip));
+    derivShapes = &(ipDerivShapes->at(ip));
+    buffVec = sols[ip]*dV[ip];
+    for(int iN = 0; iN < nNodesEl; iN++){
+      for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+        buffMat = EMatrix::Zero(spaceDim, spaceDim);
+        buffMat.col(ndof) = EMap<const EVector>(derivShapes->at(iN).data(), spaceDim);
+        buffMat += buffMat.transpose();
+        for(int jN = 0; jN < nNodesEl; jN++){
+          for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
+            op(iN * nDOFsPerNode + ndof, jN*nDOFsPerNode + mdof) -= (double)(buffMat.row(mdof) * buffVec) * shapes->at(jN);
+          }
+        }
+      }
+    }
+  }
+  //do rhs calculations
+  EVector solDiv2(lenU);
+  for(int i = 0; i < nNodesEl; i++){
+    solDiv2.segment(i*nDOFsPerNode, nDOFsPerNode) = solNodes[i]/2.0;
+  }
+  rhs.segment(0, lenU) = op.block(0, 0, lenU, lenU)*solDiv2;
+  rhs.segment(lenU + lenQ, lenL) = op.block(lenU + lenQ, 0, lenL, lenU)*solDiv2;
 };//assemble
 
 };//hfox
