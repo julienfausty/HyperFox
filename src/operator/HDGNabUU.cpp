@@ -136,9 +136,10 @@ void HDGNabUU::assemble(const std::vector<double> & dV, const std::vector<EMatri
     derivShapes = &(ipDerivShapes->at(ip));
     buffVec = sols[ip]*dV[ip];
     for(int iN = 0; iN < nNodesEl; iN++){
+      buffVec2 = invJacobians[ip]*EMap<const EVector>(derivShapes->at(iN).data(), spaceDim);
       for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
         buffMat = EMatrix::Zero(spaceDim, spaceDim);
-        buffMat.col(ndof) = EMap<const EVector>(derivShapes->at(iN).data(), spaceDim);
+        buffMat.col(ndof) = buffVec2;
         buffMat += buffMat.transpose();
         for(int jN = 0; jN < nNodesEl; jN++){
           for(int mdof = 0; mdof < nDOFsPerNode; mdof++){

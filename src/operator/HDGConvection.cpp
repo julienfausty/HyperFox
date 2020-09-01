@@ -99,7 +99,7 @@ void HDGConvection::assemble(const std::vector<double> & dV, const std::vector<E
     }
   }
   if(nDOFsPerNode > 1){
-    multiplyDOFs();
+    HDGOperator::multiplyDOFs();
   }
 };//assemble
 

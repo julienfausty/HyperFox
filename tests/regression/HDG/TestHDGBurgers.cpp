@@ -67,7 +67,7 @@ void analyticalBurgers(double t, std::vector<double> x, double D, std::vector<do
   double Ax0 = 3.0;
   double Ay0 = 2.0;
   double Ax1 = 2.0;
-  double Ay1 = -1.0;
+  double Ay1 = 1.0;
   std::vector<double> x0 = {0.5, 0.5};
   sol->resize(x.size());
   potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, sol);
@@ -78,7 +78,7 @@ void analyticalBurgersGrad(double t, std::vector<double> x, double D, std::vecto
   double Ax0 = 3.0;
   double Ay0 = 2.0;
   double Ax1 = 2.0;
-  double Ay1 = -1.0;
+  double Ay1 = 1.0;
   std::vector<double> x0 = {0.5, 0.5};
   double pot = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
   std::vector<double> gradPot;
@@ -143,7 +143,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   Field oldTrace(&myMesh, Face, nNodesPerFace, nodeDim);
   Field partition(&myMesh, Node, 1, 1);
   Field diffCoeff(&myMesh, Node, 1, 1);
-  Field tau(&myMesh, Face, nNodesPerFace, std::pow(nodeDim, 2));
+  Field tau(&myMesh, Face, nNodesPerFace, std::pow(nodeDim, 2)*2);
   Field anaSol(&myMesh, Cell, nNodesPerEl, nodeDim);
   Field residual(&myMesh, Cell, nNodesPerEl, 1);
   std::vector<Field> rkStages(nStages, Field(&myMesh, Cell, nNodesPerEl, nodeDim));
@@ -170,14 +170,14 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   HDGBurgersModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
-  myOpts.maxits = 20000;
+  myOpts.maxits = 10000;
   myOpts.rtol = 1e-12;
   myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
   solveOpts.verbosity = false;
-  solveOpts.doubleValuedTau = false;
+  solveOpts.doubleValuedTau = true;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);
@@ -232,6 +232,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   //create buffers
   std::vector<int> cell;
   std::vector<double> node;
+  std::vector<int> face2Cell;
   std::vector<int> ibuffer;
   std::vector<double> dbuffer;
   std::vector<EVector> normals(nNodesPerFace, EVector::Zero(nodeDim));
@@ -286,16 +287,18 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
     //compute necessary fields
     for(int j = 0; j < myMesh.getNumberCells(); j++){
       myMesh.getCell(j, &cell);
-      for(int j = 0; j < cell.size(); j++){
-        myMesh.getPoint(cell[j], &node);
+      for(int l = 0; l < cell.size(); l++){
+        myMesh.getPoint(cell[l], &node);
         hdg::analyticalBurgers(t, node, D, &dbuffer);
         for(int k = 0; k < dbuffer.size(); k++){
-          anaSol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
+          anaSol.getValues()->at((j*nNodesPerEl + l)*nodeDim + k) = dbuffer[k];
         }
       }
     }
     std::copy(sol.getValues()->begin(), sol.getValues()->end(), buffSol.getValues()->begin());
     std::copy(sol.getValues()->begin(), sol.getValues()->end(), oldSol.getValues()->begin());
+    std::copy(flux.getValues()->begin(), flux.getValues()->end(), oldFlux.getValues()->begin());
+    std::copy(trace.getValues()->begin(), trace.getValues()->end(), oldTrace.getValues()->begin());
     for(std::set<int>::const_iterator itset = myMesh.getBoundaryFaces()->begin(); itset != myMesh.getBoundaryFaces()->end(); itset++){
       int locFace = zPart.global2LocalFace(*itset);
       if(locFace != -1){
@@ -318,20 +321,40 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
     for(int iFace = 0; iFace < myMesh.getNumberFaces(); iFace++){
       normals = TestUtils::calculateOutwardNormal(&myMesh, iFace);
       myMesh.getFace(iFace, &cell);
-      myMesh.getFace2Cell(iFace, &ibuffer);
-      int cellInd = ibuffer[0];
-      sol.getValues(cellInd, &dbuffer);
-      myMesh.getCell(cellInd, &ibuffer);
-      for(int j = 0; j < nNodesPerFace; j++){
-        int offset = std::distance(ibuffer.begin(), std::find(ibuffer.begin(), ibuffer.end(), cell[j]));
-        EMap<EMatrix>(tau.getValues()->data() + (iFace*nNodesPerFace + j)*nodeDim*nodeDim, nodeDim, nodeDim) 
-          = EMatrix::Identity(nodeDim, nodeDim)*std::fabs(normals[j].dot(EMap<EVector>(dbuffer.data() + offset*nodeDim, nodeDim)));
+      myMesh.getFace2Cell(iFace, &face2Cell);
+      for(int iCell = 0; iCell < face2Cell.size(); iCell++){
+        sol.getValues(face2Cell[iCell], &dbuffer);
+        myMesh.getCell(face2Cell[iCell], &ibuffer);
+        for(int j = 0; j < nNodesPerFace; j++){
+          int offset = std::distance(ibuffer.begin(), std::find(ibuffer.begin(), ibuffer.end(), cell[j]));
+          double pun = normals[j].dot(EMap<EVector>(dbuffer.data() + offset*nodeDim, nodeDim));
+          //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+            //= EMatrix::Identity(nodeDim, nodeDim);
+          EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+            = EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
+          //if(pun > 0){
+            //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+              //= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
+          //} else {
+            //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+              //= EMatrix::Identity(nodeDim, nodeDim)*(D/carLen);
+          //}
+        }
       }
     }
+    //for(int iFace = 0; iFace < myMesh.getNumberFaces(); iFace++){
+      //for(int iCell = 0; iCell < 2 ; iCell++){
+        //for(int j = 0; j < nNodesPerFace; j++){
+          //std::cout << EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) << std::endl;
+        //}
+      //}
+    //}
     //solve non-linear problem
     start = std::chrono::high_resolution_clock::now();
     for(int k = 0; k < ts.getNumStages(); k++){
       wrapper.solve();
+      //mySolver.assemble();
+      //mySolver.solve();
       ts.computeStage(&fieldMap);
     }
     ts.computeSolution(&fieldMap);
@@ -393,7 +416,7 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
   meshSizes["2"] = {"7e-2"};
   //meshSizes["2"] = {"2e-1", "1e-1"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-4"};
+  std::vector<std::string> timeSteps = {"1e-3"};
   //std::vector<std::string> orders = {"1", "2"};
   std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};

@@ -29,10 +29,11 @@ void HDGBase::setTau(const std::vector<double> & userTaus){
   taus.resize(nFaces*(fEl->getNumIPs())*sizeTau, 0.0);
   const std::vector< std::vector<double> > * ipShapes = fEl->getIPShapeFunctions();
   for(int i = 0; i < nFaces; i++){
-    EMap<const EMatrix> tau(userTaus.data() + i*nNodesFace*sizeTau, nNodesFace, sizeTau);
+    EMap<const EMatrix> tau(userTaus.data() + i*nNodesFace*sizeTau, sizeTau, nNodesFace);
+    //std::cout << tau << std::endl;
     for(int j = 0; j < fEl->getNumIPs(); j++){
       EMap<const EVector> shape((ipShapes->at(j)).data(), (ipShapes->at(j)).size());
-      EMap<EMatrix>(taus.data() + (i*(fEl->getNumIPs()) + j)*sizeTau, 1, sizeTau) = shape.transpose() * tau;
+      EMap<EMatrix>(taus.data() + (i*(fEl->getNumIPs()) + j)*sizeTau, sizeTau, 1) = tau * shape;
     }
   }
 };//setTau
@@ -89,11 +90,11 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
   int nNodesFace = fEl->getNumNodes();
   int nIPsFace = fEl->getNumIPs();
   int startUblock = 0;
-  int startQblock = nNodesEl;
-  int startLblock = nNodesEl*(dim+1);
-  int lenUblock = nNodesEl;
-  int lenQblock = nNodesEl*dim;
-  int lenLblock = nFaces*nNodesFace;
+  int startQblock = nNodesEl*nDOFsPerNode;
+  int startLblock = nNodesEl*(dim+1)*nDOFsPerNode;
+  int lenUblock = nNodesEl*nDOFsPerNode;
+  int lenQblock = nNodesEl*dim*nDOFsPerNode;
+  int lenLblock = nFaces*nNodesFace*nDOFsPerNode;
   int sizeTau = nDOFsPerNode * nDOFsPerNode;
   //Sqq
   bulkMass->assemble(dV, invJacobians);
@@ -103,9 +104,18 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
     std::vector<EVector> velocity(nNodesEl, EMatrix::Identity(dim, dim).col(i));
     convection->setVelocity(velocity);
     convection->assemble(dV, invJacobians);
-    for(int j = 0; j < nNodesEl; j++){
-      op.block(startQblock + j*dim + i, startUblock, 1, lenUblock) += (convection->getMatrix()->col(j)).transpose();
+    for(int iN = 0; iN < nNodesEl; iN++){
+      for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+        for(int jN = 0; jN < nNodesEl; jN++){
+          for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
+            op(startQblock + (iN*dim + i)*nDOFsPerNode + ndof, startUblock + jN*nDOFsPerNode + mdof) += (*(convection->getMatrix()))(jN*nDOFsPerNode + mdof, iN*nDOFsPerNode + ndof);
+          }
+        }
+      }
     }
+    //for(int j = 0; j < nNodesEl; j++){
+      //op.block(startQblock + j*dim*nDOFsPerNode + i, startUblock, 1, lenUblock) += (convection->getMatrix()->col(j)).transpose();
+    //}
   }
   std::vector<double> normaldV(nIPsFace, 0.0);
   std::vector<EMatrix> faceInvJacs(nIPsFace, EMatrix::Zero(dim, dim-1));
@@ -115,7 +125,7 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
   for(int iFace = 0; iFace < nFaces; iFace++){
     std::copy(invJacobians.begin() + nIPsEl + iFace*nIPsFace, invJacobians.begin() + nIPsEl + (iFace+1)*nIPsFace, faceInvJacs.begin());
     nodeMap = &(refEl->getFaceNodes()->at(iFace));
-    int startDiag = startLblock + iFace*nNodesFace;
+    int startDiag = startLblock + iFace*nNodesFace*nDOFsPerNode;
     //Sql
     int findex = iFace*nIPsFace;
     for(int i = 0; i < dim; i++){
@@ -124,14 +134,13 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
       }
       faceMass->assemble(normaldV, faceInvJacs);
       for(int j = 0; j < nNodesFace; j++){
-        op.block(startQblock + dim*(nodeMap->at(j)) + i, startDiag, 1, nNodesFace) -= (faceMass->getMatrix()->col(j)).transpose();
+        for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+          op.block(startQblock + (dim*nodeMap->at(j) + i)*nDOFsPerNode + ndof, startDiag, 1, nNodesFace*nDOFsPerNode) -= (faceMass->getMatrix()->col(j*nDOFsPerNode + ndof)).transpose();
+        }
       }
     }
   }
 
-  if(nDOFsPerNode > 1){
-    multiplyDOFs();
-  }
   double val;
   bool allZeros;
   for(int dofUp = 0; dofUp < nDOFsPerNode; dofUp++){
@@ -141,6 +150,7 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
         nodeMap = &(refEl->getFaceNodes()->at(iFace));
         for(int i = 0; i < nIPsFace; i++){
           faceTaus[i] = taus[(iFace*nIPsFace + i)*sizeTau + dofUp*nDOFsPerNode + dofDown];
+          //std::cout << EMap<EMatrix>(taus.data() + (iFace*nIPsFace + i)*sizeTau, nDOFsPerNode, nDOFsPerNode) << std::endl;
         }
         allZeros = 1;
         for(int i = 0; i < nIPsFace; i++){
@@ -158,15 +168,15 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
         faceMass->assemble(faceTaus, faceInvJacs);
         for(int k = 0; k < nNodesFace; k++){
           for(int l = 0; l < nNodesFace; l++){
-            val = (*(faceMass->getMatrix()))(k,l);
+            val = (*(faceMass->getMatrix()))(k*nDOFsPerNode + dofUp,l*nDOFsPerNode + dofDown);
             //Sll
-            op((startLblock + iFace*nNodesFace + k)*nDOFsPerNode + dofUp, (startLblock + iFace*nNodesFace + l)*nDOFsPerNode + dofDown) -= val;
+            op(startLblock + (iFace*nNodesFace + k)*nDOFsPerNode + dofUp, startLblock + (iFace*nNodesFace + l)*nDOFsPerNode + dofDown) -= val;
             //Slu
-            op((startLblock + iFace*nNodesFace + k)*nDOFsPerNode + dofUp, nodeMap->at(l)*nDOFsPerNode + dofDown) += val;
+            op(startLblock + (iFace*nNodesFace + k)*nDOFsPerNode + dofUp, nodeMap->at(l)*nDOFsPerNode + dofDown) += val;
             //Suu
             op(nodeMap->at(k)*nDOFsPerNode + dofUp, nodeMap->at(l)*nDOFsPerNode + dofDown) += val;
             //Sul
-            op(nodeMap->at(k)*nDOFsPerNode + dofUp, (startLblock + iFace*nNodesFace + l)*nDOFsPerNode + dofDown) -= val;
+            op(nodeMap->at(k)*nDOFsPerNode + dofUp, startLblock + (iFace*nNodesFace + l)*nDOFsPerNode + dofDown) -= val;
           }
         }
         //op.block(startDiag, startDiag, nNodesFace, nNodesFace) -= *(faceMass->getMatrix());

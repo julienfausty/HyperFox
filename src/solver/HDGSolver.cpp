@@ -291,9 +291,9 @@ void HDGSolver::assemble(){
           offset = 0;
         }
         for(int j = 0; j < nNodesPFc; j++){
+          buff = (i*nNodesPFc + j)*matLen;
           for(int k = 0; k < matLen; k++){
-            buff = i*nNodesPFc + j*matLen+ k;
-            fieldBuffer[buff] = faceFieldMap["Tau"][buff*2 + offset];
+            fieldBuffer[buff + k] = faceFieldMap["Tau"][buff*2 + offset*matLen + k];
           }
         }
       }
@@ -301,6 +301,7 @@ void HDGSolver::assemble(){
     }
     //re order the face fields correctly for local ordering
     for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){
+      int len = itfm->second.size()/(nFacesPEl * nNodesPFc);
       locFieldMap[itfm->first].resize((itfm->second).size());
       for(int i = 0; i < nFacesPEl; i++){
         if(part == NULL){
@@ -314,8 +315,8 @@ void HDGSolver::assemble(){
         }
         offset = i*nNodesPFc;
         for(int j = 0; j <nNodesPFc; j++){
-          for(int k = 0; k < nDOFsPerNode; k++){
-            locFieldMap[itfm->first][(offset + j)*nDOFsPerNode + k] = itfm->second[(offset + face2CellMap[offset + j])*nDOFsPerNode + k];
+          for(int k = 0; k < len; k++){
+            locFieldMap[itfm->first][(offset + j)*len + k] = itfm->second[(offset + face2CellMap[offset + j])*len + k];
           }
         }
       }
