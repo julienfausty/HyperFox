@@ -30,7 +30,6 @@ void HDGBase::setTau(const std::vector<double> & userTaus){
   const std::vector< std::vector<double> > * ipShapes = fEl->getIPShapeFunctions();
   for(int i = 0; i < nFaces; i++){
     EMap<const EMatrix> tau(userTaus.data() + i*nNodesFace*sizeTau, sizeTau, nNodesFace);
-    //std::cout << tau << std::endl;
     for(int j = 0; j < fEl->getNumIPs(); j++){
       EMap<const EVector> shape((ipShapes->at(j)).data(), (ipShapes->at(j)).size());
       EMap<EMatrix>(taus.data() + (i*(fEl->getNumIPs()) + j)*sizeTau, sizeTau, 1) = tau * shape;
@@ -150,7 +149,6 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
         nodeMap = &(refEl->getFaceNodes()->at(iFace));
         for(int i = 0; i < nIPsFace; i++){
           faceTaus[i] = taus[(iFace*nIPsFace + i)*sizeTau + dofUp*nDOFsPerNode + dofDown];
-          //std::cout << EMap<EMatrix>(taus.data() + (iFace*nIPsFace + i)*sizeTau, nDOFsPerNode, nDOFsPerNode) << std::endl;
         }
         allZeros = 1;
         for(int i = 0; i < nIPsFace; i++){

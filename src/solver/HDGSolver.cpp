@@ -630,7 +630,10 @@ void HDGSolver::solve(){
       }
       EMap<EVector> buff(begining, lenT);
       for(int j = 0; j < nNodesPFc; j++){
-        locL[i*lenT + j] = buff[std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]))];
+        int found = std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]));
+        for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+          locL[i*lenT + j*nDOFsPerNode + ndof] = buff[found*nDOFsPerNode + ndof];
+        }
       }
     }
     EMap<EVector> locSol(fieldMap->at("Solution")->getValues()->data()+iEl*lenU, lenU);

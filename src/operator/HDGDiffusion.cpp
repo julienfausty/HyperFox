@@ -39,19 +39,31 @@ void HDGDiffusion::setDiffusionTensor(const std::vector<EMatrix> & diffTensor){
   }
   int nFaces = refEl->getNumFaces();
   const ReferenceElement * fEl = refEl->getFaceElement();
-  int nIPs = fEl->getNumIPs();
+  int nIPsEl = refEl->getNumIPs();
+  int nIPsFc = fEl->getNumIPs();
+  int nNodesEl = refEl->getNumNodes();
   int nNodesPFc = fEl->getNumNodes();
   const std::vector< std::vector<int> > * faceNodeMap = refEl->getFaceNodes();
-  const std::vector< std::vector<double> > * ipShapes = fEl->getIPShapeFunctions();
-  Ds.resize(nFaces*nIPs, EMatrix::Zero(dim, dim));
-  EMatrix nodeDs(nNodesPFc, dim*dim);
+  const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
+  const std::vector< std::vector<double> > * fipShapes = fEl->getIPShapeFunctions();
+  Ds.resize(nIPsEl + nFaces*nIPsFc, EMatrix::Zero(dim, dim));
+  EMatrix nodeDs(nNodesEl, dim*dim);
+  for(int i = 0; i < nNodesEl; i++){
+    nodeDs.row(i) = EMap<const EMatrix>(diffTensor[i].data(), 1, dim*dim);
+  }
+  for(int i = 0; i < nIPsEl; i++){
+    EMap<const EVector> shape(ipShapes->at(i).data(), ipShapes->at(i).size());
+    EMap<EMatrix> res(Ds[i].data(), 1, dim*dim);
+    res = shape.transpose()*nodeDs;
+  }
+  nodeDs.resize(nNodesPFc, dim*dim);
   for(int iFace = 0; iFace < nFaces; iFace++){
     for(int i = 0; i < nNodesPFc; i++){
       nodeDs.row(i) = EMap<const EMatrix>(diffTensor[faceNodeMap->at(iFace)[i]].data(), 1, dim*dim);
     }
-    for(int i = 0; i < nIPs; i++){
-      EMap<const EVector> shape(ipShapes->at(i).data(), ipShapes->at(i).size());
-      EMap<EMatrix> res(Ds[iFace*nIPs + i].data(), 1, dim*dim);
+    for(int i = 0; i < nIPsFc; i++){
+      EMap<const EVector> shape(fipShapes->at(i).data(), fipShapes->at(i).size());
+      EMap<EMatrix> res(Ds[nIPsEl + iFace*nIPsFc + i].data(), 1, dim*dim);
       res = shape.transpose()*nodeDs;
     }
   }
@@ -66,55 +78,68 @@ void HDGDiffusion::assemble(const std::vector<double> & dV, const std::vector<EM
     throw(ErrorHandle("HDGDiffusion", "assemble", "must set the normals from the base before assembling"));
   }
   op = EMatrix::Zero(op.rows(), op.cols());
-  int dim = refEl->getDimension();
+  int spaceDim = refEl->getDimension();
   int nNodesEl = refEl->getNumNodes();
   int nIPsEl = refEl->getNumIPs();
   int nFaces = refEl->getNumFaces();
   const ReferenceElement * fEl = refEl->getFaceElement();
-  int nNodesFace = fEl->getNumNodes();
-  int nIPsPFc = fEl->getNumIPs();
+  int nNodesPFc = fEl->getNumNodes();
+  int nIPsFc = fEl->getNumIPs();
+  const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
+  const std::vector< std::vector< std::vector<double> > > * ipDerivShapes = refEl->getIPDerivShapeFunctions();
   const std::vector< std::vector<int> > * faceNodeMap = refEl->getFaceNodes();
+  const std::vector< std::vector<double> > * fipShapes = fEl->getIPShapeFunctions();
+  const std::vector<int> * faceNodes;
+  const std::vector<double> * shapes;
+  const std::vector< std::vector<double> > * derivShapes;
+  int lenU = nNodesEl * nDOFsPerNode;
+  int lenQ = spaceDim*lenU;
+  int lenL = nNodesPFc*nFaces*nDOFsPerNode;
+  int offset;
+  EVector buffVec(spaceDim);
+  EVector buffVec2(spaceDim);
+  EVector buffVec3(spaceDim);
+  EMatrix buffMat(spaceDim, nDOFsPerNode);
   if(Ds.size() == 0){
-    Ds.resize(nFaces * nIPsPFc, EMatrix::Identity(dim, dim));
-    myDiffTensor.resize(nNodesEl, EMatrix::Identity(dim, dim));
+    Ds.resize(nIPsEl + nFaces * nIPsFc, EMatrix::Identity(spaceDim, spaceDim));
+    myDiffTensor.resize(nNodesEl, EMatrix::Identity(spaceDim, spaceDim));
   }
-  std::vector<EVector> velocity(nNodesEl, EVector::Zero(dim));
-  for(int i = 0; i < dim; i++){
-    for(int j = 0; j < nNodesEl; j++){
-      velocity[j] = myDiffTensor[j].col(i);
-    }
-    convection->setVelocity(velocity);
-    convection->assemble(dV, invJacobians);
-    for(int j = 0; j < nNodesEl; j++){
-      op.block(0, nNodesEl + j*dim + i, nNodesEl, 1) += (convection->getMatrix()->row(j)).transpose();
-    }
-  }
-  std::vector<EMatrix> faceInvJacs(nIPsPFc);
-  std::vector<double> locMeasure(nIPsPFc, 0.0);
-  std::vector<EVector> diffNorms(nIPsPFc, EVector::Zero(dim));
-  int offset = 0, facesOff = 0;
-  for(int i = 0; i < nFaces; i++){
-    facesOff = i*nIPsPFc;
-    offset = nIPsEl + facesOff;
-    std::copy(invJacobians.begin() + offset, invJacobians.begin() + offset + nIPsPFc, faceInvJacs.begin());
-    for(int j = 0; j < nIPsPFc; j++){
-      diffNorms[j] = Ds[facesOff + j].transpose()*(normals->at(facesOff + j));
-    }
-    for(int d = 0; d < dim; d++){
-      for(int j = 0; j < nIPsPFc; j++){
-        locMeasure[j] = dV[offset + j]*(diffNorms[j][d]);
-      }
-      faceMass->assemble(locMeasure, faceInvJacs);
-      for(int j = 0; j < nNodesFace; j++){
-        for(int k = 0; k < nNodesFace; k++){
-          op(faceNodeMap->at(i)[k], nNodesEl + dim*(faceNodeMap->at(i)[j]) + d) -= (*(faceMass->getMatrix()))(k, j);
-          op(nNodesEl*(dim+1) + i*nNodesFace + k, nNodesEl + dim*(faceNodeMap->at(i)[j]) + d) -= (*(faceMass->getMatrix()))(k, j);
+  //start with face integrals
+  for(int iFace = 0; iFace < nFaces; iFace++){
+    faceNodes = &(faceNodeMap->at(iFace));
+    for(int ip = 0; ip < nIPsFc; ip++){
+      shapes = &(fipShapes->at(ip));
+      offset = iFace*nIPsFc + ip;
+      buffVec = Ds[nIPsEl + offset] * (normals->at(offset)) * dV[nIPsEl + offset];
+      for(int iN = 0; iN < nNodesPFc; iN++){
+        buffVec2 = buffVec * shapes->at(iN);
+        for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+          for(int jN = 0; jN < nNodesPFc; jN++){
+            buffVec3 = buffVec2 * shapes->at(jN);
+            for(int d = 0; d < spaceDim; d++){
+              op(lenU + lenQ + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, lenU + (faceNodes->at(jN)*spaceDim + d)*nDOFsPerNode + ndof) -= buffVec3[d];
+              op(faceNodes->at(iN)*nDOFsPerNode + ndof, lenU + (faceNodes->at(jN)*spaceDim + d)*nDOFsPerNode + ndof) -= buffVec3[d];
+            }
+          }
         }
       }
     }
   }
-  if(nDOFsPerNode > 1){
-    HDGOperator::multiplyDOFs();
+  //go into bulk integral
+  for(int ip = 0; ip < nIPsEl; ip++){
+    shapes = &(ipShapes->at(ip));
+    derivShapes = &(ipDerivShapes->at(ip));
+    for(int iN = 0; iN < nNodesEl; iN++){
+      buffVec = Ds[ip]*invJacobians[ip]*EMap<const EVector>(derivShapes->at(iN).data(), derivShapes->at(iN).size())*dV[ip];
+      for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+        for(int jN = 0; jN < nNodesEl; jN++){
+          buffVec2 = buffVec * shapes->at(jN);
+          for(int d = 0; d < spaceDim; d++){
+            op(iN*nDOFsPerNode + ndof, lenU + (jN*spaceDim + d)*nDOFsPerNode + ndof) += buffVec2[d];
+          }
+        }
+      }
+    }
   }
 };//assemble
 

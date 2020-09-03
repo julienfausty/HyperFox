@@ -217,6 +217,7 @@ void runCGBurgers(SimRun * thisRun){
     }
   }
   std::copy(sol.getValues()->begin(), sol.getValues()->end(), anaSol.getValues()->begin());
+  std::fill(diffCoeff.getValues()->begin(), diffCoeff.getValues()->end(), D);
   //create field list
   std::vector<Field*> fieldList;
   for(auto itMap = fieldMap.begin(); itMap != fieldMap.end(); itMap++){
@@ -314,11 +315,11 @@ void runCGBurgers(SimRun * thisRun){
       thisRun->l2Err += l2Err*timeStep/2;
       thisRun->dL2Err += dL2Err*timeStep/2;
     }
-    double quot = t/(5e-3);
+    double quot = t/(1e-3);
     //double quot = 0.0;
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
-    if(rem < timeStep/(5e-3)){
+    if(rem < timeStep/(1e-3)){
       hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
     }
     end = std::chrono::high_resolution_clock::now();
@@ -337,7 +338,7 @@ TEST_CASE("Testing regression cases for the BurgersModel", "[regression][CG][Bur
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"5e-2"};
+  meshSizes["2"] = {"7e-2"};
   //meshSizes["2"] = {"2e-1", "1e-1"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
   std::vector<std::string> timeSteps = {"1e-3"};

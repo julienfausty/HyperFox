@@ -113,8 +113,9 @@ void HDGNabUU::assemble(const std::vector<double> & dV, const std::vector<EMatri
           buffMat += buffMat.transpose();
           for(int jN = 0; jN < nNodesPFc; jN++){
             buffVec3 = faceSols[offset] * shapes->at(jN);
+            buffVec3 = buffMat * buffVec3;
             for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
-              op(lenU + lenQ + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, faceNodes->at(jN)*nDOFsPerNode + mdof) += (double)(buffMat.row(mdof)*buffVec3); 
+              op(lenU + lenQ + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, faceNodes->at(jN)*nDOFsPerNode + mdof) += buffVec3[mdof]; 
             }
           }
         }
@@ -141,9 +142,10 @@ void HDGNabUU::assemble(const std::vector<double> & dV, const std::vector<EMatri
         buffMat = EMatrix::Zero(spaceDim, spaceDim);
         buffMat.col(ndof) = buffVec2;
         buffMat += buffMat.transpose();
+        buffVec3 = buffMat * buffVec;
         for(int jN = 0; jN < nNodesEl; jN++){
           for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
-            op(iN * nDOFsPerNode + ndof, jN*nDOFsPerNode + mdof) -= (double)(buffMat.row(mdof) * buffVec) * shapes->at(jN);
+            op(iN * nDOFsPerNode + ndof, jN*nDOFsPerNode + mdof) -= buffVec3[mdof] * shapes->at(jN);
           }
         }
       }

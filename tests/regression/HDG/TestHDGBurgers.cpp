@@ -222,9 +222,9 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   hdfio.setField("Residual", &residual);
   hdfio.setField("Partition", &partition);
   //define scalars
-  double D = 1e-1;//diffusive coeff
+  double D = 1e-2;//diffusive coeff
   double timeStep = std::stod(thisRun->timeStep);
-  double carLen = std::sqrt(D*timeStep);
+  double carLen = 1.0;//std::sqrt(D*timeStep);
   double t = 0;
   int dimGrad = std::pow(nodeDim, 2);
   double timeEnd = 1.0;
@@ -252,6 +252,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
     }
   }
   std::copy(sol.getValues()->begin(), sol.getValues()->end(), anaSol.getValues()->begin());
+  std::fill(diffCoeff.getValues()->begin(), diffCoeff.getValues()->end(), D);
   //create field list
   std::vector<Field*> fieldList;
   for(auto itMap = fieldMap.begin(); itMap != fieldMap.end(); itMap++){
@@ -328,17 +329,24 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
         for(int j = 0; j < nNodesPerFace; j++){
           int offset = std::distance(ibuffer.begin(), std::find(ibuffer.begin(), ibuffer.end(), cell[j]));
           double pun = normals[j].dot(EMap<EVector>(dbuffer.data() + offset*nodeDim, nodeDim));
+          //double mult = 0.0;
           //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
             //= EMatrix::Identity(nodeDim, nodeDim);
-          EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-            = EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
-          //if(pun > 0){
+          //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+            //= EMatrix::Identity(nodeDim, nodeDim)*mult;
+          //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+            //= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
+          if((pun > 0 and iCell == 0) or (pun < 0 and iCell == 1)){
+            EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+              = EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
             //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-              //= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
-          //} else {
+              //= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun));
+          } else {
+            EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+              = EMatrix::Identity(nodeDim, nodeDim)*(D/carLen);
             //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-              //= EMatrix::Identity(nodeDim, nodeDim)*(D/carLen);
-          //}
+              //= EMatrix::Identity(nodeDim, nodeDim)*0.0;
+          }
         }
       }
     }
@@ -390,11 +398,11 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
       thisRun->l2Err += l2Err*timeStep/2;
       thisRun->dL2Err += dL2Err*timeStep/2;
     }
-    double quot = t/(5e-3);
+    double quot = t/(1e-3);
     //double quot = 0.0;
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
-    if(rem < timeStep/(5e-3)){
+    if(rem < timeStep/(1e-3)){
       hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
     }
     end = std::chrono::high_resolution_clock::now();
@@ -416,7 +424,7 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
   meshSizes["2"] = {"7e-2"};
   //meshSizes["2"] = {"2e-1", "1e-1"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-3"};
+  std::vector<std::string> timeSteps = {"1e-4"};
   //std::vector<std::string> orders = {"1", "2"};
   std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};
