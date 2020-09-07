@@ -92,7 +92,7 @@ void HDGNabUU::assemble(const std::vector<double> & dV, const std::vector<EMatri
   const std::vector< std::vector<double> > * derivShapes;
   int lenU = nNodesEl * nDOFsPerNode;
   int lenQ = spaceDim*lenU;
-  int lenL = nNodesPFc * nFaces;
+  int lenL = nNodesPFc * nFaces * nDOFsPerNode;
   //start with face integrals
   EMatrix buffMat(spaceDim, spaceDim);
   EVector buffVec(spaceDim);

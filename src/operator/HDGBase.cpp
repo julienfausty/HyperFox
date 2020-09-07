@@ -3,21 +3,15 @@
 namespace hfox{
 
 HDGBase::HDGBase(const ReferenceElement * re) : HDGOperator(re){
-  bulkMass = new Mass(re);
-  faceMass = new Mass(re->getFaceElement());
-  convection = new Convection(re);
+
 };//constructor
 
 HDGBase::~HDGBase(){
-  delete bulkMass;
-  delete faceMass;
-  delete convection;
+
 };//destructor
 
 void HDGBase::allocate(int nDOFsPerNode){
-  bulkMass->allocate(nDOFsPerNode*(refEl->getDimension()));
-  convection->allocate(nDOFsPerNode);
-  faceMass->allocate(nDOFsPerNode);
+
   HDGOperator::allocate(nDOFsPerNode);
 };//allocate
 
@@ -95,106 +89,72 @@ void HDGBase::assemble(const std::vector< double > & dV, const std::vector< EMat
   int lenQblock = nNodesEl*dim*nDOFsPerNode;
   int lenLblock = nFaces*nNodesFace*nDOFsPerNode;
   int sizeTau = nDOFsPerNode * nDOFsPerNode;
-  //Sqq
-  bulkMass->assemble(dV, invJacobians);
-  op.block(startQblock, startQblock, lenQblock, lenQblock) += *(bulkMass->getMatrix());
-  //Squ
-  for(int i = 0; i < dim; i++){
-    std::vector<EVector> velocity(nNodesEl, EMatrix::Identity(dim, dim).col(i));
-    convection->setVelocity(velocity);
-    convection->assemble(dV, invJacobians);
-    for(int iN = 0; iN < nNodesEl; iN++){
-      for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
-        for(int jN = 0; jN < nNodesEl; jN++){
-          for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
-            op(startQblock + (iN*dim + i)*nDOFsPerNode + ndof, startUblock + jN*nDOFsPerNode + mdof) += (*(convection->getMatrix()))(jN*nDOFsPerNode + mdof, iN*nDOFsPerNode + ndof);
-          }
-        }
-      }
-    }
-    //for(int j = 0; j < nNodesEl; j++){
-      //op.block(startQblock + j*dim*nDOFsPerNode + i, startUblock, 1, lenUblock) += (convection->getMatrix()->col(j)).transpose();
-    //}
-  }
-  std::vector<double> normaldV(nIPsFace, 0.0);
-  std::vector<EMatrix> faceInvJacs(nIPsFace, EMatrix::Zero(dim, dim-1));
-  std::vector<double> faceTaus(nIPsFace, 0.0);
-  std::vector<EVector> faceNormals(nIPsFace, EVector::Zero(dim));
-  const std::vector<int> * nodeMap;
-  for(int iFace = 0; iFace < nFaces; iFace++){
-    std::copy(invJacobians.begin() + nIPsEl + iFace*nIPsFace, invJacobians.begin() + nIPsEl + (iFace+1)*nIPsFace, faceInvJacs.begin());
-    nodeMap = &(refEl->getFaceNodes()->at(iFace));
-    int startDiag = startLblock + iFace*nNodesFace*nDOFsPerNode;
-    //Sql
-    int findex = iFace*nIPsFace;
-    for(int i = 0; i < dim; i++){
-      for(int j = 0; j < nIPsFace; j++){
-        normaldV[j] = dV[nIPsEl + findex + j]*(normals[findex + j][i]);
-      }
-      faceMass->assemble(normaldV, faceInvJacs);
-      for(int j = 0; j < nNodesFace; j++){
-        for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
-          op.block(startQblock + (dim*nodeMap->at(j) + i)*nDOFsPerNode + ndof, startDiag, 1, nNodesFace*nDOFsPerNode) -= (faceMass->getMatrix()->col(j*nDOFsPerNode + ndof)).transpose();
-        }
-      }
-    }
-  }
-
+  const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
+  const std::vector< std::vector< std::vector<double> > > * ipDerivShapes = refEl->getIPDerivShapeFunctions();
+  const std::vector< std::vector<int> > * faceNodeMap = refEl->getFaceNodes();
+  const std::vector< std::vector<double> > * fipShapes = fEl->getIPShapeFunctions();
+  const std::vector<int> * faceNodes;
+  const std::vector<double> * shapes;
+  const std::vector< std::vector<double> > * derivShapes;
+  int offset;
   double val;
-  bool allZeros;
-  for(int dofUp = 0; dofUp < nDOFsPerNode; dofUp++){
-    for(int dofDown = 0; dofDown < nDOFsPerNode; dofDown++){
-      for(int iFace = 0; iFace < nFaces; iFace++){
-        std::copy(invJacobians.begin() + nIPsEl + iFace*nIPsFace, invJacobians.begin() + nIPsEl + (iFace+1)*nIPsFace, faceInvJacs.begin());
-        nodeMap = &(refEl->getFaceNodes()->at(iFace));
-        for(int i = 0; i < nIPsFace; i++){
-          faceTaus[i] = taus[(iFace*nIPsFace + i)*sizeTau + dofUp*nDOFsPerNode + dofDown];
-        }
-        allZeros = 1;
-        for(int i = 0; i < nIPsFace; i++){
-          if(faceTaus[i] != 0){
-            allZeros = 0;
-            break;
+  EMatrix matMeasure(nDOFsPerNode, nDOFsPerNode);
+  EVector vecMeasure(dim);
+  EVector buffVec(dim);
+  EMatrix shapeShape(nNodesFace, nNodesFace);
+  //start with face integrals
+  for(int ip = 0; ip < nIPsFace; ip++){
+    shapes = &(fipShapes->at(ip));
+    shapeShape = EMap<const EVector>(shapes->data(), nNodesFace)*EMap<const EVector>(shapes->data(), nNodesFace).transpose();
+    for(int iFace = 0; iFace < nFaces; iFace++){
+      offset = iFace*nIPsFace + ip;
+      faceNodes = &(faceNodeMap->at(iFace));
+      matMeasure = dV[nIPsEl + offset]*EMap<EMatrix>(taus.data() + offset*sizeTau, nDOFsPerNode, nDOFsPerNode);
+      vecMeasure = dV[nIPsEl + offset]*(normals[offset]);
+      for(int iN = 0; iN < nNodesFace; iN++){
+        for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+          for(int jN = 0; jN < nNodesFace; jN++){
+            for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
+              val = matMeasure(ndof, mdof) * shapeShape(iN, jN);
+              //Sll
+              op(startLblock + (iFace*nNodesFace + iN)*nDOFsPerNode + ndof, startLblock + (iFace*nNodesFace + jN)*nDOFsPerNode + mdof) -= val;
+              //Slu
+              op(startLblock + (iFace*nNodesFace + iN)*nDOFsPerNode + ndof, faceNodes->at(jN)*nDOFsPerNode + mdof) += val;
+              //Suu
+              op(faceNodes->at(iN)*nDOFsPerNode + ndof, faceNodes->at(jN)*nDOFsPerNode + mdof) += val;
+              //Sul
+              op(faceNodes->at(iN)*nDOFsPerNode + ndof, startLblock + (iFace*nNodesFace + jN)*nDOFsPerNode + mdof) -= val;
+            }
+            buffVec = vecMeasure*shapeShape(iN, jN);
+            for(int d = 0; d < dim; d++){
+              //Sql
+              op(startQblock + (faceNodes->at(iN)*dim + d)*nDOFsPerNode + ndof, startLblock + (iFace*nNodesFace + jN)*nDOFsPerNode + ndof) -= buffVec[d];
+            }
           }
         }
-        if(allZeros){
-          continue;
-        }
-        for(int i = 0; i < nIPsFace; i++){
-          faceTaus[i] *= dV[nIPsEl + iFace * nIPsFace + i];
-        } 
-        faceMass->assemble(faceTaus, faceInvJacs);
-        for(int k = 0; k < nNodesFace; k++){
-          for(int l = 0; l < nNodesFace; l++){
-            val = (*(faceMass->getMatrix()))(k*nDOFsPerNode + dofUp,l*nDOFsPerNode + dofDown);
-            //Sll
-            op(startLblock + (iFace*nNodesFace + k)*nDOFsPerNode + dofUp, startLblock + (iFace*nNodesFace + l)*nDOFsPerNode + dofDown) -= val;
-            //Slu
-            op(startLblock + (iFace*nNodesFace + k)*nDOFsPerNode + dofUp, nodeMap->at(l)*nDOFsPerNode + dofDown) += val;
-            //Suu
-            op(nodeMap->at(k)*nDOFsPerNode + dofUp, nodeMap->at(l)*nDOFsPerNode + dofDown) += val;
-            //Sul
-            op(nodeMap->at(k)*nDOFsPerNode + dofUp, startLblock + (iFace*nNodesFace + l)*nDOFsPerNode + dofDown) -= val;
-          }
-        }
-        //op.block(startDiag, startDiag, nNodesFace, nNodesFace) -= *(faceMass->getMatrix());
-        ////Slu
-        //for(int k = 0; k < nNodesFace; k++){
-          //op.block(startDiag, nodeMap->at(k), nNodesFace, 1) += (*(faceMass->getMatrix())).col(k);
-        //}
       }
     }
   }
-  //Suu
-  //for(int iFace = 0; iFace < nFaces; iFace++){
-    //nodeMap = &(refEl->getFaceNodes()->at(iFace));
-    //int startDiag = startLblock + iFace*nNodesFace;
-    //for(int i = 0; i < nNodesFace; i++){
-      //op.block(nodeMap->at(i), 0, 1, lenUblock) += op.block(startDiag + i, 0, 1, lenUblock);
-    //}
-  //}
-  ////Sul
-  //op.block(startUblock, startLblock, lenUblock, lenLblock) -= op.block(startLblock, startUblock, lenLblock, lenUblock).transpose();
+  //do bulk integrals
+  shapeShape.resize(nNodesEl, nNodesEl);
+  for(int ip = 0; ip < nIPsEl; ip++){
+    shapes = &(ipShapes->at(ip));
+    derivShapes = &(ipDerivShapes->at(ip));
+    shapeShape = EMap<const EVector>(shapes->data(), nNodesEl)*EMap<const EVector>(shapes->data(), nNodesEl).transpose();
+    for(int iN = 0; iN < nNodesEl; iN++){
+      vecMeasure = (invJacobians[ip]*EMap<const EVector>(derivShapes->at(iN).data(), dim))*dV[ip];
+      for(int d = 0; d < dim; d++){
+        for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+          for(int jN = 0; jN < nNodesEl; jN++){
+            //Squ
+            op(startQblock + (iN*dim + d)*nDOFsPerNode + ndof, jN*nDOFsPerNode + ndof) += vecMeasure[d]*shapes->at(jN);
+            //Sqq
+            op(startQblock + (iN*dim + d)*nDOFsPerNode + ndof, startQblock + (jN*dim + d)* nDOFsPerNode + ndof) += dV[ip]*shapeShape(iN, jN);
+          }
+        }
+      }
+    }
+  }
 };//assemble
 
 }//hfox

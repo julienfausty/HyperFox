@@ -62,18 +62,6 @@ class HDGBase : public HDGOperator{
      */
     void calcNormals(const std::vector< std::vector<double> > & nodes, const std::vector<EMatrix> & jacobians);
     /*!
-     * \brief get method for bulk mass operator
-     */
-    const Mass * getBulkMass() const{return bulkMass;};
-    /*!
-     * \brief get method for face mass operator
-     */
-    const Mass * getFaceMass() const{return faceMass;};
-    /*!
-     * \brief get method for convection operator
-     */
-    const Convection * getConvection() const{return convection;};
-    /*!
      * \brief get method for the normals list at the IPs
      */
     const std::vector<EVector> * getNormals() const{return &normals;};
@@ -86,18 +74,6 @@ class HDGBase : public HDGOperator{
      * \brief the normals list at the IPs
      */
     std::vector<EVector> normals;
-    /*!
-     * \brief a face mass operator
-     */
-    Mass * faceMass;
-    /*!
-     * \brief a bulk mass operator
-     */
-    Mass * bulkMass;
-    /*!
-     * \brief a bulk convection operator
-     */
-    Convection * convection;
 
 };//HDGBase
 

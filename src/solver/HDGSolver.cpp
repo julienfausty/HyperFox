@@ -206,7 +206,7 @@ void HDGSolver::assemble(){
   std::vector<int> locFace2Cells(2, 0);
   std::vector<int> unitCell(1, 0);
   std::vector<int> locUnitCell(1, 0);
-  std::vector<int> face2CellMap(lenL, 0);
+  std::vector<int> face2CellMap(nFacesPEl*nNodesPFc, 0);
   std::vector<int> matRowCols(lenL, 0);
   std::vector<double> fieldBuffer;
   int buff = 0;
