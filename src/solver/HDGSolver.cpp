@@ -71,7 +71,6 @@ void HDGSolver::allocate(){
   if(*(it->second->getNumValsPerObj()) != nDOFsPerNode){
     throw(ErrorHandle("HDGSolver", "allocate", "the Trace field must have the same number of values per object as the Solution field."));
   }
-
   int dim = myMesh->getNodeSpaceDimension();
   int nNodesPEl = myMesh->getReferenceElement()->getNumNodes();
   int nFacesPEl = myMesh->getReferenceElement()->getNumFaces();
@@ -269,7 +268,7 @@ void HDGSolver::assemble(){
       for(int j = 0; j < nNodesPFc; j++){
         face2CellMap[i*nNodesPFc + j] = std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]));
         for(int k = 0; k < nDOFsPerNode; k++){
-          matRowCols[i*nNodesPFc + j*nDOFsPerNode + k] = (facesInCell[i] * nNodesPFc + face2CellMap[i*nNodesPFc + j])*nDOFsPerNode + k;
+          matRowCols[(i*nNodesPFc + j)*nDOFsPerNode + k] = (facesInCell[i] * nNodesPFc + face2CellMap[i*nNodesPFc + j])*nDOFsPerNode + k;
         }
       }
     }
@@ -325,6 +324,10 @@ void HDGSolver::assemble(){
     model->compute();
     locMat = model->getLocalMatrix();
     locVec = model->getLocalRHS();
+    //std::cout << "localMat:" << std::endl;
+    //std::cout << *locMat << std::endl;
+    //std::cout << "localRHS" << std::endl;
+    //std::cout << *locVec << std::endl;
     invSqq.compute(locMat->block(startQ, startQ, lenQ, lenQ));
     invSqqSqu = invSqq.solve(locMat->block(startQ, startU, lenQ, lenU));
     invSqqSql = invSqq.solve(locMat->block(startQ, startL, lenQ, lenL));
@@ -632,7 +635,7 @@ void HDGSolver::solve(){
       for(int j = 0; j < nNodesPFc; j++){
         int found = std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]));
         for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
-          locL[i*lenT + j*nDOFsPerNode + ndof] = buff[found*nDOFsPerNode + ndof];
+          locL[(i*nNodesPFc + j)*nDOFsPerNode + ndof] = buff[found*nDOFsPerNode + ndof];
         }
       }
     }

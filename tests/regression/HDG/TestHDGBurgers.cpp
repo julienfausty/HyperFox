@@ -12,6 +12,7 @@
 #include "HDF5Io.h"
 #include "Operator.h"
 #include "HDGBurgersModel.h"
+#include "HDGDiffusionSource.h"
 #include "RungeKutta.h"
 #include "DirichletModel.h"
 #include "PetscInterface.h"
@@ -67,9 +68,10 @@ void analyticalBurgers(double t, std::vector<double> x, double D, std::vector<do
   double Ax0 = 3.0;
   double Ay0 = 2.0;
   double Ax1 = 2.0;
-  double Ay1 = 1.0;
+  double Ay1 = -1.0;
   std::vector<double> x0 = {0.5, 0.5};
   sol->resize(x.size());
+  //sol->at(0) = 1.0;
   potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, sol);
   double buff = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
   if(buff != 0){
@@ -83,8 +85,9 @@ void analyticalBurgersGrad(double t, std::vector<double> x, double D, std::vecto
   double Ax0 = 3.0;
   double Ay0 = 2.0;
   double Ax1 = 2.0;
-  double Ay1 = 1.0;
+  double Ay1 = -1.0;
   std::vector<double> x0 = {0.5, 0.5};
+  //gradSol->resize(std::pow(x.size(), 2), 0.0);
   double pot = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
   std::vector<double> gradPot;
   potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, &gradPot);
@@ -198,8 +201,8 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
+  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
   if(globType == WEXPLICIT){
     writeDir += "WExp/";
   } else if(globType == SEXPLICIT){
@@ -238,7 +241,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   double t = 0;
   int dimGrad = std::pow(nodeDim, 2);
   double timeEnd = 1.0;
-  int nIters = 1;//timeEnd/timeStep;
+  int nIters = timeEnd/timeStep;
   //create buffers
   std::vector<int> cell;
   std::vector<double> node;
@@ -343,33 +346,26 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
           int offset = std::distance(ibuffer.begin(), std::find(ibuffer.begin(), ibuffer.end(), cell[j]));
           double pun = normals[j].dot(EMap<EVector>(dbuffer.data() + offset*nodeDim, nodeDim));
           //double mult = 0.0;
-          EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-            = EMatrix::Identity(nodeDim, nodeDim);
+          //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+            //= EMatrix::Identity(nodeDim, nodeDim);
           //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
             //= EMatrix::Identity(nodeDim, nodeDim)*mult;
           //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
             //= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
-          //if((pun > 0 and iCell == 0) or (pun < 0 and iCell == 1)){
+          if((pun > 0 and iCell == 0) or (pun < 0 and iCell == 1)){
+            EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+              = EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
             //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-              //= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
-            ////EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-              ////= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun));
-          //} else {
+              //= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun));
+          } else {
+            EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
+              = EMatrix::Identity(nodeDim, nodeDim)*(D/carLen);
             //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-              //= EMatrix::Identity(nodeDim, nodeDim)*(D/carLen);
-            ////EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-              ////= EMatrix::Identity(nodeDim, nodeDim)*0.0;
-          //}
+              //= EMatrix::Identity(nodeDim, nodeDim)*0.0;
+          }
         }
       }
     }
-    //for(int iFace = 0; iFace < myMesh.getNumberFaces(); iFace++){
-      //for(int iCell = 0; iCell < 2 ; iCell++){
-        //for(int j = 0; j < nNodesPerFace; j++){
-          //std::cout << EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) << std::endl;
-        //}
-      //}
-    //}
     //solve non-linear problem
     start = std::chrono::high_resolution_clock::now();
     for(int k = 0; k < ts.getNumStages(); k++){
@@ -411,11 +407,11 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
       thisRun->l2Err += l2Err*timeStep/2;
       thisRun->dL2Err += dL2Err*timeStep/2;
     }
-    double quot = t/(1e-3);
+    double quot = t/(5e-3);
     //double quot = 0.0;
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
-    if(rem < timeStep/(1e-3)){
+    if(rem < timeStep/(5e-3)){
       hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
     }
     end = std::chrono::high_resolution_clock::now();
@@ -439,7 +435,7 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
   std::vector<std::string> timeSteps = {"1e-3"};
   //std::vector<std::string> orders = {"1", "2"};
-  std::vector<std::string> orders = {"5"};
+  std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
@@ -460,8 +456,8 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
     }
   }
 
-  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
   //HDGSolverType globType = WEXPLICIT;
   HDGSolverType globType = IMPLICIT;
   //HDGSolverType globType = SEXPLICIT;
