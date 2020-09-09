@@ -110,7 +110,7 @@ class NonLinearWrapper{
     /*!
      * \brief a max number of iterations
      */
-    int maxIters = 1000;
+    int maxIters = 20;
     /*!
      * \brief a boolean controling verbosity
      */
