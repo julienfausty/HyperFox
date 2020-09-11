@@ -31,7 +31,7 @@ double potentialiBurgers(double t, std::vector<double> x, double & Ax, double & 
 void potentialiGradBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0, std::vector<double> * grad){
   grad->resize(x.size());
   grad->at(0) = Ax * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1]));
-  grad->at(1) = Ay * potentialiBurgers(t, x, Ax, Ay, x0);
+  grad->at(1) = Ay * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::cos(Ay*(x[1] - x0[1]));
 };
 
 void potentialiHessBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0, std::vector<double> * hess){
@@ -40,9 +40,9 @@ void potentialiHessBurgers(double t, std::vector<double> x, double & Ax, double 
   potentialiGradBurgers(t, x, Ax, Ay, x0, &grad);
   double pot = potentialiBurgers(t, x, Ax, Ay, x0);
   hess->at(0) = std::pow(Ax, 2.0) * pot;
-  hess->at(1) = Ay * grad[0];
+  hess->at(1) = Ay * Ax * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::cos(Ay*(x[1] - x0[1]));
   hess->at(2) = hess->at(1);
-  hess->at(3) = Ay*grad[1];
+  hess->at(3) = -std::pow(Ay, 2)*pot;
 };
 
 double potentialBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0){
@@ -69,7 +69,7 @@ void analyticalBurgers(double t, std::vector<double> x, double D, std::vector<do
   double Ay0 = 2.0;
   double Ax1 = 2.0;
   double Ay1 = 1.0;
-  std::vector<double> x0 = {0.5, 0.5};
+  std::vector<double> x0 = {1.1, 1.1};
   sol->resize(x.size());
   //sol->at(0) = 1.0;
   potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, sol);
@@ -86,7 +86,7 @@ void analyticalBurgersGrad(double t, std::vector<double> x, double D, std::vecto
   double Ay0 = 2.0;
   double Ax1 = 2.0;
   double Ay1 = 1.0;
-  std::vector<double> x0 = {0.5, 0.5};
+  std::vector<double> x0 = {1.1, 1.1};
   //gradSol->resize(std::pow(x.size(), 2), 0.0);
   double pot = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
   std::vector<double> gradPot;
@@ -182,7 +182,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   HDGBurgersModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
-  myOpts.maxits = 10000;
+  myOpts.maxits = 3000;
   myOpts.rtol = 1e-12;
   myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
@@ -199,11 +199,12 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
   wrapper.setVerbosity(false);
+  wrapper.setMaxIterations(12);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
+  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
   if(globType == WEXPLICIT){
     writeDir += "WExp/";
   } else if(globType == SEXPLICIT){
@@ -297,8 +298,6 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   //allocating and last set ups
   ts.setTimeStep(timeStep);
   transportMod.setTimeScheme(&ts);
-  mySolver.initialize();
-  mySolver.allocate();
   mySolver.initialize();
   mySolver.allocate();
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
@@ -451,10 +450,11 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2"};
-  //meshSizes["2"] = {"2e-1", "1e-1"};
+  meshSizes["2"] = {"1e-1", "7e-2", "5e-2", "2e-2"};
+  //meshSizes["2"] = {"7e-2"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "1e-3", "5e-4", "1e-4"};
+  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "1e-3", "5e-4", "2e-4", "1e-4"};
+  //std::vector<std::string> timeSteps = {"1e-3"};
   std::vector<std::string> orders = {"1", "2", "3"};
   //std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};
@@ -477,8 +477,8 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
     }
   }
 
-  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
   //HDGSolverType globType = WEXPLICIT;
   HDGSolverType globType = IMPLICIT;
   //HDGSolverType globType = SEXPLICIT;
