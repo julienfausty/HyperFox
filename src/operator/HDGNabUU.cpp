@@ -156,8 +156,8 @@ void HDGNabUU::assemble(const std::vector<double> & dV, const std::vector<EMatri
   for(int i = 0; i < nNodesEl; i++){
     solDiv2.segment(i*nDOFsPerNode, nDOFsPerNode) = solNodes[i]/2.0;
   }
-  rhs.segment(0, lenU) = op.block(0, 0, lenU, lenU)*solDiv2;
-  rhs.segment(lenU + lenQ, lenL) = op.block(lenU + lenQ, 0, lenL, lenU)*solDiv2;
+  rhs.segment(0, lenU) += op.block(0, 0, lenU, lenU)*solDiv2;
+  rhs.segment(lenU + lenQ, lenL) += op.block(lenU + lenQ, 0, lenL, lenU)*solDiv2;
 };//assemble
 
 };//hfox

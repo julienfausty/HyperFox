@@ -324,10 +324,6 @@ void HDGSolver::assemble(){
     model->compute();
     locMat = model->getLocalMatrix();
     locVec = model->getLocalRHS();
-    //std::cout << "localMat:" << std::endl;
-    //std::cout << *locMat << std::endl;
-    //std::cout << "localRHS" << std::endl;
-    //std::cout << *locVec << std::endl;
     invSqq.compute(locMat->block(startQ, startQ, lenQ, lenQ));
     invSqqSqu = invSqq.solve(locMat->block(startQ, startU, lenQ, lenU));
     invSqqSql = invSqq.solve(locMat->block(startQ, startL, lenQ, lenL));
