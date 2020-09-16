@@ -151,6 +151,31 @@ void HDGNabUU::assemble(const std::vector<double> & dV, const std::vector<EMatri
       }
     }
   }
+  //remove the divergence components
+  double divSol0dV;
+  EMatrix derivShapesMat(spaceDim, nNodesEl);
+  for(int ip = 0; ip < nIPsEl; ip++){
+    shapes = &(ipShapes->at(ip));
+    derivShapes = &(ipDerivShapes->at(ip));
+    divSol0dV = 0;
+    derivShapesMat = EMatrix::Zero(spaceDim, nNodesEl);
+    for(int iN = 0; iN < nNodesEl; iN++){
+      derivShapesMat.col(iN) = invJacobians[ip]*EMap<const EVector>(derivShapes->at(iN).data(), derivShapes->at(iN).size());
+      divSol0dV += (derivShapesMat.col(iN).transpose())*solNodes[iN];
+    }
+    divSol0dV *= dV[ip];
+    for(int iN = 0; iN < nNodesEl; iN++){
+      buffVec = shapes->at(iN) * sols[ip] * dV[ip];
+      for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+        for(int jN = 0; jN < nNodesEl; jN++){
+          op(iN * nDOFsPerNode + ndof, jN*nDOFsPerNode + ndof) -= divSol0dV * shapes->at(iN) * shapes->at(jN);
+          for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
+            op(iN * nDOFsPerNode + ndof, jN*nDOFsPerNode + mdof) -= buffVec[ndof] * derivShapesMat(mdof, jN);
+          }
+        }
+      }
+    }
+  }
   //do rhs calculations
   EVector solDiv2(lenU);
   for(int i = 0; i < nNodesEl; i++){

@@ -190,6 +190,64 @@ class TestUtils{
     return integral;
   };
 
+  static double l2AnalyticalErrCellField(Field * field1, std::function<void(std::vector<double>&, std::vector<double>*)> f, Mesh * mesh){
+    Partitioner * part = mesh->getPartitioner();
+    double integral = 0;
+    const ReferenceElement * refEl = mesh->getReferenceElement();
+    std::vector<int> cell(refEl->getNumNodes(), 0);
+    std::vector<int> locCell(refEl->getNumNodes(), 0);
+    std::vector< std::vector<double> > nodes(cell.size(), 
+        std::vector<double>(mesh->getNodeSpaceDimension(), 0.0));
+    const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
+    const std::vector<double> * ipWeights = refEl->getIPWeights();
+    const std::vector< std::vector<double> > * ipCoords = refEl->getIPCoords();
+    int dim = mesh->getNodeSpaceDimension();
+    int nDOFs = *(field1->getNumValsPerObj());
+    EMatrix nodeMat(mesh->getNodeSpaceDimension(), refEl->getNumNodes());
+    std::vector<double> ipNode(dim);
+    std::vector<double> ipSol(nDOFs);
+    std::vector<double> ipVal(nDOFs);
+    std::vector<double> detJacs(refEl->getNumIPs(), 0.0);
+    for(int i = 0; i < mesh->getNumberCells(); i++){
+      mesh->getCell(i, &cell);
+      if(part != NULL){
+        part->global2LocalNodeSlice(cell, &locCell);
+        for(int k = 0; k < locCell.size(); k++){
+          if(locCell[k] != -1){
+            mesh->getPoint(locCell[k], &(nodes[k]));
+          } else {
+            mesh->getGhostPoint(cell[k], &(nodes[k])); 
+          }
+        }
+      } else {
+        mesh->getSlicePoints(cell, &nodes);
+      }
+      for(int n = 0; n < nodes.size(); n++){
+        nodeMat.col(n) = EMap<EVector>(nodes[n].data(), dim);
+      }
+      detJacs = Operator::calcDetJacobians(Operator::calcJacobians(nodes, refEl));
+      for(int j = 0; j < refEl->getNumIPs(); j++){
+        double dV = detJacs[j]*ipWeights->at(j);
+        EMap<EVector>(ipNode.data(), dim) = nodeMat * EMap<const EVector>(ipShapes->at(j).data(), ipShapes->at(j).size());
+        f(ipNode, &ipSol);
+        std::fill(ipVal.begin(), ipVal.end(), 0.0);
+        for(int k = 0; k < cell.size(); k++){
+          for(int l = 0; l < nDOFs; l++){
+            ipVal[l] += ipShapes->at(j)[k]*(field1->getValues()->at((i*(refEl->getNumNodes()) + k)*nDOFs + l));
+          }
+        }
+        for(int k = 0; k < nDOFs; k++){
+          integral += std::pow(ipVal[k] - ipSol[k], 2)*dV;
+        }
+      }
+    }
+    double errBuff = 0;
+    MPI_Allreduce(&integral, &errBuff, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    integral = errBuff;
+    integral = std::sqrt(integral);
+    return integral;
+  };
+
   static std::vector< std::vector<double> > getRefNormals(int dim){
     std::vector< std::vector<double> > normals;
     if(dim == 2){
