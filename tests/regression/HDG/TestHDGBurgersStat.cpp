@@ -25,14 +25,12 @@ using namespace hfox;
 namespace hdg{
 
 double potentialiBurgersStat(std::vector<double> x, double & A, std::vector<double> & x0){
-  //return ((1+x[0])*1e-3*A*std::exp((1+x0[0])*A) + (std::exp(A*(x[0] - x0[0])) + std::exp(-A*(x[0]-x0[0])))*std::cos(A*(x[1] - x0[1])));
-  return ((std::exp(A*(x[0] - x0[0])) + std::exp(-A*(x[0]-x0[0])))*std::cos(A*(x[1] - x0[1])));
+  return (0.001*A*std::exp((1+x0[0])*A)*(1+x[0]) + (std::exp(A*(x[0] - x0[0])) + std::exp(-A*(x[0]-x0[0])))*std::cos(A*(x[1] - x0[1])));
 };
 
 void potentialiGradBurgersStat(std::vector<double> x, double & A, std::vector<double> & x0, std::vector<double> * grad){
   grad->resize(x.size());
-  //grad->at(0) =  1e-3*A*std::exp((1+x0[0])*A) + A * (std::exp(A*(x[0] - x0[0])) - std::exp(-A*(x[0]-x0[0])))*std::cos(A*(x[1] - x0[1]));
-  grad->at(0) =  A * (std::exp(A*(x[0] - x0[0])) - std::exp(-A*(x[0]-x0[0])))*std::cos(A*(x[1] - x0[1]));
+  grad->at(0) =  0.001*A*std::exp((1+x0[0])*A) + A * (std::exp(A*(x[0] - x0[0])) - std::exp(-A*(x[0]-x0[0])))*std::cos(A*(x[1] - x0[1]));
   grad->at(1) = -A * (std::exp(A*(x[0] - x0[0])) + std::exp(-A*(x[0]-x0[0])))*std::sin(A*(x[1] - x0[1]));
 };
 
@@ -62,26 +60,26 @@ void potentialHessBurgersStat(std::vector<double> x, double & A, std::vector<dou
 
 void analyticalBurgersStat(std::vector<double> x, double D, std::vector<double> * sol){
   double A = 0.5;
-  std::vector<double> x0 = {1.0, 0.0};
+  std::vector<double> x0 = {1.5, 0.0};
   sol->resize(x.size(), 0.0);
-  //sol->at(0) = 1.0;
-  potentialGradBurgersStat(x, A, x0, sol);
-  double buff = potentialBurgersStat(x, A, x0);
-  EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/buff;
+  sol->at(0) = 0.01;
+  //potentialGradBurgersStat(x, A, x0, sol);
+  //double buff = potentialBurgersStat(x, A, x0);
+  //EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/buff;
 };
 
 void analyticalBurgersGradStat(std::vector<double> x, double D, std::vector<double> * gradSol){
   double A = 0.5;
-  std::vector<double> x0 = {1.0, 0.0};
+  std::vector<double> x0 = {1.5, 0.0};
   gradSol->resize(std::pow(x.size(), 2), 0.0);
-  double pot = potentialBurgersStat(x, A, x0);
-  std::vector<double> gradPot;
-  potentialGradBurgersStat(x, A, x0, &gradPot);
-  potentialHessBurgersStat(x, A, x0, gradSol);
-  EMap<EMatrix> res(gradSol->data(), x.size(), x.size());
-  res *= -2.0*D/pot;
-  EMap<EVector> gPot(gradPot.data(), gradPot.size());
-  res += (2.0*D/std::pow(pot, 2.0))*(gPot * gPot.transpose());
+  //double pot = potentialBurgersStat(x, A, x0);
+  //std::vector<double> gradPot;
+  //potentialGradBurgersStat(x, A, x0, &gradPot);
+  //potentialHessBurgersStat(x, A, x0, gradSol);
+  //EMap<EMatrix> res(gradSol->data(), x.size(), x.size());
+  //res *= -2.0*D/pot;
+  //EMap<EVector> gPot(gradPot.data(), gradPot.size());
+  //res += (2.0*D/std::pow(pot, 2.0))*(gPot * gPot.transpose());
 };
 
 };//hdg
@@ -148,7 +146,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   wrapper.setVerbosity(true);
   int maxNRIter = 50;
   wrapper.setMaxIterations(maxNRIter);
-  wrapper.setResidualTolerance(1e-10);
+  wrapper.setResidualTolerance(1e-8);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
@@ -165,7 +163,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   hdfio.setField("Residual", &residual);
   hdfio.setField("Partition", &partition);
   //define scalars
-  double D = 0.2;//1e-2;//diffusive coeff
+  double D = 0.2;//diffusive coeff
   double carLen = 1.0;
   int dimGrad = std::pow(nodeDim, 2);
   //create buffers  
@@ -173,6 +171,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   std::vector<double> node;
   std::vector<int> face2Cell;
   std::vector<int> ibuffer;
+  std::vector< std::vector<int> > iibuffer;
   std::vector<double> dbuffer;
   std::vector<EVector> normals(nNodesPerFace, EVector::Zero(nodeDim));
   //initialize field values
@@ -199,8 +198,17 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   }
   std::fill(diffCoeff.getValues()->begin(), diffCoeff.getValues()->end(), D);
   for(int iFace = 0; iFace < myMesh.getNumberFaces(); iFace++){
+    //normals = TestUtils::calculateOutwardNormal(&myMesh, iFace);
+    //myMesh.getFace(iFace, &cell);
+    //myMesh.getFace2Cell(iFace, &face2Cell);
+    //anaSol.getSliceValues(face2Cell, &dbuffer);
+    //myMesh.getSliceCells(face2Cell, &iibuffer);
     for(int iN = 0; iN < nNodesPerFace; iN++){
       for(int iCell = 0; iCell < 2; iCell++){
+        //int offset = iCell*nNodesPerEl + std::distance(iibuffer[iCell].begin(), std::find(iibuffer[iCell].begin(), iibuffer[iCell].end(), cell[iN]));
+        //double pun = normals[iN].dot(EMap<EVector>(dbuffer.data() + offset*nodeDim, nodeDim));
+        //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + iN)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim)
+          //= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D);
         EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + iN)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim)
           = EMatrix::Identity(nodeDim, nodeDim);
       }
@@ -273,8 +281,8 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
     }
   }
   zPart.updateSharedInformation();
-  //double l2Err = std::sqrt(TestUtils::l2ProjectionCellField(&residual, &residual, &myMesh));
-  double l2Err = TestUtils::l2AnalyticalErrCellField(&sol, [D](std::vector<double> & x, std::vector<double> * sol){hdg::analyticalBurgersStat(x, D, sol);}, &myMesh);
+  double l2Err = std::sqrt(TestUtils::l2ProjectionCellField(&residual, &residual, &myMesh));
+  //double l2Err = TestUtils::l2AnalyticalErrCellField(&sol, [D](std::vector<double> & x, std::vector<double> * sol){hdg::analyticalBurgersStat(x, D, sol);}, &myMesh);
   double dL2Err = std::sqrt(sumRes/sumAna);
   thisRun->linAlgErr += linAlgErr;
   thisRun->l2Err += l2Err;
@@ -291,10 +299,10 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  //meshSizes["2"] = {"1e-1", "7e-2", "5e-2", "2e-2"};
-  meshSizes["2"] = {"5e-2"};
-  //std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
-  std::vector<std::string> orders = {"3"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2", "2e-2"};
+  //meshSizes["2"] = {"5e-2"};
+  std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
+  //std::vector<std::string> orders = {"3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){

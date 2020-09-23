@@ -24,13 +24,13 @@ using namespace hfox;
 namespace cg{
 
 double potentialiBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0){
-  return (std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1])));
+  return (std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::cos(Ay*(x[1] - x0[1])));
 };
 
 void potentialiGradBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0, std::vector<double> * grad){
   grad->resize(x.size());
-  grad->at(0) = Ax * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1]));
-  grad->at(1) = Ay * potentialiBurgers(t, x, Ax, Ay, x0);
+  grad->at(0) = Ax * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::cos(Ay*(x[1] - x0[1]));
+  grad->at(1) = -Ay * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1]));
 };
 
 void potentialiHessBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0, std::vector<double> * hess){
@@ -39,9 +39,9 @@ void potentialiHessBurgers(double t, std::vector<double> x, double & Ax, double 
   potentialiGradBurgers(t, x, Ax, Ay, x0, &grad);
   double pot = potentialiBurgers(t, x, Ax, Ay, x0);
   hess->at(0) = std::pow(Ax, 2.0) * pot;
-  hess->at(1) = Ay * grad[0];
+  hess->at(1) = -Ay * Ax * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1]));
   hess->at(2) = hess->at(1);
-  hess->at(3) = Ay*grad[1];
+  hess->at(3) = -std::pow(Ay, 2)*pot;
 };
 
 double potentialBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0){
@@ -64,32 +64,42 @@ void potentialHessBurgers(double t, std::vector<double> x, double & Ax0, double 
 };
 
 void analyticalBurgers(double t, std::vector<double> x, double D, std::vector<double> * sol){
-  double Ax0 = 3.0;
-  double Ay0 = 2.0;
-  double Ax1 = 2.0;
-  double Ay1 = 1.0;
-  std::vector<double> x0 = {0.5, 0.5};
+  double Ax0 = 0.3;
+  double Ay0 = 0.2;
+  double Ax1 = 0.2;
+  double Ay1 = 0.1;
+  std::vector<double> x0 = {1.0, 0.0};
   sol->resize(x.size());
+  //sol->at(0) = 1.0;
   potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, sol);
-  EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
+  double buff = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
+  if(buff != 0){
+    EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
+  } else {
+    EMap<EVector>(sol->data(), sol->size()) *= 0.0;
+  }
 };
 
 void analyticalBurgersGrad(double t, std::vector<double> x, double D, std::vector<double> * gradSol){
-  double Ax0 = 3.0;
-  double Ay0 = 2.0;
-  double Ax1 = 2.0;
-  double Ay1 = 1.0;
-  std::vector<double> x0 = {0.5, 0.5};
+  double Ax0 = 0.3;
+  double Ay0 = 0.2;
+  double Ax1 = 0.2;
+  double Ay1 = 0.1;
+  std::vector<double> x0 = {1.0, 0.0};
+  //gradSol->resize(std::pow(x.size(), 2), 0.0);
   double pot = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
   std::vector<double> gradPot;
   potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, &gradPot);
   potentialHessBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, gradSol);
   EMap<EMatrix> res(gradSol->data(), x.size(), x.size());
-  res *= -2.0*D/pot;
-  EMap<EVector> gPot(gradPot.data(), gradPot.size());
-  res += (2.0*D/std::pow(pot, 2.0))*(gPot * gPot.transpose());
+  if(pot != 0){
+    res *= -2.0*D/pot;
+    EMap<EVector> gPot(gradPot.data(), gradPot.size());
+    res += (2.0*D/std::pow(pot, 2.0))*(gPot * gPot.transpose());
+  } else {
+    res = EMatrix::Zero(x.size(), x.size());
+  }
 };
-
 };//cg
 
 void runCGBurgers(SimRun * thisRun){
@@ -156,7 +166,7 @@ void runCGBurgers(SimRun * thisRun){
   BurgersModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 20000;
-  myOpts.rtol = 1e-12;
+  myOpts.rtol = 1e-15;
   myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   CGSolver mySolver;
@@ -171,8 +181,8 @@ void runCGBurgers(SimRun * thisRun){
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
-  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/CG/";
+  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
+  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/CG/";
   if(rkStr == "BEuler"){
     writeDir += "BEuler/";
   }else if(rkStr == "ALX2"){
@@ -197,7 +207,7 @@ void runCGBurgers(SimRun * thisRun){
   hdfio.setField("Residual", &residual);
   hdfio.setField("Partition", &partition);
   //define scalars
-  double D = 1e-1;//diffusive coeff
+  double D = 2e-1;//diffusive coeff
   double timeStep = std::stod(thisRun->timeStep);
   double carLen = std::sqrt(D*timeStep);
   double t = 0;
@@ -315,11 +325,11 @@ void runCGBurgers(SimRun * thisRun){
       thisRun->l2Err += l2Err*timeStep/2;
       thisRun->dL2Err += dL2Err*timeStep/2;
     }
-    double quot = t/(1e-3);
+    double quot = t/(5e-3);
     //double quot = 0.0;
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
-    if(rem < timeStep/(1e-3)){
+    if(rem < timeStep/(5e-3)){
       hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
     }
     end = std::chrono::high_resolution_clock::now();
@@ -364,8 +374,8 @@ TEST_CASE("Testing regression cases for the BurgersModel", "[regression][CG][Bur
     }
   }
 
-  std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
-  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/CG/";
+  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/CG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/CG/";
   std::string writeFile = "Breakdown.csv"; 
   if(rkTypes[0] == "BEuler"){
     writePath += "BEuler/";
