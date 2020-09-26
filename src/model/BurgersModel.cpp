@@ -42,7 +42,7 @@ void BurgersModel::allocate(int nDOFsPerNode){
 
 void BurgersModel::initializeOperators(){
   if(operatorMap.find("Convection") == operatorMap.end()){
-    operatorMap["Convection"] = new NabUU(refEl);
+    operatorMap["Convection"] = new UNabU(refEl);
   }
   if(operatorMap.find("Diffusion") == operatorMap.end()){
     operatorMap["Diffusion"] = new Diffusion(refEl);
@@ -57,7 +57,7 @@ void BurgersModel::computeLocalMatrix(){
   jacobians = Operator::calcJacobians(*elementNodes, refEl);
   invJacobians = Operator::calcInvJacobians(jacobians);
   dV = Operator::calcMeasure(Operator::calcDetJacobians(jacobians), refEl);
-  ((NabUU*)operatorMap["Convection"])->setSolution(parseSolutionVals());
+  ((UNabU*)operatorMap["Convection"])->setSolution(parseSolutionVals());
   operatorMap["Convection"]->assemble(dV, invJacobians);
   localMatrix = *(operatorMap["Convection"]->getMatrix());
   if(fieldMap.find("DiffusionTensor") != fieldMap.end()){
@@ -71,7 +71,7 @@ void BurgersModel::computeLocalRHS(){
   if(!(nodeSet and fieldSet)){
     throw("HDGBurgersModel", "computeLocalRHS", "the nodes and the fields should be set before computing");
   }
-  localRHS = *(((NabUU*)operatorMap["Convection"])->getRHS()); 
+  localRHS = *(((UNabU*)operatorMap["Convection"])->getRHS()); 
 };//computeLocalRHS
 
 std::vector<EMatrix> BurgersModel::parseDiffusionVals() const{

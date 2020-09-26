@@ -2,7 +2,7 @@
 #define BURGERSMODEL_H
 
 #include "FEModel.h"
-#include "NabUU.h"
+#include "UNabU.h"
 #include "Diffusion.h"
 
 namespace hfox{
