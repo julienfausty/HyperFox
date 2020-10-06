@@ -22,64 +22,78 @@ using namespace hfox;
 
 namespace cg{
 
-void analyticalBurgersStat(const std::vector<double> & x, std::vector<EMatrix> cMat, std::vector<double> * sol){
+void analyticalBurgersStatx5(const std::vector<double> & x, std::vector<double> * sol){
   sol->resize(x.size(), 0.0);
   double buff;
-  for(int i = 0; i < cMat.size(); i++){
-    sol->at(i) = 0.0;
-    for(int j = 0; j < cMat[i].cols(); j++){
-      buff = 1.0;
-      for(int d = 0; d < x.size(); d++){
-        buff *= std::pow(x[d], cMat[i](d, j));
-      }
-      buff *= cMat[i](x.size(), j);
-      sol->at(i) += buff;
-    }
-  }
+  sol->at(0) = std::pow(x[0], 5);
 };
 
-double sourceBurgersStat(const std::vector<double> & x, int i, std::vector<EMatrix> cMat, double D){
+double sourceBurgersStat(const std::vector<double> & x, int i, double D){
   double res = 0.0;
   double cBuff, dBuff;
   double ccBuff;
-  for(int j = 0; j < x.size(); j++){
-    for(int I = 0; I < cMat[i].cols(); I++){
-      ccBuff = 0.0;
-      for(int J = 0; J < cMat[j].cols(); J++){
-        cBuff = 1.0;
-        for(int d = 0; d < x.size(); d++){
-          cBuff *= std::pow(x[d], cMat[j](d, J));
-          if((d == j)){
-            if(cMat[i](j, I) > 0){
-              cBuff *= std::pow(x[d], cMat[i](j, I) - 1);
-            } else {
-              cBuff *= 0.0;
-              break;
-            }
-          } else {
-            cBuff *= std::pow(x[d], cMat[i](d, I));
-          }
-        }
-        cBuff *= cMat[j](x.size(), J);
-        ccBuff += cBuff;
-      }
-      dBuff = 1.0;
-      for(int d = 0; d < x.size(); d++){
-        if((d == j)){
-          if(cMat[i](j, I) > 1){
-            dBuff *= D * (cMat[i](j, I) - 1) * std::pow(x[d], cMat[i](j, I) - 2);
-          } else {
-            dBuff *= 0.0;
-            break;
-          }
-        } else {
-          dBuff *= std::pow(x[d], cMat[i](d, I));
-        }
-      }
-      res += cMat[i](j, I)*cMat[i](x.size(), I)*(ccBuff - dBuff);
-    }
+  if(i == 0){
+    res = 5 * std::pow(x[0], 9) - D * 5 * 4 * std::pow(x[0], 3);
   }
   return res;
+};
+
+double potentialiBurgersStat(std::vector<double> x, double & A, std::vector<double> & x0){
+  return (0.001*A*std::exp((1+x0[0])*A)*(1+x[0]) + (std::exp(A*(x[0] - x0[0])) + std::exp(-A*(x[0]-x0[0])))*std::cos(A*(x[1] - x0[1])));
+};
+
+void potentialiGradBurgersStat(std::vector<double> x, double & A, std::vector<double> & x0, std::vector<double> * grad){
+  grad->resize(x.size());
+  grad->at(0) =  0.001*A*std::exp((1+x0[0])*A) + A * (std::exp(A*(x[0] - x0[0])) - std::exp(-A*(x[0]-x0[0])))*std::cos(A*(x[1] - x0[1]));
+  grad->at(1) = -A * (std::exp(A*(x[0] - x0[0])) + std::exp(-A*(x[0]-x0[0])))*std::sin(A*(x[1] - x0[1]));
+};
+
+void potentialiHessBurgersStat(std::vector<double> x, double & A, std::vector<double> & x0, std::vector<double> * hess){
+  hess->resize(std::pow(x.size(), 2));
+  std::vector<double> grad;
+  potentialiGradBurgersStat(x, A, x0, &grad);
+  double pot = potentialiBurgersStat(x, A, x0);
+  hess->at(0) = std::pow(A, 2.0) * pot;
+  hess->at(1) = -A * A * (std::exp(A*(x[0] - x0[0])) - std::exp(-A*(x[0]-x0[0])))*std::sin(A*(x[1] - x0[1]));
+  hess->at(2) = hess->at(1);
+  hess->at(3) = -std::pow(A, 2)*pot;
+};
+
+double potentialBurgersStat(std::vector<double> x, double & A, std::vector<double> & x0){
+  return (potentialiBurgersStat(x, A, x0));
+};
+
+void potentialGradBurgersStat(std::vector<double> x, double & A, std::vector<double> & x0, std::vector<double> * grad){
+  grad->resize(x.size());
+  potentialiGradBurgersStat(x, A, x0, grad);
+};
+
+void potentialHessBurgersStat(std::vector<double> x, double & A, std::vector<double> & x0, std::vector<double> * hess){
+  potentialiHessBurgersStat(x, A, x0, hess);
+};
+
+void analyticalBurgersStat(std::vector<double> x, double D, std::vector<double> * sol){
+  double A = 0.5;
+  std::vector<double> x0 = {1.0, 0.0};
+  sol->resize(x.size(), 0.0);
+  //sol->at(0) = 0.01;
+  potentialGradBurgersStat(x, A, x0, sol);
+  double buff = potentialBurgersStat(x, A, x0);
+  EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/buff;
+};
+
+void analyticalBurgersGradStat(std::vector<double> x, double D, std::vector<double> * gradSol){
+  double A = 0.5;
+  std::vector<double> x0 = {1.0, 0.0};
+  gradSol->resize(std::pow(x.size(), 2), 0.0);
+  double pot = potentialBurgersStat(x, A, x0);
+  std::vector<double> gradPot;
+  potentialGradBurgersStat(x, A, x0, &gradPot);
+  potentialHessBurgersStat(x, A, x0, gradSol);
+  EMap<EMatrix> res(gradSol->data(), x.size(), x.size());
+  res *= -2.0*D/pot;
+  EMap<EVector> gPot(gradPot.data(), gradPot.size());
+  res += (2.0*D/std::pow(pot, 2.0))*(gPot * gPot.transpose());
 };
 
 };//cg
@@ -121,8 +135,8 @@ void runCGBurgersStat(SimRun * thisRun){
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   BurgersModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
-  myOpts.maxits = 6000;
-  myOpts.rtol = 1e-16;
+  myOpts.maxits = 10000;
+  myOpts.rtol = 1e-20;
   myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   CGSolver mySolver;
@@ -134,7 +148,7 @@ void runCGBurgersStat(SimRun * thisRun){
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
   int maxIters = 50;
-  wrapper.setResidualTolerance(1e-3);
+  wrapper.setResidualTolerance(1e-6);
   wrapper.setMaxIterations(maxIters);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
@@ -150,11 +164,8 @@ void runCGBurgersStat(SimRun * thisRun){
   hdfio.setField("Residual", &residual);
   hdfio.setField("Partition", &partition);
   //define scalars
-  double D = 1.0;//diffusive coeff 
+  double D = 0.2;//diffusive coeff 
   int dimGrad = std::pow(nodeDim, 2);
-  std::vector<EMatrix> cMat(nodeDim, EMatrix::Zero(nodeDim+1, 1));
-  cMat[0](2, 0) = 1.0;
-  cMat[0](0, 0) = 5.0;
   //create buffers
   std::vector<int> cell;
   std::vector<double> node;
@@ -162,7 +173,7 @@ void runCGBurgersStat(SimRun * thisRun){
   //initialize field values
   for(int i = 0; i < myMesh.getNumberPoints(); i++){
     myMesh.getPoint(i, &node);
-    cg::analyticalBurgersStat(node, cMat, &dbuffer);
+    cg::analyticalBurgersStat(node, D, &dbuffer);
     for(int k = 0; k < dbuffer.size(); k++){
       anaSol.getValues()->at(i*nodeDim + k) = dbuffer[k];
     }
@@ -185,7 +196,7 @@ void runCGBurgersStat(SimRun * thisRun){
   //allocating and last set ups
   mySolver.initialize();
   mySolver.allocate();
-  transportMod.setSourceFunction([cMat, D](const std::vector<double> & x, int i){return cg::sourceBurgersStat(x, i, cMat, D);});
+  //transportMod.setSourceFunction([D](const std::vector<double> & x, int i){return cg::sourceBurgersStat(x, i, D);});
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   std::copy(sol.getValues()->begin(), sol.getValues()->end(), buffSol.getValues()->begin());
@@ -200,7 +211,7 @@ void runCGBurgersStat(SimRun * thisRun){
         } else {
           myMesh.getGhostPoint(cell[k], &node);
         }
-        cg::analyticalBurgersStat(node, cMat, &dbuffer);
+        cg::analyticalBurgersStat(node, D, &dbuffer);
         for(int dof = 0; dof < nodeDim; dof++){
           dirichlet.getValues()->at((locFace * nNodesPerFace + k)*nodeDim + dof) = dbuffer[dof];
         }

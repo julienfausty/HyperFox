@@ -49,7 +49,7 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
       mod.allocate(i+1);
       HDGBase baseOp(&refEl);
       std::vector<EVector> velVectors(refEl.getNumNodes(), EVector::Constant(i+1, 2.0));
-      HDGNabUU convOp(&refEl);
+      HDGUNabU convOp(&refEl);
       std::vector<EMatrix> diffTensors(refEl.getNumNodes(), EMatrix::Identity(i+1, i+1)*3.0);
       HDGDiffusion diffOp(&refEl);
       baseOp.allocate(i+1);

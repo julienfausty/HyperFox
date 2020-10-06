@@ -3,7 +3,7 @@
 
 #include "HDGModel.h"
 #include "HDGBase.h"
-#include "HDGNabUU.h"
+#include "HDGUNabU.h"
 #include "HDGDiffusion.h"
 
 namespace hfox{

@@ -43,6 +43,7 @@ void CGSolver::assemble(){
   }
   if(assembled){
     linSystem->clearSystem();
+    assembled = 0;
   }
   Partitioner * part = myMesh->getPartitioner();
   const ReferenceElement * refEl = myMesh->getReferenceElement();

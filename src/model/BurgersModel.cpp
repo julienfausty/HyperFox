@@ -76,9 +76,10 @@ void BurgersModel::computeLocalMatrix(){
   jacobians = Operator::calcJacobians(*elementNodes, refEl);
   invJacobians = Operator::calcInvJacobians(jacobians);
   dV = Operator::calcMeasure(Operator::calcDetJacobians(jacobians), refEl);
+  localMatrix = EMatrix::Zero(localMatrix.rows(), localMatrix.cols());
   ((UNabU*)operatorMap["Convection"])->setSolution(parseSolutionVals());
   operatorMap["Convection"]->assemble(dV, invJacobians);
-  localMatrix = *(operatorMap["Convection"]->getMatrix());
+  localMatrix = (*(operatorMap["Convection"]->getMatrix()));
   if(fieldMap.find("DiffusionTensor") != fieldMap.end()){
     ((Diffusion*)operatorMap["Diffusion"])->setDiffTensor(parseDiffusionVals());
     operatorMap["Diffusion"]->assemble(dV, invJacobians);

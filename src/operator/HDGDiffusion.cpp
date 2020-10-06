@@ -46,6 +46,7 @@ void HDGDiffusion::setDiffusionTensor(const std::vector<EMatrix> & diffTensor){
   const std::vector< std::vector<int> > * faceNodeMap = refEl->getFaceNodes();
   const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
   const std::vector< std::vector<double> > * fipShapes = fEl->getIPShapeFunctions();
+  Ds.resize(0);
   Ds.resize(nIPsEl + nFaces*nIPsFc, EMatrix::Zero(dim, dim));
   EMatrix nodeDs(nNodesEl, dim*dim);
   for(int i = 0; i < nNodesEl; i++){

@@ -13,35 +13,32 @@ void Diffusion::assemble(const std::vector< double > & dV,
   const std::vector<double> * ipWeights = refEl->getIPWeights();
   int elDim = refEl->getDimension();
   int nNodes = refEl->getNumNodes();
-  // dV(invJ^T invJ):(\partial\phi_i (\partial \phi_j)^T))(ip)
-  std::vector<EVector> invJTinvJs(refEl->getNumIPs(), EVector(elDim*(elDim+1)/2));
-  if(diffTensor.size() == 0){
-    std::transform(invJacobians.begin(), invJacobians.end(), invJTinvJs.begin(), 
-        [this](EMatrix invJ){return symMat2Vec(invJ.transpose() * invJ);});
-  } else {
-    for(int i = 0; i < refEl->getNumIPs(); i++){
-      if(diffTensor[i].cols() == 1){
-        invJTinvJs[i] = symMat2Vec(invJacobians[i].transpose() * diffTensor[i](0,0) * invJacobians[i]);
-      } else{
-        invJTinvJs[i] = symMat2Vec(invJacobians[i].transpose() * diffTensor[i].transpose() * invJacobians[i]);
+  int nIPsEl = refEl->getNumIPs();
+  const std::vector< std::vector<double> > * derivShapes;
+  EMatrix gradShapes(elDim, nNodes);
+  std::vector<EMatrix> diffusionTensorsIPs(nIPsEl, EMatrix::Identity(elDim, elDim));
+  if(diffTensor.size() != 0){
+    for(int ip = 0; ip < nIPsEl; ip++){
+      if(diffTensor[ip].cols() == 1){
+        diffusionTensorsIPs[ip] = diffTensor[ip](0, 0)*diffusionTensorsIPs[ip];
+      } else {
+        diffusionTensorsIPs[ip] = diffTensor[ip];
       }
     }
   }
-  EMatrix pPhipPhiT(elDim*(elDim+1)/2, nNodes);
-  EMatrix bufferMat(nNodes, nNodes);
-  for(int i = 0; i < refEl->getNumIPs(); i++){
-    for(int j = 0; j < nNodes; j++){
-      Eigen::Map<const EVector> pPhi_j((*ipDerivShape)[i][j].data(), (*ipDerivShape)[i][j].size());
-      for(int k = 0; k < nNodes; k++){
-        Eigen::Map<const EVector> pPhi_k((*ipDerivShape)[i][k].data(), (*ipDerivShape)[i][k].size());
-        bufferMat = pPhi_k * pPhi_j.transpose();
-        pPhipPhiT.col(k) = (symMat2Vec(bufferMat + bufferMat.transpose()))/2.0;
-      }
-      op.block(j, 0, 1, nNodes) += dV[i]*(invJTinvJs[i].transpose() * pPhipPhiT);
+  for(int ip = 0; ip < nIPsEl; ip++){
+    derivShapes = &(ipDerivShape->at(ip));
+    for(int iN = 0; iN < nNodes; iN++){
+      gradShapes.col(iN) = invJacobians[ip]*EMap<const EVector>(derivShapes->at(iN).data(), elDim);
     }
-  }
-  if(nDOFsPerNode > 1){
-    multiplyDOFs();
+    for(int iN = 0; iN < nNodes; iN++){
+      for(int jN = 0; jN < nNodes; jN++){
+        for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
+          op(iN*nDOFsPerNode + ndof, jN*nDOFsPerNode + ndof) += 
+            ((diffusionTensorsIPs[ip]*gradShapes.col(iN)).transpose()*gradShapes.col(jN))(0,0)*dV[ip];
+        }
+      }
+    }
   }
 };//assemble
 
@@ -63,6 +60,7 @@ EVector Diffusion::symMat2Vec(const EMatrix & symMat){
 };//symMat2Vec
 
 void Diffusion::setDiffTensor(const std::vector<EMatrix> & diffCoeff){
+  diffTensor.resize(0);
   diffTensor.resize(refEl->getNumIPs(), EMatrix::Zero(diffCoeff[0].rows(), diffCoeff[0].cols()));
   const std::vector< std::vector<double> > * ipShapes = refEl->getIPShapeFunctions();
   for(int i = 0 ; i < refEl->getNumIPs(); i++){

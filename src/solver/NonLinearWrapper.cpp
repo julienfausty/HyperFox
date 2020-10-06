@@ -11,21 +11,26 @@ NonLinearWrapper::~NonLinearWrapper(){
 };//destructor
 
 double NonLinearWrapper::vanillaResidualComputer(Field * currentSol, Field * prevSol){
+  double res = 0;
   double diffSum= 0;
-  //double refSum = 0;
+  double refSum = 0;
   const std::vector<double> * curPtr, * prevPtr;
   curPtr = currentSol->getValues();
   prevPtr = prevSol->getValues();
   for(int i = 0; i < curPtr->size(); i++){
     diffSum += std::pow(curPtr->at(i) - prevPtr->at(i), 2.0);
-    //refSum += std::pow(prevPtr->at(i), 2.0);
+    refSum += std::pow(prevPtr->at(i), 2.0);
   }
   double globDiffSum = 0;
-  //double globRefSum = 0;
+  double globRefSum = 0;
   MPI_Allreduce(&diffSum, &globDiffSum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  //MPI_Allreduce(&refSum, &globRefSum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  //return (std::sqrt(globDiffSum/globRefSum));
-  return (std::sqrt(globDiffSum));
+  MPI_Allreduce(&refSum, &globRefSum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  if(globRefSum != 0){
+    res = std::sqrt(globDiffSum/globRefSum);
+  } else {
+    res = std::sqrt(globDiffSum);
+  }
+  return res;
 };//vanillaResidualComputer
 
 void NonLinearWrapper::vanillaLinearizedSolver(Solver * solver){

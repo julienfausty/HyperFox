@@ -62,7 +62,7 @@ void analyticalBurgersStat(std::vector<double> x, double D, std::vector<double> 
   double A = 0.5;
   std::vector<double> x0 = {1.5, 0.0};
   sol->resize(x.size(), 0.0);
-  sol->at(0) = 0.01;
+  sol->at(0) = 1.0;
   //potentialGradBurgersStat(x, A, x0, sol);
   //double buff = potentialBurgersStat(x, A, x0);
   //EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/buff;
@@ -144,9 +144,9 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
   wrapper.setVerbosity(true);
-  int maxNRIter = 50;
+  int maxNRIter = 6;
   wrapper.setMaxIterations(maxNRIter);
-  wrapper.setResidualTolerance(1e-8);
+  wrapper.setResidualTolerance(1e-6);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
@@ -163,7 +163,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   hdfio.setField("Residual", &residual);
   hdfio.setField("Partition", &partition);
   //define scalars
-  double D = 0.2;//diffusive coeff
+  double D = 1.0;//diffusive coeff
   double carLen = 1.0;
   int dimGrad = std::pow(nodeDim, 2);
   //create buffers  
@@ -299,10 +299,10 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2", "2e-2"};
-  //meshSizes["2"] = {"5e-2"};
-  std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
-  //std::vector<std::string> orders = {"3"};
+  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2", "2e-2"};
+  meshSizes["2"] = {"7e-2"};
+  //std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
+  std::vector<std::string> orders = {"3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){

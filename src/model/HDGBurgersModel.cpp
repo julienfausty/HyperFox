@@ -38,7 +38,7 @@ void HDGBurgersModel::allocate(int nDOFsPerNodeUser){
 
 void HDGBurgersModel::initializeOperators(){
   if(operatorMap.find("Convection") == operatorMap.end()){
-    operatorMap["Convection"] = new HDGNabUU(refEl);
+    operatorMap["Convection"] = new HDGUNabU(refEl);
   }
   if(operatorMap.find("Diffusion") == operatorMap.end()){
     operatorMap["Diffusion"] = new HDGDiffusion(refEl);
@@ -56,14 +56,16 @@ void HDGBurgersModel::computeLocalMatrix(){
   ((HDGBase*)operatorMap["Base"])->calcNormals(*elementNodes, jacobians);
   operatorMap["Base"]->assemble(dV, invJacobians);
   localMatrix = *(operatorMap["Base"]->getMatrix());
-  ((HDGNabUU*)operatorMap["Convection"])->setSolution(parseSolutionVals());
-  ((HDGNabUU*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
+  ((HDGUNabU*)operatorMap["Convection"])->setSolution(parseSolutionVals());
+  ((HDGUNabU*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
   operatorMap["Convection"]->assemble(dV, invJacobians);
   localMatrix += *(operatorMap["Convection"]->getMatrix());
+  //std::cout << "ConvectionMat:\n" << *(operatorMap["Convection"]->getMatrix()) << std::endl;
   if(fieldMap.find("DiffusionTensor") != fieldMap.end()){
     ((HDGDiffusion*)operatorMap["Diffusion"])->setDiffusionTensor(parseDiffusionVals());
     ((HDGDiffusion*)operatorMap["Diffusion"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
     operatorMap["Diffusion"]->assemble(dV, invJacobians);
+    //std::cout << "DiffusionMat:\n" << *(operatorMap["Diffusion"]->getMatrix()) << std::endl;
     localMatrix += *(operatorMap["Diffusion"]->getMatrix());
   }
 };//computeLocalMatrix
@@ -72,7 +74,8 @@ void HDGBurgersModel::computeLocalRHS(){
   if(!(nodeSet and fieldSet)){
     throw("HDGBurgersModel", "computeLocalRHS", "the nodes and the fields should be set before computing");
   }
-  localRHS = *(((HDGNabUU*)operatorMap["Convection"])->getRHS()); 
+  //localRHS = EVector::Zero(localRHS.size());
+  localRHS = *(((HDGUNabU*)operatorMap["Convection"])->getRHS()); 
 };//computeLocalRHS
 
 
