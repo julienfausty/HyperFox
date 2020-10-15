@@ -137,19 +137,19 @@ void HDGUNabU::assemble(const std::vector<double> & dV, const std::vector<EMatri
               //faceSoldotNdV*shapes->at(jN)*shapes->at(iN);
             //op(faceNodes->at(iN)*nDOFsPerNode + ndof, faceNodes->at(jN)*nDOFsPerNode + ndof) +=
               //faceSoldotNdV*shapes->at(jN)*shapes->at(iN);
-            op(faceNodes->at(iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + ndof) +=
-              faceSoldotNdV*shapes->at(jN)*shapes->at(iN);
-            //op(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + ndof) +=
+            //op(faceNodes->at(iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + ndof) +=
               //faceSoldotNdV*shapes->at(jN)*shapes->at(iN);
+            op(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + ndof) +=
+              faceSoldotNdV*shapes->at(jN)*shapes->at(iN);
             for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
               //op(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, faceNodes->at(jN)*nDOFsPerNode + mdof) +=
                 //faceSols[foffset][ndof]*shapes->at(jN)*shapes->at(iN)*normals->at(foffset)[mdof]*dV[nIPsEl + foffset];
               //op(faceNodes->at(iN)*nDOFsPerNode + ndof, faceNodes->at(jN)*nDOFsPerNode + mdof) +=
                 //faceSols[foffset][ndof]*shapes->at(jN)*shapes->at(iN)*normals->at(foffset)[mdof]*dV[nIPsEl + foffset];
-              op(faceNodes->at(iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + mdof) +=
-                traces[foffset][ndof]*shapes->at(jN)*shapes->at(iN)*normals->at(foffset)[mdof]*dV[nIPsEl + foffset];
-              //op(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + mdof) +=
+              //op(faceNodes->at(iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + mdof) +=
                 //traces[foffset][ndof]*shapes->at(jN)*shapes->at(iN)*normals->at(foffset)[mdof]*dV[nIPsEl + foffset];
+              op(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + mdof) +=
+                traces[foffset][ndof]*shapes->at(jN)*shapes->at(iN)*normals->at(foffset)[mdof]*dV[nIPsEl + foffset];
             }
           }
         }
@@ -163,12 +163,12 @@ void HDGUNabU::assemble(const std::vector<double> & dV, const std::vector<EMatri
       //op.block(faceNodes->at(iN)*nDOFsPerNode, 0, nDOFsPerNode, lenU) += op.block(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode, 0, nDOFsPerNode, lenU);
     //}
   //}
-  //for(int iFace = 0; iFace < nFaces; iFace++){
-    //faceNodes = &(faceNodeMap->at(iFace));
-    //for(int iN = 0; iN < nNodesPFc; iN++){
-      //op.block(faceNodes->at(iN)*nDOFsPerNode, startL, nDOFsPerNode, lenL) += op.block(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode, startL, nDOFsPerNode, lenL);
-    //}
-  //}
+  for(int iFace = 0; iFace < nFaces; iFace++){
+    faceNodes = &(faceNodeMap->at(iFace));
+    for(int iN = 0; iN < nNodesPFc; iN++){
+      op.block(faceNodes->at(iN)*nDOFsPerNode, startL, nDOFsPerNode, lenL) += op.block(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode, startL, nDOFsPerNode, lenL);
+    }
+  }
   //bulk integrals
   EMatrix gradMat(spaceDim, nNodesEl);
   EMatrix gradSol(spaceDim, nDOFsPerNode);

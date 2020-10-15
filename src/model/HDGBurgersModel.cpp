@@ -41,7 +41,20 @@ void HDGBurgersModel::allocate(int nDOFsPerNodeUser){
   if(timeScheme != NULL){
     timeScheme->allocate(nDOFsPerNodeUser);
   }
-  HDGModel::allocate(nDOFsPerNodeUser);
+  initializeOperators();
+  nDOFsPNode = nDOFsPerNodeUser;
+  int n = nDOFsPNode * (refEl->getNumNodes()*(refEl->getDimension() + 1) 
+      + (refEl->getFaceElement()->getNumNodes())*(refEl->getNumFaces()));
+  localMatrix = EMatrix::Zero(n, n);
+  localRHS = EVector::Zero(n);
+  for(std::map<std::string, Operator*>::iterator it = operatorMap.begin(); it != operatorMap.end(); it++){
+    if(it->first.find("Source") == std::string::npos){
+      (it->second)->allocate(nDOFsPNode);
+    } else {
+      (it->second)->allocate(1);
+    }
+  }
+  allocated = 1;
 };//allocate
 
 
@@ -52,8 +65,23 @@ void HDGBurgersModel::initializeOperators(){
   if(operatorMap.find("Diffusion") == operatorMap.end()){
     operatorMap["Diffusion"] = new HDGDiffusion(refEl);
   }
+  for(int i = 0; i < refEl->getDimension(); i++){
+    if(operatorMap.find("Source_" + std::to_string(i)) == operatorMap.end()){
+      operatorMap["Source_" + std::to_string(i)] = new Source(refEl);
+    }
+  }
   HDGModel::initializeOperators();
 };//initializeOperators
+
+void HDGBurgersModel::setSourceFunction(std::function<double(const std::vector<double>&, int)> s){
+  if(!allocated){
+    throw(ErrorHandle("BurgersModel", "setSourceFunction", "the model must be allocated before setting the source function"));
+  }
+  for(int i = 0; i < refEl->getDimension(); i++){
+    ((Source*)operatorMap["Source_" + std::to_string(i)])->setSourceFunction([i,s](const std::vector<double> & x){return s(x, i);});
+  }
+  sourceSet = 1;
+};//setSourceFunction
 
 
 void HDGBurgersModel::computeLocalMatrix(){
@@ -87,6 +115,16 @@ void HDGBurgersModel::computeLocalRHS(){
   }
   //localRHS = EVector::Zero(localRHS.size());
   localRHS = *(((HDGUNabU*)operatorMap["Convection"])->getRHS()); 
+  if(sourceSet){
+    int dim = refEl->getDimension();
+    for(int i = 0; i < dim; i++){
+      ((Source*)operatorMap["Source_" + std::to_string(i)])->calcSource(*elementNodes);
+      operatorMap["Source_" + std::to_string(i)]->assemble(dV, invJacobians);
+      for(int iN = 0; iN < refEl->getNumNodes(); iN++){
+        localRHS[iN*dim + i] += (*(operatorMap["Source_"+std::to_string(i)]->getMatrix()))(iN, 0);
+      }
+    }
+  }
 };//computeLocalRHS
 
 

@@ -343,11 +343,17 @@ void HDGSolver::assemble(){
     locQ = -invSqqSqu*locU - invSqqSql;
     locQ0 = -invSqqSqu*locU0;
     EVector X(lenL);
-    for(int i = 0; i < lenL; i++){
-      X[i] = 1.0;
+    for(int iFace = 0; iFace < nFacesPEl; iFace++){
+      for(int i = 0; i < nNodesPFc; i++){
+        for(int k = 0; k < nDOFsPerNode; k++){
+          X[(iFace*nNodesPFc + i)*nDOFsPerNode + k] = locFieldMap["Analytical"][refEl->getFaceNodes()->at(iFace)[i]*nDOFsPerNode + k];
+        }
+      }
     }
     std::cout << "U x + U0:\n";
     std::cout << locU*X + locU0 << std::endl;
+    std::cout << "local Residual" << std::endl;
+    std::cout << (locU*X + locU0) - EMap<const EVector>(locFieldMap["Analytical"].data(), locFieldMap["Analytical"].size()) << std::endl;
     std::cout << "Q x + Q0:\n";
     std::cout << locQ*X + locQ0 << std::endl;
     if(myOpts.type == IMPLICIT){
@@ -359,8 +365,8 @@ void HDGSolver::assemble(){
       locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*sol - locMat->block(startL, startQ, lenL, lenQ)*flux;
       locS = locMat->block(startL, startL, lenL, lenL);
     }
-    std::cout << "S x + S0:\n";
-    std::cout << locS*X + locS0 << std::endl;
+    std::cout << "S x - S0:\n";
+    std::cout << locS*X - locS0 << std::endl;
     //if(std::find(facesInCell.begin(), facesInCell.end(), 0) != facesInCell.end()){
       //std::cout << std::distance(facesInCell.begin(), std::find(facesInCell.begin(), facesInCell.end(), 0)) << std::endl;
       //std::cout << "S: " << locS << std::endl;
