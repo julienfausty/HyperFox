@@ -50,6 +50,10 @@ class HDGBurgersModel : public HDGModel{
      */
     std::vector<EVector> parseSolutionVals() const;
     /*!
+     * \brief parse the trace field values into vectors
+     */
+    std::vector<EVector> parseTraceVals() const;
+    /*!
      * \brief method for parsing diffusion tensor values into matrices
      */
     std::vector<EMatrix> parseDiffusionVals() const;

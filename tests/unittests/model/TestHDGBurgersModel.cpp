@@ -25,12 +25,15 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
         fm["BufferSolution"] = std::vector<double>(refEl.getNumNodes()*(i+1), 1.0);
         CHECK_THROWS(mod.setFieldMap(&fm));
         fm["Tau"] = std::vector<double>(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * std::pow(i+1, 2), 1.0);
+        CHECK_THROWS(mod.setFieldMap(&fm));
+        fm["Trace"] = std::vector<double>(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * (i+1), 1.0);
         CHECK_NOTHROW(mod.setFieldMap(&fm));
       };
 
       HDGBurgersModel mod(&refEl);
       std::map<std::string, std::vector<double> > fm;
       std::vector<double> tau(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * std::pow(i+1, 2), 0.0);
+      std::vector<double> trace(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * (i+1), 0.0);
       std::vector<double> sol(refEl.getNumNodes() * (i+1), 0.0);
       std::vector<double> buffSol(refEl.getNumNodes() * (i+1), 2.0);
       std::vector<double> diff(refEl.getNumNodes()*(i+1)*(i+1), 0);
@@ -41,14 +44,25 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
         EMap<EMatrix>(tau.data() + (i+1)*(i+1)*k, (i+1), (i+1)) = EMatrix::Identity((i+1), (i+1));
       }
       std::iota(sol.begin(), sol.end(), 0.0);
+      int nFaces = refEl.getNumFaces();
+      int nNodesFc = refEl.getFaceElement()->getNumNodes();
+      for(int iFace = 0; iFace < nFaces; iFace++){
+        for(int iN = 0; iN < nNodesFc; iN++){
+          for(int d = 0; d < (i+1); d++){
+            trace[(iFace*nNodesFc + iN)*(i+1) + d] = 2.0;
+          }
+        }
+      }
       fm["Tau"] = tau;
       fm["Solution"] = sol;
       fm["BufferSolution"] = buffSol;
       fm["DiffusionTensor"] = diff;
+      fm["Trace"] = trace;
       mod.setFieldMap(&fm);
       mod.allocate(i+1);
       HDGBase baseOp(&refEl);
       std::vector<EVector> velVectors(refEl.getNumNodes(), EVector::Constant(i+1, 2.0));
+      std::vector<EVector> traceVectors(nFaces*nNodesFc, EVector::Constant(i+1, 2.0));
       HDGUNabU convOp(&refEl);
       std::vector<EMatrix> diffTensors(refEl.getNumNodes(), EMatrix::Identity(i+1, i+1)*3.0);
       HDGDiffusion diffOp(&refEl);
@@ -56,6 +70,7 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
       baseOp.setTau(tau);
       convOp.allocate(i+1);
       convOp.setSolution(velVectors);
+      convOp.setTrace(traceVectors);
       diffOp.allocate(i+1);
       diffOp.setDiffusionTensor(diffTensors);
       std::vector<EMatrix> elJacs(refEl.getNumIPs(), EMatrix::Identity(i+1, i+1));

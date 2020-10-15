@@ -208,6 +208,7 @@ void HDGSolver::assemble(){
   std::vector<int> face2CellMap(nFacesPEl*nNodesPFc, 0);
   std::vector<int> matRowCols(lenL, 0);
   std::vector<double> fieldBuffer;
+  std::vector<int>::iterator intIt;
   int buff = 0;
   int offset = 0;
   EMatrix locS(lenL, lenL);
@@ -266,7 +267,11 @@ void HDGSolver::assemble(){
         }
       }
       for(int j = 0; j < nNodesPFc; j++){
-        face2CellMap[i*nNodesPFc + j] = std::distance(face.begin(), std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]));
+        intIt = std::find(face.begin(), face.end(), cell[nodeMap->at(i)[j]]);
+        if(intIt == face.end()){
+          throw(ErrorHandle("HDGSolver", "assemble", "couldn't find cell node in face."));
+        }
+        face2CellMap[i*nNodesPFc + j] = std::distance(face.begin(), intIt);
         for(int k = 0; k < nDOFsPerNode; k++){
           matRowCols[(i*nNodesPFc + j)*nDOFsPerNode + k] = (facesInCell[i] * nNodesPFc + face2CellMap[i*nNodesPFc + j])*nDOFsPerNode + k;
         }
@@ -337,6 +342,14 @@ void HDGSolver::assemble(){
     locU0 = invSuuMinSuqinvSqqSqu.solve(locVec->segment(startU, lenU));
     locQ = -invSqqSqu*locU - invSqqSql;
     locQ0 = -invSqqSqu*locU0;
+    EVector X(lenL);
+    for(int i = 0; i < lenL; i++){
+      X[i] = 1.0;
+    }
+    std::cout << "U x + U0:\n";
+    std::cout << locU*X + locU0 << std::endl;
+    std::cout << "Q x + Q0:\n";
+    std::cout << locQ*X + locQ0 << std::endl;
     if(myOpts.type == IMPLICIT){
       locS = locMat->block(startL, startU, lenL, lenU)*locU + locMat->block(startL, startQ, lenL, lenQ)*locQ + locMat->block(startL, startL, lenL, lenL);
       locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*locU0 - locMat->block(startL, startQ, lenL, lenQ)*locQ0;
@@ -346,6 +359,12 @@ void HDGSolver::assemble(){
       locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*sol - locMat->block(startL, startQ, lenL, lenQ)*flux;
       locS = locMat->block(startL, startL, lenL, lenL);
     }
+    std::cout << "S x + S0:\n";
+    std::cout << locS*X + locS0 << std::endl;
+    //if(std::find(facesInCell.begin(), facesInCell.end(), 0) != facesInCell.end()){
+      //std::cout << std::distance(facesInCell.begin(), std::find(facesInCell.begin(), facesInCell.end(), 0)) << std::endl;
+      //std::cout << "S: " << locS << std::endl;
+    //}
     if((myOpts.type == IMPLICIT) or (myOpts.type == WEXPLICIT)){
       locS = locS.transpose();
       switch(modAssembly->matrix){

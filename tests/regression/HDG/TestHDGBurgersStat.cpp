@@ -63,6 +63,7 @@ void analyticalBurgersStat(std::vector<double> x, double D, std::vector<double> 
   std::vector<double> x0 = {1.5, 0.0};
   sol->resize(x.size(), 0.0);
   sol->at(0) = 1.0;
+  sol->at(1) = 1.0;
   //potentialGradBurgersStat(x, A, x0, sol);
   //double buff = potentialBurgersStat(x, A, x0);
   //EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/buff;
@@ -128,7 +129,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   HDGBurgersModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 10000;
-  myOpts.rtol = 1e-16;
+  myOpts.rtol = 1e-10;
   myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   HDGSolverOpts solveOpts;
@@ -144,14 +145,14 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
   wrapper.setVerbosity(true);
-  int maxNRIter = 6;
+  int maxNRIter = 2;
   wrapper.setMaxIterations(maxNRIter);
   wrapper.setResidualTolerance(1e-6);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
+  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   writeDir += meshName;
   if(zPart.getRank() == 0){
     boost::filesystem::create_directory(writeDir);
@@ -262,6 +263,10 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   //mySolver.solve();
   end = std::chrono::high_resolution_clock::now();
   thisRun->resolution += end - start;
+  //std::cout << "Trace:" << std::endl;
+  //for(int i = 0; i < trace.getValues()->size(); i++){
+    //std::cout << trace.getValues()->at(i) << std::endl;
+  //}
   //output
   //get linalg err
   const KSP * ksp = petsciface.getKSP();
@@ -300,9 +305,9 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
   //meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2", "2e-2"};
-  meshSizes["2"] = {"7e-2"};
+  meshSizes["2"] = {"2e-1"};
   //std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
-  std::vector<std::string> orders = {"3"};
+  std::vector<std::string> orders = {"1"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -316,8 +321,8 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
     }
   }
 
-  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   HDGSolverType globType = IMPLICIT;
   std::string writeFile = "Breakdown.csv";
   int nParts;

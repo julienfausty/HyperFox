@@ -47,6 +47,12 @@ class HDGUNabU : public HDGNonLinearOperator{
      */
     void setSolution(const std::vector<EVector> & sol);
     /*!
+     * \brief method for setting the trace vector
+     *
+     * @param trace a list of trace vectors per node on the faces
+     */
+    void setTrace(const std::vector<EVector> & trace);
+    /*!
      * \brief a method that borrows objects from the HDGBase operator
      *
      * @param ns a pointer to the normals to the faces at their IPs
@@ -58,6 +64,10 @@ class HDGUNabU : public HDGNonLinearOperator{
      */
     std::vector<EVector> sols;
     /*!
+     * \brief the trace vector list at the face IPs
+     */
+    std::vector<EVector> traces;
+    /*!
      * \brief the solution at the face IPs
      */
     std::vector<EVector> faceSols;
@@ -65,6 +75,10 @@ class HDGUNabU : public HDGNonLinearOperator{
      * \brief the solution vector list at the nodes
      */
     std::vector<EVector> solNodes;
+    /*!
+     * \brief the trace vector list at the face nodes
+     */
+    std::vector<EVector> traceNodes;
     /*!
      * \brief pointer to the list of normals to the faces at their IPs
      */

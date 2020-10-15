@@ -17,6 +17,15 @@ void HDGBurgersModel::setFieldMap(const std::map<std::string, std::vector<double
   if(itfm->second.size() != refEl->getDimension()*(refEl->getNumNodes())){
     throw(ErrorHandle("HDGBurgersModel", "setFieldMap", "the BufferSolution must have the same number of DOFs per node as spatial dimensions for the Burgers equation"));
   }
+  itfm = fm->find("Trace");
+  if(itfm != fm->end()){
+    fieldMap["Trace"] = &(itfm->second);
+  } else {
+    throw(ErrorHandle("HDGBurgersModel", "setFieldMap", "must provide a Trace field for the Newton-Raphson iterations"));
+  }
+  if(itfm->second.size() != refEl->getDimension()*(refEl->getFaceElement()->getNumNodes())*(refEl->getNumFaces())){
+    throw(ErrorHandle("HDGBurgersModel", "setFieldMap", "the Trace must have the same number of DOFs per node as spatial dimensions for the Burgers equation"));
+  }
   if(timeScheme != NULL){
     timeScheme->setFieldMap(fm);
   }
@@ -56,6 +65,8 @@ void HDGBurgersModel::computeLocalMatrix(){
   ((HDGBase*)operatorMap["Base"])->calcNormals(*elementNodes, jacobians);
   operatorMap["Base"]->assemble(dV, invJacobians);
   localMatrix = *(operatorMap["Base"]->getMatrix());
+  //std::cout << "BaseMat:\n" << *(operatorMap["Base"]->getMatrix()) << std::endl;
+  ((HDGUNabU*)operatorMap["Convection"])->setTrace(parseTraceVals());
   ((HDGUNabU*)operatorMap["Convection"])->setSolution(parseSolutionVals());
   ((HDGUNabU*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
   operatorMap["Convection"]->assemble(dV, invJacobians);
@@ -114,5 +125,21 @@ std::vector<EVector> HDGBurgersModel::parseSolutionVals() const{
   }
   return res;
 };//parseSolutionVals
+
+
+std::vector<EVector> HDGBurgersModel::parseTraceVals() const{
+  const std::vector<double> * traceVals = fieldMap.at("Trace");
+  int nNodes = refEl->getFaceElement()->getNumNodes() * (refEl->getNumFaces());
+  int dimTraceVal = traceVals->size()/nNodes;
+  int dimSpace = refEl->getDimension();
+  if(dimTraceVal != dimSpace){
+    throw(ErrorHandle("HDGBurgersModel", "parseTraceVals", "the dimension of the Trace vector does not correspond to the dimension of the reference element"));
+  }
+  std::vector<EVector> res(nNodes, EVector::Zero(dimSpace));
+  for(int i = 0; i < nNodes; i++){
+    res[i] = EMap<const EVector>(traceVals->data() + i*dimSpace, dimSpace);
+  }
+  return res;
+};//parseTraceVals
 
 };//hfox
