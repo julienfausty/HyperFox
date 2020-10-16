@@ -14,7 +14,7 @@
 #include "HDGBurgersModel.h"
 #include "HDGDiffusionSource.h"
 #include "RungeKutta.h"
-#include "DirichletModel.h"
+#include "IntegratedDirichletModel.h"
 #include "PetscInterface.h"
 #include "HDGSolver.h"
 #include "NonLinearWrapper.h"
@@ -36,7 +36,8 @@ double sourceBurgersStat(const std::vector<double> & x, int i, double D){
   double cBuff, dBuff;
   double ccBuff;
   if(i == 0){
-    res = 5 * std::pow(x[0], 9) - D * 5 * 4 * std::pow(x[0], 3);
+    res = 5.0 * std::pow(x[0], 9) - D * 5.0 * 4.0 * std::pow(x[0], 3);
+    //res = - D * 5 * 4 * std::pow(x[0], 3);
   }
   return res;
 };
@@ -142,12 +143,14 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   fieldMap["DiffusionTensor"] = &diffCoeff;
   fieldMap["Analytical"] = &anaSol;
   //initialize models, solvers, etc.
-  DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
+  IntegratedDirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   HDGBurgersModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 10000;
   myOpts.rtol = 1e-10;
   myOpts.verbose = false;
+  myOpts.solverType = KSPGMRES;
+  myOpts.preconditionnerType = PCBJACOBI;
   PetscInterface petsciface(myOpts);
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
@@ -168,8 +171,8 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
-  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
+  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
+  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   writeDir += meshName;
   if(zPart.getRank() == 0){
     boost::filesystem::create_directory(writeDir);
@@ -322,9 +325,9 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   double l2Err = std::sqrt(TestUtils::l2ProjectionCellField(&residual, &residual, &myMesh));
   //double l2Err = TestUtils::l2AnalyticalErrCellField(&sol, [D](std::vector<double> & x, std::vector<double> * sol){hdg::analyticalBurgersStat(x, D, sol);}, &myMesh);
   double dL2Err = std::sqrt(sumRes/sumAna);
-  thisRun->linAlgErr += linAlgErr;
-  thisRun->l2Err += l2Err;
-  thisRun->dL2Err += dL2Err;
+  thisRun->linAlgErr = linAlgErr;
+  thisRun->l2Err = l2Err;
+  thisRun->dL2Err = dL2Err;
   hdfio.write(writeDir + "/res_" + std::to_string(maxNRIter) + ".h5");
   end = std::chrono::high_resolution_clock::now();
   thisRun->post += end - start;
@@ -337,8 +340,8 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2", "2e-2"};
-  meshSizes["2"] = {"2e-1"};
+  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2"};
+  meshSizes["2"] = {"1e-1"};
   //std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
   std::vector<std::string> orders = {"1"};
   std::vector<SimRun> simRuns;
@@ -354,8 +357,8 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
     }
   }
 
-  std::string writePath = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
-  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
+  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   HDGSolverType globType = IMPLICIT;
   std::string writeFile = "Breakdown.csv";
   int nParts;

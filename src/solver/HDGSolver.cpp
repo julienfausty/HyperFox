@@ -329,6 +329,10 @@ void HDGSolver::assemble(){
     model->compute();
     locMat = model->getLocalMatrix();
     locVec = model->getLocalRHS();
+    //std::cout << "locVec" << std::endl;
+    //std::cout << *locVec << std::endl;
+    //std::cout << "locMat" << std::endl;
+    //std::cout << *locMat << std::endl;
     invSqq.compute(locMat->block(startQ, startQ, lenQ, lenQ));
     invSqqSqu = invSqq.solve(locMat->block(startQ, startU, lenQ, lenU));
     invSqqSql = invSqq.solve(locMat->block(startQ, startL, lenQ, lenL));
@@ -350,12 +354,18 @@ void HDGSolver::assemble(){
         }
       }
     }
-    std::cout << "U x + U0:\n";
-    std::cout << locU*X + locU0 << std::endl;
-    std::cout << "local Residual" << std::endl;
-    std::cout << (locU*X + locU0) - EMap<const EVector>(locFieldMap["Analytical"].data(), locFieldMap["Analytical"].size()) << std::endl;
-    std::cout << "Q x + Q0:\n";
-    std::cout << locQ*X + locQ0 << std::endl;
+    //std::cout << "locU" << std::endl;
+    //std::cout << locU << std::endl;
+    //std::cout << "locU0" << std::endl;
+    //std::cout << locU0 << std::endl;
+    //std::cout << "U x + U0:\n";
+    //std::cout << locU*X + locU0 << std::endl;
+    //std::cout << "Analytical" << std::endl;
+    //std::cout << EMap<const EVector>(locFieldMap["Analytical"].data(), locFieldMap["Analytical"].size()) << std::endl;
+    //std::cout << "local Residual" << std::endl;
+    //std::cout << (locU*X + locU0) - EMap<const EVector>(locFieldMap["Analytical"].data(), locFieldMap["Analytical"].size()) << std::endl;
+    //std::cout << "Q x + Q0:\n";
+    //std::cout << locQ*X + locQ0 << std::endl;
     if(myOpts.type == IMPLICIT){
       locS = locMat->block(startL, startU, lenL, lenU)*locU + locMat->block(startL, startQ, lenL, lenQ)*locQ + locMat->block(startL, startL, lenL, lenL);
       locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*locU0 - locMat->block(startL, startQ, lenL, lenQ)*locQ0;
@@ -365,12 +375,8 @@ void HDGSolver::assemble(){
       locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*sol - locMat->block(startL, startQ, lenL, lenQ)*flux;
       locS = locMat->block(startL, startL, lenL, lenL);
     }
-    std::cout << "S x - S0:\n";
-    std::cout << locS*X - locS0 << std::endl;
-    //if(std::find(facesInCell.begin(), facesInCell.end(), 0) != facesInCell.end()){
-      //std::cout << std::distance(facesInCell.begin(), std::find(facesInCell.begin(), facesInCell.end(), 0)) << std::endl;
-      //std::cout << "S: " << locS << std::endl;
-    //}
+    //std::cout << "S x - S0:\n";
+    //std::cout << locS*X - locS0 << std::endl;
     if((myOpts.type == IMPLICIT) or (myOpts.type == WEXPLICIT)){
       locS = locS.transpose();
       switch(modAssembly->matrix){

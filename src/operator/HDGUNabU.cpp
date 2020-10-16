@@ -129,7 +129,7 @@ void HDGUNabU::assemble(const std::vector<double> & dV, const std::vector<EMatri
       shapes = &(fipShapes->at(ip));
       foffset = iFace*nIPsFc + ip;
       //faceSoldotNdV = (faceSols[foffset].transpose()*normals->at(foffset))(0,0)*dV[nIPsEl + foffset];
-      faceSoldotNdV = (traces[foffset].transpose()*normals->at(foffset))(0,0)*dV[nIPsEl + foffset];
+      faceSoldotNdV = (traces[foffset].transpose()*(normals->at(foffset)))(0,0)*dV[nIPsEl + foffset];
       for(int iN = 0; iN < nNodesPFc; iN++){
         for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
           for(int jN = 0; jN < nNodesPFc; jN++){
@@ -140,7 +140,7 @@ void HDGUNabU::assemble(const std::vector<double> & dV, const std::vector<EMatri
             //op(faceNodes->at(iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + ndof) +=
               //faceSoldotNdV*shapes->at(jN)*shapes->at(iN);
             op(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + ndof) +=
-              faceSoldotNdV*shapes->at(jN)*shapes->at(iN);
+              faceSoldotNdV*(shapes->at(jN))*(shapes->at(iN));
             for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
               //op(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, faceNodes->at(jN)*nDOFsPerNode + mdof) +=
                 //faceSols[foffset][ndof]*shapes->at(jN)*shapes->at(iN)*normals->at(foffset)[mdof]*dV[nIPsEl + foffset];
@@ -172,7 +172,7 @@ void HDGUNabU::assemble(const std::vector<double> & dV, const std::vector<EMatri
   //bulk integrals
   EMatrix gradMat(spaceDim, nNodesEl);
   EMatrix gradSol(spaceDim, nDOFsPerNode);
-  double divSoldV;
+  double divSol;
   for(int ip = 0; ip < nIPsEl; ip++){
     shapes = &(ipShapes->at(ip));
     derivShapes = &(ipDerivShapes->at(ip));
@@ -181,14 +181,14 @@ void HDGUNabU::assemble(const std::vector<double> & dV, const std::vector<EMatri
       gradMat.col(iN) = invJacobians[ip]*EMap<const EVector>(derivShapes->at(iN).data(), spaceDim);
       gradSol += gradMat.col(iN)*solNodes[iN].transpose();
     }
-    divSoldV = gradSol.trace()*dV[ip];
+    divSol = gradSol.trace();
     for(int iN = 0; iN < nNodesEl; iN++){
       for(int ndof = 0; ndof < nDOFsPerNode; ndof++){
         for(int jN = 0; jN < nNodesEl; jN++){
-          op(iN*nDOFsPerNode + ndof, jN*nDOFsPerNode + ndof) -= (divSoldV * shapes->at(iN) + 
-            (sols[ip].transpose()*gradMat.col(iN))(0, 0)*dV[ip])*shapes->at(jN);
+          op(iN*nDOFsPerNode + ndof, jN*nDOFsPerNode + ndof) -= (divSol * shapes->at(iN) + 
+            (sols[ip].transpose()*gradMat.col(iN))(0, 0))*dV[ip]*shapes->at(jN);
           //op(iN*nDOFsPerNode + ndof, jN*nDOFsPerNode + ndof) -= 
-            //((sols[ip].transpose()*gradMat.col(iN))(0, 0)*dV[ip])*shapes->at(jN);
+            //(sols[ip].transpose()*gradMat.col(iN))(0, 0)*dV[ip]*shapes->at(jN);
           for(int mdof = 0; mdof < nDOFsPerNode; mdof++){
             op(iN*nDOFsPerNode + ndof, jN*nDOFsPerNode + mdof) -= 
               sols[ip][ndof]*(gradMat(mdof, jN)*shapes->at(iN) + gradMat(mdof, iN)*shapes->at(jN))*dV[ip];
@@ -199,18 +199,19 @@ void HDGUNabU::assemble(const std::vector<double> & dV, const std::vector<EMatri
       }
     }
   }
-  EVector solDiv2(nDOFsPerNode*nNodesEl);
-  EVector traceDiv2(nDOFsPerNode*nFaces*nNodesPFc);
+  EVector solDiv2(lenU);
+  EVector traceDiv2(lenL);
   for(int iN = 0 ; iN < nNodesEl; iN++){
     solDiv2.segment(iN*nDOFsPerNode, nDOFsPerNode) = solNodes[iN]/2.0;
   }
   for(int iN = 0 ; iN < nFaces*nNodesPFc; iN++){
     traceDiv2.segment(iN*nDOFsPerNode, nDOFsPerNode) = traceNodes[iN]/2.0;
   }
-  rhs.segment(0, lenU) = op.block(0, 0, lenU, lenU)*solDiv2;
+  rhs = EVector::Zero(rhs.size());
+  rhs.segment(0, lenU) += op.block(0, 0, lenU, lenU)*solDiv2;
   rhs.segment(0, lenU) += op.block(0, startL, lenU, lenL)*traceDiv2;
-  //rhs.segment(startL, lenL) = op.block(startL, 0, lenL, lenU)*solDiv2;
-  //rhs.segment(startL, lenL) = op.block(startL, startL, lenL, lenL)*traceDiv2;
+  rhs.segment(startL, lenL) += op.block(startL, 0, lenL, lenU)*solDiv2;
+  rhs.segment(startL, lenL) += op.block(startL, startL, lenL, lenL)*traceDiv2;
 };//assemble
 
 };//hfox
