@@ -7,6 +7,8 @@ ENDFOREACH()
 
 include_directories(${MPI_CXX_INCLUDE_DIRS} ${MOAB_INCLUDE_DIRS} ${PETSC_INCLUDES} ${HDF5_C_INCLUDE_DIRS} ${ZOLTAN_INCLUDE_DIR})
 
+add_definitions(${HDF5_C_DEFINITIONS})
+
 add_executable(
   hyperFoxDriver
   main.cpp

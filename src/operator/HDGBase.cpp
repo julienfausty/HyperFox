@@ -56,7 +56,7 @@ void HDGBase::calcNormals(const std::vector< std::vector<double> > & nodes, cons
       EMatrix temp = jacobians[offset + indexN].fullPivLu().kernel();
       normals[indexN] = temp;
       normals[indexN].normalize();
-      double prod = testVec.dot(normals[i*nIPsFace+j]);
+      double prod = testVec.dot(normals[indexN]);
       if(prod > 0){
         normals[indexN] *= -1;
       }

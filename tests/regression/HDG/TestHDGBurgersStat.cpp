@@ -24,6 +24,23 @@ using namespace hfox;
 
 namespace hdg{
 
+
+void analyticalBurgersStatx5(const std::vector<double> & x, std::vector<double> * sol){
+  sol->resize(x.size(), 0.0);
+  double buff;
+  sol->at(0) = std::pow(x[0], 5);
+};
+
+double sourceBurgersStat(const std::vector<double> & x, int i, double D){
+  double res = 0.0;
+  double cBuff, dBuff;
+  double ccBuff;
+  if(i == 0){
+    res = 5 * std::pow(x[0], 9) - D * 5 * 4 * std::pow(x[0], 3);
+  }
+  return res;
+};
+
 double potentialiBurgersStat(std::vector<double> x, double & A, std::vector<double> & x0){
   return (0.001*A*std::exp((1+x0[0])*A)*(1+x[0]) + (std::exp(A*(x[0] - x0[0])) + std::exp(-A*(x[0]-x0[0])))*std::cos(A*(x[1] - x0[1])));
 };
@@ -60,7 +77,7 @@ void potentialHessBurgersStat(std::vector<double> x, double & A, std::vector<dou
 
 void analyticalBurgersStat(std::vector<double> x, double D, std::vector<double> * sol){
   double A = 0.5;
-  std::vector<double> x0 = {1.5, 0.0};
+  std::vector<double> x0 = {1.0, 0.0};
   sol->resize(x.size(), 0.0);
   sol->at(0) = 1.0;
   //potentialGradBurgersStat(x, A, x0, sol);
@@ -70,7 +87,7 @@ void analyticalBurgersStat(std::vector<double> x, double D, std::vector<double> 
 
 void analyticalBurgersGradStat(std::vector<double> x, double D, std::vector<double> * gradSol){
   double A = 0.5;
-  std::vector<double> x0 = {1.5, 0.0};
+  std::vector<double> x0 = {1.0, 0.0};
   gradSol->resize(std::pow(x.size(), 2), 0.0);
   //double pot = potentialBurgersStat(x, A, x0);
   //std::vector<double> gradPot;
@@ -123,12 +140,13 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   fieldMap["Tau"] = &tau;
   fieldMap["Dirichlet"] = &dirichlet;
   fieldMap["DiffusionTensor"] = &diffCoeff;
+  fieldMap["Analytical"] = &anaSol;
   //initialize models, solvers, etc.
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   HDGBurgersModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 10000;
-  myOpts.rtol = 1e-16;
+  myOpts.rtol = 1e-10;
   myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   HDGSolverOpts solveOpts;
@@ -144,14 +162,14 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
   wrapper.setVerbosity(true);
-  int maxNRIter = 6;
+  int maxNRIter = 1;
   wrapper.setMaxIterations(maxNRIter);
   wrapper.setResidualTolerance(1e-6);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
+  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   writeDir += meshName;
   if(zPart.getRank() == 0){
     boost::filesystem::create_directory(writeDir);
@@ -172,7 +190,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   std::vector<int> face2Cell;
   std::vector<int> ibuffer;
   std::vector< std::vector<int> > iibuffer;
-  std::vector<double> dbuffer;
+  std::vector<double> dbuffer(nodeDim, 0.0);
   std::vector<EVector> normals(nNodesPerFace, EVector::Zero(nodeDim));
   //initialize field values
   for(int i = 0; i < myMesh.getNumberCells(); i++){
@@ -184,10 +202,11 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
       } else {
         myMesh.getGhostPoint(cell[j], &node);
       }
-      hdg::analyticalBurgersStat(node, D, &dbuffer);
+      //hdg::analyticalBurgersStat(node, D, &dbuffer);
+      hdg::analyticalBurgersStatx5(node, &dbuffer);
       for(int k = 0; k < dbuffer.size(); k++){
         anaSol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
-        //sol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
+        sol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
       }
       //sol.getValues()->at((i*nNodesPerEl + j)*nodeDim) *= 0.5;
       //hdg::analyticalBurgersGradStat(node, D, &dbuffer);
@@ -199,7 +218,20 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   std::fill(diffCoeff.getValues()->begin(), diffCoeff.getValues()->end(), D);
   for(int iFace = 0; iFace < myMesh.getNumberFaces(); iFace++){
     //normals = TestUtils::calculateOutwardNormal(&myMesh, iFace);
-    //myMesh.getFace(iFace, &cell);
+    myMesh.getFace(iFace, &cell);
+    for(int j = 0; j < cell.size(); j++){
+      int locInd = zPart.global2LocalNode(cell[j]);
+      if(locInd != -1){
+        myMesh.getPoint(locInd, &node);
+      } else {
+        myMesh.getGhostPoint(cell[j], &node);
+      }
+      //hdg::analyticalBurgersStat(node, D, &dbuffer);
+      hdg::analyticalBurgersStatx5(node, &dbuffer);
+      for(int k = 0; k < dbuffer.size(); k++){
+        trace.getValues()->at((iFace*nNodesPerFace + j)*nodeDim + k) = dbuffer[k];
+      }
+    }
     //myMesh.getFace2Cell(iFace, &face2Cell);
     //anaSol.getSliceValues(face2Cell, &dbuffer);
     //myMesh.getSliceCells(face2Cell, &iibuffer);
@@ -219,7 +251,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   for(auto itMap = fieldMap.begin(); itMap != fieldMap.end(); itMap++){
     fieldList.push_back(itMap->second);
   }
-  fieldList.push_back(&anaSol);
+  //fieldList.push_back(&anaSol);
   fieldList.push_back(&residual);
   fieldList.push_back(&partition);
   //partition the mesh and fields
@@ -231,6 +263,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   //allocating and last set ups
   mySolver.initialize();
   mySolver.allocate();
+  transportMod.setSourceFunction([D](const std::vector<double> & x, int i){return hdg::sourceBurgersStat(x, i, D);});
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   //compute necessary fields
@@ -246,7 +279,8 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
         } else {
           myMesh.getGhostPoint(cell[k], &node);
         }
-        hdg::analyticalBurgersStat(node, D, &dbuffer);
+        //hdg::analyticalBurgersStat(node, D, &dbuffer);
+        hdg::analyticalBurgersStatx5(node, &dbuffer);
         for(int dof = 0; dof < nodeDim; dof++){
           dirichlet.getValues()->at((locFace * nNodesPerFace + k)*nodeDim + dof) = dbuffer[dof];
         }
@@ -262,6 +296,10 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   //mySolver.solve();
   end = std::chrono::high_resolution_clock::now();
   thisRun->resolution += end - start;
+  //std::cout << "Trace:" << std::endl;
+  //for(int i = 0; i < trace.getValues()->size(); i++){
+    //std::cout << trace.getValues()->at(i) << std::endl;
+  //}
   //output
   //get linalg err
   const KSP * ksp = petsciface.getKSP();
@@ -300,9 +338,9 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
   //meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2", "2e-2"};
-  meshSizes["2"] = {"7e-2"};
+  meshSizes["2"] = {"2e-1"};
   //std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
-  std::vector<std::string> orders = {"3"};
+  std::vector<std::string> orders = {"1"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -316,8 +354,8 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
     }
   }
 
-  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   HDGSolverType globType = IMPLICIT;
   std::string writeFile = "Breakdown.csv";
   int nParts;

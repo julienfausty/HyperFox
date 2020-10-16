@@ -13,12 +13,14 @@ TEST_CASE("Testing HDGUNabU operator", "[unit][operator][nonlinear][HDGUNabU]"){
     ReferenceElement refEl(1, 1, "simplex");
     HDGUNabU op(&refEl);
     std::vector<EVector> velocity(refEl.getNumNodes(), EVector::Zero(1));
+    std::vector<EVector> trace(refEl.getFaceElement()->getNumNodes()*refEl.getNumFaces(), EVector::Zero(1));
     std::vector<double> dummydV(refEl.getNumIPs(), 0.0);
     std::vector<EMatrix> dummyJac(refEl.getNumIPs(), EMatrix::Identity(1,1));
     CHECK_THROWS(op.assemble(dummydV, dummyJac));
     CHECK_NOTHROW(op.allocate(1));
     CHECK_THROWS(op.assemble(dummydV, dummyJac));
     CHECK_NOTHROW(op.setSolution(velocity));
+    CHECK_NOTHROW(op.setTrace(trace));
   };
 
   int maxDim = 3;
@@ -66,6 +68,13 @@ TEST_CASE("Testing HDGUNabU operator", "[unit][operator][nonlinear][HDGUNabU]"){
               solution[k] *= std::pow(nodes->at(k)[0], n+1);
             }
             CHECK_NOTHROW(op.setSolution(solution));
+            std::vector<EVector> trace(nNodesPFc*nFaces, sol);
+            for(int iFace = 0; iFace < nFaces; iFace++){
+              for(int k = 0; k < nNodesPFc; k++){
+                trace[iFace*nNodesPFc + k] = solution[refEl.getFaceNodes()->at(iFace)[k]];
+              }
+            }
+            CHECK_NOTHROW(op.setTrace(trace));
             CHECK_NOTHROW(op.setFromBase(&normals));
             CHECK_NOTHROW(op.assemble(dV, jacs));
             EVector u(refEl.getNumNodes()*(i+1));
@@ -74,7 +83,16 @@ TEST_CASE("Testing HDGUNabU operator", "[unit][operator][nonlinear][HDGUNabU]"){
                 u[k*(i+1) + l] = solution[k][l];
               }
             }
+            EVector t(nFaces*nNodesPFc*(i+1));
+            for(int iFace = 0; iFace < nFaces; iFace++){
+              for(int k = 0; k < nNodesPFc; k++){
+                for(int l = 0; l < (i+1); l++){
+                  t[(iFace*nNodesPFc + k)*(i+1) + l] = trace[iFace*nNodesPFc + k][l];
+                }
+              }
+            }
             double integral = u.transpose()*(op.getMatrix()->block(0, 0, u.size(), u.size()))*u;
+            integral += u.transpose()*(op.getMatrix()->block(0, u.size()*(i+2), u.size(), t.size()))*t;
             CHECK(integral/(2.0*(n+1)) == Approx(TestUtils::intx2n(i+1, (3*n+2)/2)).margin(0.2));
             integral = op.getRHS()->segment(0, u.size()).dot(u);
             CHECK(integral/(1.0*(n+1)) == Approx(TestUtils::intx2n(i+1, (3*n+2)/2)).margin(0.2));

@@ -5,6 +5,7 @@
 #include "HDGBase.h"
 #include "HDGUNabU.h"
 #include "HDGDiffusion.h"
+#include "Source.h"
 
 namespace hfox{
 
@@ -32,6 +33,10 @@ class HDGBurgersModel : public HDGModel{
      * \brief allocating the local matrix and rhs
      */
     void allocate(int nDOFsPerNode);
+    /*!
+     * \brief set the source function
+     */
+    void setSourceFunction(std::function<double(const std::vector<double>&, int)> s);
   protected:
     /*!
      * \brief initialize all the operators for the class
@@ -50,9 +55,17 @@ class HDGBurgersModel : public HDGModel{
      */
     std::vector<EVector> parseSolutionVals() const;
     /*!
+     * \brief parse the trace field values into vectors
+     */
+    std::vector<EVector> parseTraceVals() const;
+    /*!
      * \brief method for parsing diffusion tensor values into matrices
      */
     std::vector<EMatrix> parseDiffusionVals() const;
+    /*!
+     * \brief boolean that tracks if the source has been set
+     */
+    bool sourceSet = 0;
 };//HDGBurgersModel
 
 }//hfox
