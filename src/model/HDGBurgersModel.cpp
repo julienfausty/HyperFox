@@ -61,6 +61,7 @@ void HDGBurgersModel::allocate(int nDOFsPerNodeUser){
 void HDGBurgersModel::initializeOperators(){
   if(operatorMap.find("Convection") == operatorMap.end()){
     operatorMap["Convection"] = new HDGUNabU(refEl);
+    //operatorMap["Convection"] = new HDGConvection(refEl);
   }
   if(operatorMap.find("Diffusion") == operatorMap.end()){
     operatorMap["Diffusion"] = new HDGDiffusion(refEl);
@@ -97,6 +98,8 @@ void HDGBurgersModel::computeLocalMatrix(){
   ((HDGUNabU*)operatorMap["Convection"])->setTrace(parseTraceVals());
   ((HDGUNabU*)operatorMap["Convection"])->setSolution(parseSolutionVals());
   ((HDGUNabU*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
+  //((HDGConvection*)operatorMap["Convection"])->setVelocity(parseSolutionVals());
+  //((HDGConvection*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
   operatorMap["Convection"]->assemble(dV, invJacobians);
   localMatrix += *(operatorMap["Convection"]->getMatrix());
   //std::cout << "ConvectionMat:\n" << *(operatorMap["Convection"]->getMatrix()) << std::endl;
@@ -120,6 +123,7 @@ void HDGBurgersModel::computeLocalRHS(){
     for(int i = 0; i < dim; i++){
       ((Source*)operatorMap["Source_" + std::to_string(i)])->calcSource(*elementNodes);
       operatorMap["Source_" + std::to_string(i)]->assemble(dV, invJacobians);
+      //std::cout << "Source:\n" << *(operatorMap["Source_" + std::to_string(i)]->getMatrix()) << std::endl;
       for(int iN = 0; iN < refEl->getNumNodes(); iN++){
         localRHS[iN*dim + i] += (*(operatorMap["Source_"+std::to_string(i)]->getMatrix()))(iN, 0);
       }

@@ -221,6 +221,7 @@ void PetscInterface::assembleFlush(){
 
 void PetscInterface::solve(std::vector<double> * solution){
   if(assembled){
+    //MatView(M, PETSC_VIEWER_STDOUT_WORLD);
     KSPSetOperators(kspSolver, M, M);
     if(myOptions.verbose){
       std::cout << "PetsC resolution (rtol = " + std::to_string(myOptions.rtol) + 

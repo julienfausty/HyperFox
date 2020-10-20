@@ -101,7 +101,6 @@ void HDGUNabU::assemble(const std::vector<double> & dV, const std::vector<EMatri
     throw(ErrorHandle("HDGUNabU", "assemble", "must set the normals from the base before assembling"));
   }
   op = EMatrix::Zero(op.rows(), op.cols());
-  rhs = EVector::Zero(rhs.size());
   int spaceDim = refEl->getDimension();
   int nNodesEl = refEl->getNumNodes();
   int nIPsEl = refEl->getNumIPs();
@@ -149,7 +148,7 @@ void HDGUNabU::assemble(const std::vector<double> & dV, const std::vector<EMatri
               //op(faceNodes->at(iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + mdof) +=
                 //traces[foffset][ndof]*shapes->at(jN)*shapes->at(iN)*normals->at(foffset)[mdof]*dV[nIPsEl + foffset];
               op(startL + (iFace*nNodesPFc + iN)*nDOFsPerNode + ndof, startL + (iFace*nNodesPFc + jN)*nDOFsPerNode + mdof) +=
-                traces[foffset][ndof]*shapes->at(jN)*shapes->at(iN)*normals->at(foffset)[mdof]*dV[nIPsEl + foffset];
+                faceSols[foffset][ndof]*shapes->at(jN)*shapes->at(iN)*normals->at(foffset)[mdof]*dV[nIPsEl + foffset];
             }
           }
         }

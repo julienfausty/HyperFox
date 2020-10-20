@@ -29,6 +29,7 @@ void analyticalBurgersStatx5(const std::vector<double> & x, std::vector<double> 
   sol->resize(x.size(), 0.0);
   double buff;
   sol->at(0) = std::pow(x[0], 5);
+  //sol->at(0) = 1.0;
 };
 
 double sourceBurgersStat(const std::vector<double> & x, int i, double D){
@@ -36,6 +37,7 @@ double sourceBurgersStat(const std::vector<double> & x, int i, double D){
   double cBuff, dBuff;
   double ccBuff;
   if(i == 0){
+    //res = 2.0 * std::pow(x[0], 1);
     res = 5.0 * std::pow(x[0], 9) - D * 5.0 * 4.0 * std::pow(x[0], 3);
     //res = - D * 5 * 4 * std::pow(x[0], 3);
   }
@@ -171,8 +173,8 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
+  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   writeDir += meshName;
   if(zPart.getRank() == 0){
     boost::filesystem::create_directory(writeDir);
@@ -185,7 +187,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   hdfio.setField("Partition", &partition);
   //define scalars
   double D = 1.0;//diffusive coeff
-  double carLen = 1.0;
+  double carLen = std::stod(thisRun->meshSize);
   int dimGrad = std::pow(nodeDim, 2);
   //create buffers  
   std::vector<int> cell;
@@ -245,7 +247,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
         //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + iN)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim)
           //= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D);
         EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + iN)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim)
-          = EMatrix::Identity(nodeDim, nodeDim);
+          = EMatrix::Identity(nodeDim, nodeDim)*(D/carLen)*2.0;
       }
     }
   }
@@ -340,10 +342,10 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  //meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2"};
-  meshSizes["2"] = {"1e-1"};
-  //std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
-  std::vector<std::string> orders = {"1"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2"};
+  //meshSizes["2"] = {"1e-1"};
+  std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
+  //std::vector<std::string> orders = {"1"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -357,8 +359,8 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
     }
   }
 
-  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   HDGSolverType globType = IMPLICIT;
   std::string writeFile = "Breakdown.csv";
   int nParts;

@@ -22,7 +22,7 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
         CHECK_NOTHROW(mod.setElementNodes(refEl.getNodes()));
         std::map<std::string, std::vector<double> > fm;
         CHECK_THROWS(mod.setFieldMap(&fm));
-        fm["BufferSolution"] = std::vector<double>(refEl.getNumNodes()*(i+1), 1.0);
+        fm["Solution"] = std::vector<double>(refEl.getNumNodes()*(i+1), 1.0);
         CHECK_THROWS(mod.setFieldMap(&fm));
         fm["Tau"] = std::vector<double>(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * std::pow(i+1, 2), 1.0);
         CHECK_THROWS(mod.setFieldMap(&fm));
@@ -43,7 +43,7 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
       for(int k = 0; k < refEl.getNumFaces()*refEl.getFaceElement()->getNumNodes(); k++){
         EMap<EMatrix>(tau.data() + (i+1)*(i+1)*k, (i+1), (i+1)) = EMatrix::Identity((i+1), (i+1));
       }
-      std::iota(sol.begin(), sol.end(), 0.0);
+      std::fill(sol.begin(), sol.end(), 2.0);
       int nFaces = refEl.getNumFaces();
       int nNodesFc = refEl.getFaceElement()->getNumNodes();
       for(int iFace = 0; iFace < nFaces; iFace++){
@@ -55,7 +55,6 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
       }
       fm["Tau"] = tau;
       fm["Solution"] = sol;
-      fm["BufferSolution"] = buffSol;
       fm["DiffusionTensor"] = diff;
       fm["Trace"] = trace;
       mod.setFieldMap(&fm);

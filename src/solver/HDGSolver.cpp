@@ -211,7 +211,7 @@ void HDGSolver::assemble(){
   std::vector<int>::iterator intIt;
   int buff = 0;
   int offset = 0;
-  EMatrix locS(lenL, lenL);
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> locS(lenL, lenL);
   EVector locS0(lenL);
   EMatrix invSqqSqu(lenQ, lenU);
   EMatrix invSqqSql(lenQ, lenL);
@@ -378,7 +378,7 @@ void HDGSolver::assemble(){
     //std::cout << "S x - S0:\n";
     //std::cout << locS*X - locS0 << std::endl;
     if((myOpts.type == IMPLICIT) or (myOpts.type == WEXPLICIT)){
-      locS = locS.transpose();
+      //locS = locS.transpose();
       switch(modAssembly->matrix){
         case Add:{
                    linSystem->addValsMatrix(matRowCols, matRowCols, locS.data());
@@ -516,7 +516,8 @@ void HDGSolver::assemble(){
     boundaryModel->setFieldMap(&faceFieldMap);
     boundaryModel->compute();
     if(myOpts.type != SEXPLICIT){
-      boundaryT = boundaryModel->getLocalMatrix()->transpose();
+      //boundaryT = boundaryModel->getLocalMatrix()->transpose();
+      boundaryT = *(boundaryModel->getLocalMatrix());
       std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
       switch(modAssembly->matrix){
         case Add:{
