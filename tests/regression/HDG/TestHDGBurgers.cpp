@@ -228,9 +228,9 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
     writeDir += "Misc/";
   }
   writeDir += meshName + "_dt-" + thisRun->timeStep;
-  if(zPart.getRank() == 0){
-    boost::filesystem::create_directory(writeDir);
-  }
+  //if(zPart.getRank() == 0){
+    //boost::filesystem::create_directory(writeDir);
+  //}
   hdfio.setField("Solution", &sol);
   hdfio.setField("Flux", &flux);
   hdfio.setField("Analytical", &anaSol);

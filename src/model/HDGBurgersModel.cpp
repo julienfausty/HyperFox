@@ -61,7 +61,6 @@ void HDGBurgersModel::allocate(int nDOFsPerNodeUser){
 void HDGBurgersModel::initializeOperators(){
   if(operatorMap.find("Convection") == operatorMap.end()){
     operatorMap["Convection"] = new HDGUNabU(refEl);
-    //operatorMap["Convection"] = new HDGConvection(refEl);
   }
   if(operatorMap.find("Diffusion") == operatorMap.end()){
     operatorMap["Diffusion"] = new HDGDiffusion(refEl);
@@ -94,20 +93,15 @@ void HDGBurgersModel::computeLocalMatrix(){
   ((HDGBase*)operatorMap["Base"])->calcNormals(*elementNodes, jacobians);
   operatorMap["Base"]->assemble(dV, invJacobians);
   localMatrix = *(operatorMap["Base"]->getMatrix());
-  //std::cout << "BaseMat:\n" << *(operatorMap["Base"]->getMatrix()) << std::endl;
   ((HDGUNabU*)operatorMap["Convection"])->setTrace(parseTraceVals());
   ((HDGUNabU*)operatorMap["Convection"])->setSolution(parseSolutionVals());
   ((HDGUNabU*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
-  //((HDGConvection*)operatorMap["Convection"])->setVelocity(parseSolutionVals());
-  //((HDGConvection*)operatorMap["Convection"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
   operatorMap["Convection"]->assemble(dV, invJacobians);
   localMatrix += *(operatorMap["Convection"]->getMatrix());
-  //std::cout << "ConvectionMat:\n" << *(operatorMap["Convection"]->getMatrix()) << std::endl;
   if(fieldMap.find("DiffusionTensor") != fieldMap.end()){
     ((HDGDiffusion*)operatorMap["Diffusion"])->setDiffusionTensor(parseDiffusionVals());
     ((HDGDiffusion*)operatorMap["Diffusion"])->setFromBase(((HDGBase*)operatorMap["Base"])->getNormals());
     operatorMap["Diffusion"]->assemble(dV, invJacobians);
-    //std::cout << "DiffusionMat:\n" << *(operatorMap["Diffusion"]->getMatrix()) << std::endl;
     localMatrix += *(operatorMap["Diffusion"]->getMatrix());
   }
 };//computeLocalMatrix
@@ -116,14 +110,12 @@ void HDGBurgersModel::computeLocalRHS(){
   if(!(nodeSet and fieldSet)){
     throw("HDGBurgersModel", "computeLocalRHS", "the nodes and the fields should be set before computing");
   }
-  //localRHS = EVector::Zero(localRHS.size());
   localRHS = *(((HDGUNabU*)operatorMap["Convection"])->getRHS());
   if(sourceSet){
     int dim = refEl->getDimension();
     for(int i = 0; i < dim; i++){
       ((Source*)operatorMap["Source_" + std::to_string(i)])->calcSource(*elementNodes);
       operatorMap["Source_" + std::to_string(i)]->assemble(dV, invJacobians);
-      //std::cout << "Source:\n" << *(operatorMap["Source_" + std::to_string(i)]->getMatrix()) << std::endl;
       for(int iN = 0; iN < refEl->getNumNodes(); iN++){
         localRHS[iN*dim + i] += (*(operatorMap["Source_"+std::to_string(i)]->getMatrix()))(iN, 0);
       }

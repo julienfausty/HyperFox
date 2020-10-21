@@ -4,7 +4,6 @@
 #include "HDGModel.h"
 #include "HDGBase.h"
 #include "HDGUNabU.h"
-#include "HDGConvection.h"
 #include "HDGDiffusion.h"
 #include "Source.h"
 

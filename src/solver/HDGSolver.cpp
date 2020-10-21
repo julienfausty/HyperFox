@@ -329,10 +329,6 @@ void HDGSolver::assemble(){
     model->compute();
     locMat = model->getLocalMatrix();
     locVec = model->getLocalRHS();
-    //std::cout << "locVec" << std::endl;
-    //std::cout << *locVec << std::endl;
-    //std::cout << "locMat" << std::endl;
-    //std::cout << *locMat << std::endl;
     invSqq.compute(locMat->block(startQ, startQ, lenQ, lenQ));
     invSqqSqu = invSqq.solve(locMat->block(startQ, startU, lenQ, lenU));
     invSqqSql = invSqq.solve(locMat->block(startQ, startL, lenQ, lenL));
@@ -346,26 +342,6 @@ void HDGSolver::assemble(){
     locU0 = invSuuMinSuqinvSqqSqu.solve(locVec->segment(startU, lenU));
     locQ = -invSqqSqu*locU - invSqqSql;
     locQ0 = -invSqqSqu*locU0;
-    EVector X(lenL);
-    for(int iFace = 0; iFace < nFacesPEl; iFace++){
-      for(int i = 0; i < nNodesPFc; i++){
-        for(int k = 0; k < nDOFsPerNode; k++){
-          X[(iFace*nNodesPFc + i)*nDOFsPerNode + k] = locFieldMap["Analytical"][refEl->getFaceNodes()->at(iFace)[i]*nDOFsPerNode + k];
-        }
-      }
-    }
-    //std::cout << "locU" << std::endl;
-    //std::cout << locU << std::endl;
-    //std::cout << "locU0" << std::endl;
-    //std::cout << locU0 << std::endl;
-    //std::cout << "U x + U0:\n";
-    //std::cout << locU*X + locU0 << std::endl;
-    //std::cout << "Analytical" << std::endl;
-    //std::cout << EMap<const EVector>(locFieldMap["Analytical"].data(), locFieldMap["Analytical"].size()) << std::endl;
-    //std::cout << "local Residual" << std::endl;
-    //std::cout << (locU*X + locU0) - EMap<const EVector>(locFieldMap["Analytical"].data(), locFieldMap["Analytical"].size()) << std::endl;
-    //std::cout << "Q x + Q0:\n";
-    //std::cout << locQ*X + locQ0 << std::endl;
     if(myOpts.type == IMPLICIT){
       locS = locMat->block(startL, startU, lenL, lenU)*locU + locMat->block(startL, startQ, lenL, lenQ)*locQ + locMat->block(startL, startL, lenL, lenL);
       locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*locU0 - locMat->block(startL, startQ, lenL, lenQ)*locQ0;
@@ -375,10 +351,7 @@ void HDGSolver::assemble(){
       locS0 = locVec->segment(startL, lenL) - locMat->block(startL, startU, lenL, lenU)*sol - locMat->block(startL, startQ, lenL, lenQ)*flux;
       locS = locMat->block(startL, startL, lenL, lenL);
     }
-    //std::cout << "S x - S0:\n";
-    //std::cout << locS*X - locS0 << std::endl;
     if((myOpts.type == IMPLICIT) or (myOpts.type == WEXPLICIT)){
-      //locS = locS.transpose();
       switch(modAssembly->matrix){
         case Add:{
                    linSystem->addValsMatrix(matRowCols, matRowCols, locS.data());
@@ -453,7 +426,9 @@ void HDGSolver::assemble(){
   locCell.resize(nNodesPFc);
   nodes.resize(nNodesPFc);
   modAssembly = boundaryModel->getAssemblyType();
-  EMatrix boundaryT(boundaryModel->getLocalMatrix()->rows(), boundaryModel->getLocalMatrix()->cols());
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> boundaryT(
+      boundaryModel->getLocalMatrix()->rows(), 
+      boundaryModel->getLocalMatrix()->cols());
   const std::set<int> * boundaryFaces = myMesh->getBoundaryFaces();
   std::set<int>::const_iterator itFace;
   int locFaceInd;
@@ -516,7 +491,6 @@ void HDGSolver::assemble(){
     boundaryModel->setFieldMap(&faceFieldMap);
     boundaryModel->compute();
     if(myOpts.type != SEXPLICIT){
-      //boundaryT = boundaryModel->getLocalMatrix()->transpose();
       boundaryT = *(boundaryModel->getLocalMatrix());
       std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
       switch(modAssembly->matrix){

@@ -73,7 +73,9 @@ void CGSolver::assemble(){
     }
     pb.update();
   }
-  EMatrix modelT(model->getLocalMatrix()->rows(), model->getLocalMatrix()->cols());
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> modelT(
+      model->getLocalMatrix()->rows(), 
+      model->getLocalMatrix()->cols());
   for(iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
     myMesh->getCell(iEl, &cell);
     if(part == NULL){
@@ -93,7 +95,7 @@ void CGSolver::assemble(){
     model->setElementNodes(&nodes);
     model->setFieldMap(&nodalFieldMap);
     model->compute();
-    modelT = model->getLocalMatrix()->transpose();
+    modelT = *(model->getLocalMatrix());
     Utils::multiplyIndexes(nDOFsPerNode, &cell, &dofs);
     switch(modAssemble->matrix){
       case Add:{

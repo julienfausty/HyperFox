@@ -82,24 +82,24 @@ void analyticalBurgersStat(std::vector<double> x, double D, std::vector<double> 
   double A = 0.5;
   std::vector<double> x0 = {1.0, 0.0};
   sol->resize(x.size(), 0.0);
-  sol->at(0) = 1.0;
-  //potentialGradBurgersStat(x, A, x0, sol);
-  //double buff = potentialBurgersStat(x, A, x0);
-  //EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/buff;
+  //sol->at(0) = 1.0;
+  potentialGradBurgersStat(x, A, x0, sol);
+  double buff = potentialBurgersStat(x, A, x0);
+  EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/buff;
 };
 
 void analyticalBurgersGradStat(std::vector<double> x, double D, std::vector<double> * gradSol){
   double A = 0.5;
   std::vector<double> x0 = {1.0, 0.0};
   gradSol->resize(std::pow(x.size(), 2), 0.0);
-  //double pot = potentialBurgersStat(x, A, x0);
-  //std::vector<double> gradPot;
-  //potentialGradBurgersStat(x, A, x0, &gradPot);
-  //potentialHessBurgersStat(x, A, x0, gradSol);
-  //EMap<EMatrix> res(gradSol->data(), x.size(), x.size());
-  //res *= -2.0*D/pot;
-  //EMap<EVector> gPot(gradPot.data(), gradPot.size());
-  //res += (2.0*D/std::pow(pot, 2.0))*(gPot * gPot.transpose());
+  double pot = potentialBurgersStat(x, A, x0);
+  std::vector<double> gradPot;
+  potentialGradBurgersStat(x, A, x0, &gradPot);
+  potentialHessBurgersStat(x, A, x0, gradSol);
+  EMap<EMatrix> res(gradSol->data(), x.size(), x.size());
+  res *= -2.0*D/pot;
+  EMap<EVector> gPot(gradPot.data(), gradPot.size());
+  res += (2.0*D/std::pow(pot, 2.0))*(gPot * gPot.transpose());
 };
 
 };//hdg
@@ -149,7 +149,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   HDGBurgersModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 10000;
-  myOpts.rtol = 1e-10;
+  myOpts.rtol = 1e-16;
   myOpts.verbose = false;
   myOpts.solverType = KSPGMRES;
   myOpts.preconditionnerType = PCBJACOBI;
@@ -167,14 +167,15 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
   wrapper.setVerbosity(true);
-  int maxNRIter = 1;
+  int maxNRIter = 10;
+  wrapper.setVerbosity(false);
   wrapper.setMaxIterations(maxNRIter);
   wrapper.setResidualTolerance(1e-6);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
-  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
+  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
+  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   writeDir += meshName;
   if(zPart.getRank() == 0){
     boost::filesystem::create_directory(writeDir);
@@ -207,11 +208,11 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
       } else {
         myMesh.getGhostPoint(cell[j], &node);
       }
-      //hdg::analyticalBurgersStat(node, D, &dbuffer);
-      hdg::analyticalBurgersStatx5(node, &dbuffer);
+      hdg::analyticalBurgersStat(node, D, &dbuffer);
+      //hdg::analyticalBurgersStatx5(node, &dbuffer);
       for(int k = 0; k < dbuffer.size(); k++){
         anaSol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
-        sol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
+        //sol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
       }
       //sol.getValues()->at((i*nNodesPerEl + j)*nodeDim) *= 0.5;
       //hdg::analyticalBurgersGradStat(node, D, &dbuffer);
@@ -231,10 +232,10 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
       } else {
         myMesh.getGhostPoint(cell[j], &node);
       }
-      //hdg::analyticalBurgersStat(node, D, &dbuffer);
-      hdg::analyticalBurgersStatx5(node, &dbuffer);
+      hdg::analyticalBurgersStat(node, D, &dbuffer);
+      //hdg::analyticalBurgersStatx5(node, &dbuffer);
       for(int k = 0; k < dbuffer.size(); k++){
-        trace.getValues()->at((iFace*nNodesPerFace + j)*nodeDim + k) = dbuffer[k];
+        //trace.getValues()->at((iFace*nNodesPerFace + j)*nodeDim + k) = dbuffer[k];
       }
     }
     //myMesh.getFace2Cell(iFace, &face2Cell);
@@ -264,11 +265,11 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   zPart.computePartition();
   zPart.update();
   //first output
-  hdfio.write(writeDir + "/res_0.h5");
+  //hdfio.write(writeDir + "/res_0.h5");
   //allocating and last set ups
   mySolver.initialize();
   mySolver.allocate();
-  transportMod.setSourceFunction([D](const std::vector<double> & x, int i){return hdg::sourceBurgersStat(x, i, D);});
+  //transportMod.setSourceFunction([D](const std::vector<double> & x, int i){return hdg::sourceBurgersStat(x, i, D);});
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   //compute necessary fields
@@ -284,8 +285,8 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
         } else {
           myMesh.getGhostPoint(cell[k], &node);
         }
-        //hdg::analyticalBurgersStat(node, D, &dbuffer);
-        hdg::analyticalBurgersStatx5(node, &dbuffer);
+        hdg::analyticalBurgersStat(node, D, &dbuffer);
+        //hdg::analyticalBurgersStatx5(node, &dbuffer);
         for(int dof = 0; dof < nodeDim; dof++){
           dirichlet.getValues()->at((locFace * nNodesPerFace + k)*nodeDim + dof) = dbuffer[dof];
         }
@@ -297,14 +298,8 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   //solve non-linear problem
   start = std::chrono::high_resolution_clock::now();
   wrapper.solve();
-  //mySolver.assemble();
-  //mySolver.solve();
   end = std::chrono::high_resolution_clock::now();
   thisRun->resolution += end - start;
-  //std::cout << "Trace:" << std::endl;
-  //for(int i = 0; i < trace.getValues()->size(); i++){
-    //std::cout << trace.getValues()->at(i) << std::endl;
-  //}
   //output
   //get linalg err
   const KSP * ksp = petsciface.getKSP();
@@ -330,7 +325,7 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   thisRun->linAlgErr = linAlgErr;
   thisRun->l2Err = l2Err;
   thisRun->dL2Err = dL2Err;
-  hdfio.write(writeDir + "/res_" + std::to_string(maxNRIter) + ".h5");
+  //hdfio.write(writeDir + "/res_" + std::to_string(maxNRIter) + ".h5");
   end = std::chrono::high_resolution_clock::now();
   thisRun->post += end - start;
 };
@@ -342,7 +337,7 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
   //meshSizes["2"] = {"1e-1"};
   std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
   //std::vector<std::string> orders = {"1"};
@@ -359,19 +354,19 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
     }
   }
 
-  std::string writePath = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
-  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
+  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   HDGSolverType globType = IMPLICIT;
   std::string writeFile = "Breakdown.csv";
   int nParts;
   MPI_Comm_size(MPI_COMM_WORLD, &nParts);
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  std::ofstream f;
-  if(rank == 0){
-    f.open(writePath + writeFile);
-    f << "dim,order,h,linAlgErr,l2Err,dL2Err,avgRuntime,maxRuntime,minRuntime\n" << std::flush;
-  }
+  //std::ofstream f;
+  //if(rank == 0){
+    //f.open(writePath + writeFile);
+    //f << "dim,order,h,linAlgErr,l2Err,dL2Err,avgRuntime,maxRuntime,minRuntime\n" << std::flush;
+  //}
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runHDGBurgersStat(&(*it), globType);
@@ -384,21 +379,21 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
     MPI_Allreduce(&timeBuff, &minRuntime, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(&timeBuff, &avgRuntime, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     avgRuntime /= nParts;
-    if(rank == 0){
-      f << it->dim << ",";
-      f << it->order << ",";
-      f << it->meshSize << ",";
-      f << it->linAlgErr << ",";
-      f << it->l2Err << ",";
-      f << it->dL2Err << ",";
-      f << avgRuntime << ",";
-      f << maxRuntime << ",";
-      f << minRuntime << "\n";
-      f << std::flush;
-    }
+    //if(rank == 0){
+      //f << it->dim << ",";
+      //f << it->order << ",";
+      //f << it->meshSize << ",";
+      //f << it->linAlgErr << ",";
+      //f << it->l2Err << ",";
+      //f << it->dL2Err << ",";
+      //f << avgRuntime << ",";
+      //f << maxRuntime << ",";
+      //f << minRuntime << "\n";
+      //f << std::flush;
+    //}
   }
-  if(rank == 0){
-    f << std::endl;
-    f.close();
-  }
+  //if(rank == 0){
+    //f << std::endl;
+    //f.close();
+  //}
 };

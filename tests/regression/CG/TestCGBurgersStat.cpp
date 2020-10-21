@@ -148,6 +148,7 @@ void runCGBurgersStat(SimRun * thisRun){
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
   int maxIters = 50;
+  wrapper.setVerbosity(false);
   wrapper.setResidualTolerance(1e-6);
   wrapper.setMaxIterations(maxIters);
   wrapper.setSolutionFields(&sol, &buffSol);
@@ -156,9 +157,9 @@ void runCGBurgersStat(SimRun * thisRun){
   //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/CG/";
   std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/CG/";
   writeDir += meshName;
-  if(zPart.getRank() == 0){
-    boost::filesystem::create_directory(writeDir);
-  }
+  //if(zPart.getRank() == 0){
+    //boost::filesystem::create_directory(writeDir);
+  //}
   hdfio.setField("Solution", &sol);
   hdfio.setField("Analytical", &anaSol);
   hdfio.setField("Residual", &residual);
@@ -192,7 +193,7 @@ void runCGBurgersStat(SimRun * thisRun){
   zPart.computePartition();
   zPart.update();
   //first output
-  hdfio.write(writeDir + "/res_0.h5");
+  //hdfio.write(writeDir + "/res_0.h5");
   //allocating and last set ups
   mySolver.initialize();
   mySolver.allocate();
@@ -245,7 +246,7 @@ void runCGBurgersStat(SimRun * thisRun){
   thisRun->linAlgErr = linAlgErr;
   thisRun->l2Err = l2Err;
   thisRun->dL2Err = dL2Err;
-  hdfio.write(writeDir + "/res_" + std::to_string(maxIters) + ".h5");
+  //hdfio.write(writeDir + "/res_" + std::to_string(maxIters) + ".h5");
   end = std::chrono::high_resolution_clock::now();
   thisRun->post += end - start;
 
@@ -259,7 +260,7 @@ TEST_CASE("Testing stationary regression cases for the BurgersModel", "[regressi
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
   //meshSizes["2"] = {"7e-2"};
-  meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2", "2e-2"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
   std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
   //std::vector<std::string> orders = {"3"};
   std::vector<SimRun> simRuns;
@@ -283,11 +284,11 @@ TEST_CASE("Testing stationary regression cases for the BurgersModel", "[regressi
   //writePath += std::to_string(nParts) + "/";
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  std::ofstream f;
-  if(rank == 0){
-    f.open(writePath + writeFile);
-    f << "dim,order,h,linAlgErr,l2Err,dL2Err,avgRuntime,maxRuntime,minRuntime\n" << std::flush;
-  }
+  //std::ofstream f;
+  //if(rank == 0){
+    //f.open(writePath + writeFile);
+    //f << "dim,order,h,linAlgErr,l2Err,dL2Err,avgRuntime,maxRuntime,minRuntime\n" << std::flush;
+  //}
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runCGBurgersStat(&(*it));
@@ -300,21 +301,21 @@ TEST_CASE("Testing stationary regression cases for the BurgersModel", "[regressi
     MPI_Allreduce(&timeBuff, &minRuntime, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(&timeBuff, &avgRuntime, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     avgRuntime /= nParts;
-    if(rank == 0){
-      f << it->dim << ",";
-      f << it->order << ",";
-      f << it->meshSize << ",";
-      f << it->linAlgErr << ",";
-      f << it->l2Err << ",";
-      f << it->dL2Err << ",";
-      f << avgRuntime << ",";
-      f << maxRuntime << ",";
-      f << minRuntime << "\n";
-      f << std::flush;
-    }
+    //if(rank == 0){
+      //f << it->dim << ",";
+      //f << it->order << ",";
+      //f << it->meshSize << ",";
+      //f << it->linAlgErr << ",";
+      //f << it->l2Err << ",";
+      //f << it->dL2Err << ",";
+      //f << avgRuntime << ",";
+      //f << maxRuntime << ",";
+      //f << minRuntime << "\n";
+      //f << std::flush;
+    //}
   }
-  if(rank == 0){
-    f << std::endl;
-    f.close();
-  }
+  //if(rank == 0){
+    //f << std::endl;
+    //f.close();
+  //}
 };
