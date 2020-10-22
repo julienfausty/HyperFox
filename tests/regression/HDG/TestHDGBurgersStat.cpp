@@ -177,9 +177,9 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
   std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   writeDir += meshName;
-  if(zPart.getRank() == 0){
-    boost::filesystem::create_directory(writeDir);
-  }
+  //if(zPart.getRank() == 0){
+    //boost::filesystem::create_directory(writeDir);
+  //}
   hdfio.setField("Solution", &sol);
   hdfio.setField("Buffer", &buffSol);
   hdfio.setField("Flux", &flux);
