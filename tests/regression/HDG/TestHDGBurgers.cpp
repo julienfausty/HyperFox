@@ -255,9 +255,9 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
     writeDir += "Misc/";
   }
   writeDir += meshName + "_dt-" + thisRun->timeStep;
-  if(zPart.getRank() == 0){
-    boost::filesystem::create_directory(writeDir);
-  }
+  //if(zPart.getRank() == 0){
+    //boost::filesystem::create_directory(writeDir);
+  //}
   hdfio.setField("Solution", &sol);
   hdfio.setField("Flux", &flux);
   hdfio.setField("Analytical", &anaSol);
@@ -266,7 +266,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   //define scalars
   double D = 1e-1;//diffusive coeff
   double timeStep = std::stod(thisRun->timeStep);
-  double carLen = 1.0;//std::sqrt(D*timeStep);
+  double carLen = std::sqrt(D*timeStep);
   double t = 0;
   int dimGrad = std::pow(nodeDim, 2);
   double timeEnd = 1.0;
@@ -307,6 +307,8 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
       for(int iCell = 0; iCell < 2; iCell++){
         EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + iN)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim)
           = EMatrix::Identity(nodeDim, nodeDim);
+        //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + iN)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim)
+          //= EMatrix::Identity(nodeDim, nodeDim)*(D/carLen);
       }
     }
   }
@@ -323,7 +325,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   zPart.computePartition();
   zPart.update();
   //first output
-  hdfio.write(writeDir + "/res_0.h5");
+  //hdfio.write(writeDir + "/res_0.h5");
   //allocating and last set ups
   ts.setTimeStep(timeStep);
   transportMod.setTimeScheme(&ts);
@@ -334,11 +336,11 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   thisRun->setup = end - start;
   //time iteration
   int i = 0;
-  ProgressBar pbar;
-  pbar.setIterIndex(&i);
-  pbar.setNumIterations(nIters);
-  std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ", rank=" + std::to_string(zPart.getRank()) + ")" << std::endl;
-  pbar.update();
+  //ProgressBar pbar;
+  //pbar.setIterIndex(&i);
+  //pbar.setNumIterations(nIters);
+  //std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ", rank=" + std::to_string(zPart.getRank()) + ")" << std::endl;
+  //pbar.update();
   for(i = 0; i < nIters; i++){
     t += timeStep;
     //compute necessary fields
@@ -464,11 +466,11 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
     if(rem < timeStep/(5e-3)){
-      hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+      //hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
     }
     end = std::chrono::high_resolution_clock::now();
     thisRun->post += end - start;
-    pbar.update();
+    //pbar.update();
     if(thisRun->l2Err > 1.0){
       break;
     }
@@ -477,15 +479,15 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
 
 
 
-TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG][BurgersModel]"){
+TEST_CASE("Testing regression cases for the H);DGBurgersModel", "[regression][HDG][BurgersModel]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
+  meshSizes["2"] = {"2e-1"};
   //meshSizes["2"] = {"7e-2"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "1e-3", "5e-4"};
+  std::vector<std::string> timeSteps = {"1e-2", "5e-3"};
   //std::vector<std::string> timeSteps = {"1e-2"};
   std::vector<std::string> orders = {"1", "2", "3"};
   //std::vector<std::string> orders = {"3"};
@@ -541,11 +543,11 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
   MPI_Comm_size(MPI_COMM_WORLD, &nParts);
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  std::ofstream f;
-  if(rank == 0){
-    f.open(writePath + writeFile);
-    f << "dim,order,h,dt,linAlgErr,l2Err,dL2Err,avgRuntime,maxRuntime,minRuntime\n" << std::flush;
-  }
+  //std::ofstream f;
+  //if(rank == 0){
+    //f.open(writePath + writeFile);
+    //f << "dim,order,h,dt,linAlgErr,l2Err,dL2Err,avgRuntime,maxRuntime,minRuntime\n" << std::flush;
+  //}
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runHDGBurgers(&(*it), globType);
@@ -558,22 +560,22 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
     MPI_Allreduce(&timeBuff, &minRuntime, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(&timeBuff, &avgRuntime, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     avgRuntime /= nParts;
-    if(rank == 0){
-      f << it->dim << ",";
-      f << it->order << ",";
-      f << it->meshSize << ",";
-      f << it->timeStep << ",";
-      f << it->linAlgErr << ",";
-      f << it->l2Err << ",";
-      f << it->dL2Err << ",";
-      f << avgRuntime << ",";
-      f << maxRuntime << ",";
-      f << minRuntime << "\n";
-      f << std::flush;
-    }
+    //if(rank == 0){
+      //f << it->dim << ",";
+      //f << it->order << ",";
+      //f << it->meshSize << ",";
+      //f << it->timeStep << ",";
+      //f << it->linAlgErr << ",";
+      //f << it->l2Err << ",";
+      //f << it->dL2Err << ",";
+      //f << avgRuntime << ",";
+      //f << maxRuntime << ",";
+      //f << minRuntime << "\n";
+      //f << std::flush;
+    //}
   }
-  if(rank == 0){
-    f << std::endl;
-    f.close();
-  }
+  //if(rank == 0){
+    //f << std::endl;
+    //f.close();
+  //}
 };
