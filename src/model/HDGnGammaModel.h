@@ -4,6 +4,7 @@
 #include "nGammaParams.h"
 #include "HDGModel.h"
 #include "HDGBase.h"
+#include "HDGConvection.h"
 #include "HDGDiffusion.h"
 #include "Source.h"
 
@@ -41,6 +42,10 @@ class HDGnGammaModel : public HDGModel {
      */
     void allocate(int nDOFsPerNode);
     /*!
+     * \brief set the parameters 
+     */
+    void setParams(nGammaParams userParams){params = userParams;};
+    /*!
      * \brief set the source function
      */
     void setSourceFunction(std::function<double(const std::vector<double>&, int)> s);
@@ -57,6 +62,22 @@ class HDGnGammaModel : public HDGModel {
      * \brief compute the local right hand side
      */
     void computeLocalRHS();
+    /*!
+     * \brief a helper method for parsing the b values
+     */
+    std::vector<EVector> parseBVals();
+    /*!
+     * \brief a helper method for parsing the D values
+     */
+    std::vector<EMatrix> parseDVals();
+    /*!
+     * \brief a helper method for parsing the G values
+     */
+    std::vector<EMatrix> parseGVals();
+    /*!
+     * \brief a helper method for parsing the solution values
+     */
+    std::vector<EVector> parseSolutionVals();
     /*!
      * \brief specific parameter struct for nGamma models
      */

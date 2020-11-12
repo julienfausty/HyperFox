@@ -40,7 +40,7 @@ struct nGammaParams{
   /*!
    * \brief the speed of sound
    */
-  double cs = 1.0;
+  double soundSpeed = 1.0;
 };//nGammaParams
 
 };//nGamma

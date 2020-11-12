@@ -75,7 +75,7 @@ void HDGBurgersModel::initializeOperators(){
 
 void HDGBurgersModel::setSourceFunction(std::function<double(const std::vector<double>&, int)> s){
   if(!allocated){
-    throw(ErrorHandle("BurgersModel", "setSourceFunction", "the model must be allocated before setting the source function"));
+    throw(ErrorHandle("HDGBurgersModel", "setSourceFunction", "the model must be allocated before setting the source function"));
   }
   for(int i = 0; i < refEl->getDimension(); i++){
     ((Source*)operatorMap["Source_" + std::to_string(i)])->setSourceFunction([i,s](const std::vector<double> & x){return s(x, i);});
