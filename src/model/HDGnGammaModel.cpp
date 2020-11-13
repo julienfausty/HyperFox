@@ -112,7 +112,50 @@ void HDGnGammaModel::computeLocalMatrix(){
   operatorMap["Base"]->assemble(dV, invJacobians);
   localMatrix = *(operatorMap["Base"]->getMatrix());
   std::vector<EVector> bs = parseBVals();
-  std::vector<EVector> vs(refEl->getNumNodes(), EVector::Zero(2));
+  std::vector<EVector> sols = parseSolutionVals();
+  std::vector< std::vector<EVector> > vs(4, std::vector<EVector>(refEl->getNumNodes(), EVector::Zero(2)));
+  //calculating velocities for terms
+  vs[1] = bs;
+  double U1OverU0;
+  for(int i = 0; i < refEl->getNumNodes(); i++){
+    U1OverU0 = sols[i][1]/sols[i][0];
+    vs[2][i] = (std::pow(params.soundSpeed, 2) - std::pow(U1OverU0, 2))*bs[i];
+    vs[3][i] = U1OverU0*2.0*bs[i];
+  }
+
+  const std::vector<EVector> * ns = ((HDGBase*)operatorMap["Base"])->getNormals();
+  Operator * buffOp;
+  //convection terms
+  for(int i = 0; i < 4; i++){
+    buffOp = operatorMap["Convection_"+std::to_string(i)];
+    ((HDGConvection*)buffOp)->setFromBase(ns);
+    ((HDGConvection*)buffOp)->setVelocity(vs[i]);
+    buffOp->assemble(dV, invJacobians);
+  }
+  //Diffusion terms
+  if(fieldMap.find("D") != fieldMap.end()){
+    buffOp = operatorMap["Diffusion_0"];
+    ((HDGDiffusion*)buffOp)->setFromBase(ns);
+    ((HDGDiffusion*)buffOp)->setDiffusionTensor(parseDVals());
+    buffOp->assemble(dV, invJacobians);
+  }
+
+  if(fieldMap.find("G") != fieldMap.end()){
+    buffOp = operatorMap["Diffusion_1"];
+    ((HDGDiffusion*)buffOp)->setFromBase(ns);
+    ((HDGDiffusion*)buffOp)->setDiffusionTensor(parseGVals());
+    buffOp->assemble(dV, invJacobians);
+  }
+
+  //combine terms into matrix
+  for(int i = 0; i < refEl->getNumNodes(); i++){
+    for(int j = 0; j < refEl->getNumNodes(); j++){
+      localMatrix(i*2, j*2) += (*(operatorMap["Diffusion_0"]->getMatrix()))(i, j) + (*(operatorMap["Convection_0"]->getMatrix()))(i, j);
+      localMatrix(i*2, j*2 + 1) += (*(operatorMap["Convection_1"]->getMatrix()))(i, j);
+      localMatrix(i*2 + 1, j*2) += (*(operatorMap["Convection_2"]->getMatrix()))(i, j);
+      localMatrix(i*2 + 1, j*2 + 1) += (*(operatorMap["Diffusion_1"]->getMatrix()))(i, j) + (*(operatorMap["Convection_3"]->getMatrix()))(i, j);
+    }
+  }
 };//computeLocalMatrix
 
 void HDGnGammaModel::computeLocalRHS(){
@@ -120,23 +163,83 @@ void HDGnGammaModel::computeLocalRHS(){
     throw(ErrorHandle("HDGnGammaModel", "computeLocalRHS", "the nodes and the fields should be set before computing"));
   }
   localRHS = EVector::Zero(localRHS.size());
+  if(sourceSet){
+    for(int i = 0; i < 2; i++){
+      ((Source*)operatorMap["Source_" + std::to_string(i)])->calcSource(*elementNodes);
+      operatorMap["Source_" + std::to_string(i)]->assemble(dV, invJacobians);
+      for(int iN = 0; iN < refEl->getNumNodes(); iN++){
+        localRHS[iN*2 + i] += (*(operatorMap["Source_"+std::to_string(i)]->getMatrix()))(iN, 0);
+      }
+    }
+  }
 };//computeLocalRHS
 
 std::vector<EVector> HDGnGammaModel::parseBVals(){
-
+  const std::vector<double> * velVals = fieldMap.at("b");
+  int nNodes = refEl->getNumNodes();
+  int dimVelVal = velVals->size()/nNodes;
+  if(dimVelVal != 2){
+    throw(ErrorHandle("HDGnGammaModel", "parseBVals", "the dimension of the b vector is not 2"));
+  }
+  std::vector<EVector> res(nNodes, EVector::Zero(2));
+  for(int i = 0; i < nNodes; i++){
+    res[i] = EMap<const EVector>(velVals->data() + i*2, 2);
+  }
+  return res;
 };//parseBVals
 
 std::vector<EMatrix> HDGnGammaModel::parseDVals(){
-
+  const std::vector<double> * diffVals = fieldMap.at("D");
+  int nNodes = refEl->getNumNodes();
+  int dimDiffVal = diffVals->size()/nNodes;
+  int dimMat = std::sqrt(dimDiffVal);
+  std::vector<EMatrix> res(nNodes, EMatrix::Identity(2, 2));
+  if(dimMat == 1){
+    for(int i = 0; i < nNodes; i++){
+      res[i] *= (diffVals->at(i));
+    }
+  } else if(dimMat == 2){
+    for(int i = 0; i < nNodes; i++){
+      res[i] = EMap<const EMatrix>(diffVals->data() + i*dimDiffVal, dimMat, dimMat);
+    }
+  } else{
+    throw(ErrorHandle("HDGnGammaModel", "parseDVals", "the dimension of the diffusion tensor vales are not correct, they should be either scalar or tensor of the dimension of 2"));
+  }
+  return res;
 };//parseDVals
 
-
 std::vector<EMatrix> HDGnGammaModel::parseGVals(){
-
+  const std::vector<double> * diffVals = fieldMap.at("G");
+  int nNodes = refEl->getNumNodes();
+  int dimDiffVal = diffVals->size()/nNodes;
+  int dimMat = std::sqrt(dimDiffVal);
+  std::vector<EMatrix> res(nNodes, EMatrix::Identity(2, 2));
+  if(dimMat == 1){
+    for(int i = 0; i < nNodes; i++){
+      res[i] *= (diffVals->at(i));
+    }
+  } else if(dimMat == 2){
+    for(int i = 0; i < nNodes; i++){
+      res[i] = EMap<const EMatrix>(diffVals->data() + i*dimDiffVal, dimMat, dimMat);
+    }
+  } else{
+    throw(ErrorHandle("HDGnGammaModel", "parseGVals", "the dimension of the diffusion tensor vales are not correct, they should be either scalar or tensor of the dimension of 2"));
+  }
+  return res;
 };//parseGVals
 
 std::vector<EVector> HDGnGammaModel::parseSolutionVals(){
-
+  const std::vector<double> * velVals = fieldMap.at("Solution");
+  int nNodes = refEl->getNumNodes();
+  int dimVelVal = velVals->size()/nNodes;
+  if(dimVelVal != 2){
+    throw(ErrorHandle("HDGnGammaModel", "parseSolutionVals", "the dimension of the Solution vector is not 2"));
+  }
+  std::vector<EVector> res(nNodes, EVector::Zero(2));
+  for(int i = 0; i < nNodes; i++){
+    res[i] = EMap<const EVector>(velVals->data() + i*2, 2);
+  }
+  return res;
 };//parseSolutionVals
 
 };//nGamma

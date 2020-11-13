@@ -9,7 +9,7 @@
 using namespace hfox;
 using namespace nGamma;
 
-TEST_CASE("Testing the HDGnGammaModel", "[unit][model][HDGBurgersModel]"){
+TEST_CASE("Testing the HDGnGammaModel", "[unit][model][HDGnGammaModel]"){
 
   double tol = 1e-12;
   int maxOrd = 7;
@@ -33,11 +33,11 @@ TEST_CASE("Testing the HDGnGammaModel", "[unit][model][HDGBurgersModel]"){
       CHECK_THROWS(mod.setFieldMap(&fm));
       fm["Trace"] = std::vector<double>(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * 2, 1.0);
       CHECK_THROWS(mod.setFieldMap(&fm));
-      fm["b"] = std::vector<double>(refEl.getNumNodes()*3, 1.0);
-      CHECK_THROWS(mod.setFieldMap(&fm));
       fm["D"] = std::vector<double>(refEl.getNumNodes()*4, 1.0);
       CHECK_THROWS(mod.setFieldMap(&fm));
       fm["G"] = std::vector<double>(refEl.getNumNodes()*4, 1.0);
+      CHECK_THROWS(mod.setFieldMap(&fm));
+      fm["b"] = std::vector<double>(refEl.getNumNodes()*3, 1.0);
       CHECK_NOTHROW(mod.setFieldMap(&fm));
     };
 
@@ -100,8 +100,8 @@ TEST_CASE("Testing the HDGnGammaModel", "[unit][model][HDGBurgersModel]"){
 
     //setup operators
     HDGBase baseOp(&refEl);
-    std::vector<HDGConvection> convectionOps(4, HDGConvection(&refEl));
-    std::vector<HDGDiffusion> diffusionOps(2, HDGDiffusion(&refEl));
+    std::vector<HDGConvection*> convectionOps(4);
+    std::vector<HDGDiffusion*> diffusionOps(2);
     std::vector< std::vector<EVector> > allVelocities(4, std::vector<EVector>(refEl.getNumNodes(), EVector::Zero(2)));
     std::vector< std::vector<EMatrix> > allDiffs(2, std::vector<EMatrix>(refEl.getNumNodes(), EMatrix::Identity(2, 2)*3.0));
     for(int k = 0; k < refEl.getNumNodes(); k++){
@@ -110,19 +110,23 @@ TEST_CASE("Testing the HDGnGammaModel", "[unit][model][HDGBurgersModel]"){
       allVelocities[3][k] = 2.0*EVector::Constant(2, 1.0);//(2U1/U0)b
     }
     baseOp.allocate(2);
+    baseOp.setTau(tau);
     baseOp.calcNormals(*(refEl.getNodes()), jacs);
     baseOp.assemble(dV, invJacs);
-    for(int k = 0; k < convectionOps.size(); k++){
-      convectionOps[k].allocate(1);
-      convectionOps[k].setFromBase(baseOp.getNormals());
-      convectionOps[k].setVelocity(allVelocities[k]);
-      convectionOps[k].assemble(dV, invJacs);
+
+    for(int k = 0; k < 4; k++){
+      convectionOps[k] = new HDGConvection(&refEl);
+      convectionOps[k]->allocate(1);
+      convectionOps[k]->setFromBase(baseOp.getNormals());
+      convectionOps[k]->setVelocity(allVelocities[k]);
+      convectionOps[k]->assemble(dV, invJacs);
     }
-    for(int k = 0; k < diffusionOps.size(); k++){
-      diffusionOps[k].allocate(1);
-      diffusionOps[k].setFromBase(baseOp.getNormals());
-      diffusionOps[k].setDiffusionTensor(allDiffs[k]);
-      diffusionOps[k].assemble(dV, invJacs);
+    for(int k = 0; k < 2; k++){
+      diffusionOps[k] = new HDGDiffusion(&refEl);
+      diffusionOps[k]->allocate(1);
+      diffusionOps[k]->setFromBase(baseOp.getNormals());
+      diffusionOps[k]->setDiffusionTensor(allDiffs[k]);
+      diffusionOps[k]->assemble(dV, invJacs);
     }
 
     //assemble stiffness
@@ -131,10 +135,10 @@ TEST_CASE("Testing the HDGnGammaModel", "[unit][model][HDGBurgersModel]"){
     stiffness = *(baseOp.getMatrix());
     for(int k = 0; k < stiffSize/2; k++){
       for(int l = 0; l < stiffSize/2; l++){
-        stiffness(k*2, l*2) += (*(convectionOps[0].getMatrix()))(k, l) + (*(diffusionOps[0].getMatrix()))(k, l);
-        stiffness(k*2, l*2+1) += (*(convectionOps[1].getMatrix()))(k, l);
-        stiffness(k*2 + 1, l*2) += (*(convectionOps[2].getMatrix()))(k, l);
-        stiffness(k*2 + 1, l*2 + 1) += (*(convectionOps[3].getMatrix()))(k, l) + (*(diffusionOps[1].getMatrix()))(k, l);
+        stiffness(k*2, l*2) += (*(convectionOps[0]->getMatrix()))(k, l) + (*(diffusionOps[0]->getMatrix()))(k, l);
+        stiffness(k*2, l*2+1) += (*(convectionOps[1]->getMatrix()))(k, l);
+        stiffness(k*2 + 1, l*2) += (*(convectionOps[2]->getMatrix()))(k, l);
+        stiffness(k*2 + 1, l*2 + 1) += (*(convectionOps[3]->getMatrix()))(k, l) + (*(diffusionOps[1]->getMatrix()))(k, l);
       }
     }
 
@@ -150,6 +154,14 @@ TEST_CASE("Testing the HDGnGammaModel", "[unit][model][HDGBurgersModel]"){
       EVector testVec = *(mod.getLocalRHS());
       CHECK(testVec.dot(testVec) < tol);
     };
+
+    for(int k = 0; k < convectionOps.size(); k++){
+      delete convectionOps[k];
+    }
+
+    for(int k = 0; k < diffusionOps.size(); k++){
+      delete diffusionOps[k];
+    }
   }
 
 };
