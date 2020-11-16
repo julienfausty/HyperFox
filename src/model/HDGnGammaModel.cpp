@@ -115,9 +115,9 @@ void HDGnGammaModel::computeLocalMatrix(){
   std::vector<EVector> sols = parseSolutionVals();
   std::vector< std::vector<EVector> > vs(4, std::vector<EVector>(refEl->getNumNodes(), EVector::Zero(2)));
   //calculating velocities for terms
-  vs[1] = bs;
   double U1OverU0;
   for(int i = 0; i < refEl->getNumNodes(); i++){
+    vs[1][i] = bs[i];
     U1OverU0 = sols[i][1]/sols[i][0];
     vs[2][i] = (std::pow(params.soundSpeed, 2) - std::pow(U1OverU0, 2))*bs[i];
     vs[3][i] = U1OverU0*2.0*bs[i];
@@ -148,8 +148,8 @@ void HDGnGammaModel::computeLocalMatrix(){
   }
 
   //combine terms into matrix
-  for(int i = 0; i < refEl->getNumNodes(); i++){
-    for(int j = 0; j < refEl->getNumNodes(); j++){
+  for(int i = 0; i < localMatrix.rows()/2; i++){
+    for(int j = 0; j < localMatrix.cols()/2; j++){
       localMatrix(i*2, j*2) += (*(operatorMap["Diffusion_0"]->getMatrix()))(i, j) + (*(operatorMap["Convection_0"]->getMatrix()))(i, j);
       localMatrix(i*2, j*2 + 1) += (*(operatorMap["Convection_1"]->getMatrix()))(i, j);
       localMatrix(i*2 + 1, j*2) += (*(operatorMap["Convection_2"]->getMatrix()))(i, j);

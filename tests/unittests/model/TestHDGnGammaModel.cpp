@@ -144,12 +144,19 @@ TEST_CASE("Testing the HDGnGammaModel", "[unit][model][HDGnGammaModel]"){
 
     SECTION("Testing stationary assembly (order = " + std::to_string(j+1) + ")"){
       HDGnGammaModel mod(&refEl);
+      mod.setParams(paramSet);
       mod.allocate(2);
       mod.setFieldMap(&fm);
       mod.setElementNodes(refEl.getNodes());
       CHECK_NOTHROW(mod.compute());
       EMatrix testMat = stiffness;
       testMat -= *(mod.getLocalMatrix());
+      //std::cout << "test calculated:" << std::endl;
+      //std::cout << stiffness << std::endl;
+      //std::cout << "model calculated:" << std::endl;
+      //std::cout << *(mod.getLocalMatrix()) << std::endl;
+      //std::cout << "subtraction:" << std::endl;
+      //std::cout << testMat << std::endl;
       CHECK((testMat.transpose() * testMat).sum() < tol);
       EVector testVec = *(mod.getLocalRHS());
       CHECK(testVec.dot(testVec) < tol);
