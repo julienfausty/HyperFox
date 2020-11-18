@@ -11,7 +11,7 @@
 #include "ZoltanPartitioner.h"
 #include "HDF5Io.h"
 #include "HDGnGammaModel.h"
-#include "DirichletModel.h"
+#include "IntegratedDirichletModel.h"
 #include "PetscInterface.h"
 #include "HDGSolver.h"
 #include "NonLinearWrapper.h"
@@ -23,14 +23,25 @@ using namespace nGamma;
 
 namespace hdg{
 
-void manufacturedNGammaStat(std::vector<double> x, std::vector<double> * nGamma){
+void manufacturedNGammaStat(std::vector<double> x, std::vector<double> kn, std::vector<double> kGam, std::vector<double> * nGamma){
+  nGamma->at(0) = 2.0 + std::cos(kn[0]*x[0] + kn[1]*x[1]);
+  nGamma->at(1) = std::cos(kGam[0]*x[0] + kGam[1]*x[1]);
 };//manufacturedNGammaStat
 
 void manufacturedMagneticNGammaStat(std::vector<double> x, std::vector<double> * b){
-
+  b->at(0) = -x[1]; b->at(1) = x[0];
 };//manufacturedMagneticNGammaStat
 
-double manufacturedSourceNGammaStat(std::vector<double> x, double diffCoeff, i){
+double manufacturedSourceNGammaStat(std::vector<double> x, std::vector<double> kn, std::vector<double> kGam, double diffCoeff, int i){
+  double res = 0.0;
+  if(i == 0){
+    res = diffCoeff*(std::pow(kn[0], 2) + std::pow(kn[1], 2))*std::cos(kn[0]*x[0] + kn[1]*x[1]) - (x[0]*kGam[1] - x[1]*kGam[0])*std::sin(kGam[0]*x[0] + kGam[1]*x[1]);
+  } else if (i == 1){
+    res = diffCoeff*(std::pow(kGam[0], 2) + std::pow(kGam[1], 2))*std::cos(kGam[0]*x[0] + kGam[1]*x[1]) - (x[0]*kn[1] - x[1]*kn[0])*std::sin(kn[0]*x[0] + kn[1]*x[1]);
+    res += -2.0*((std::sin(kGam[0]*x[0] + kGam[1]*x[1])*std::cos(kGam[0]*x[0] + kGam[1]*x[1]))/(2.0 + std::cos(kn[0]*x[0] + kn[1]*x[1])))*(x[0]*kGam[1] - x[1]*kGam[0]);
+    res += ((std::pow(std::cos(kGam[0]*x[0] + kGam[1]*x[1]),2)*std::sin(kn[0]*x[0] + kn[1]*x[1]))/std::pow(2.0 + std::cos(kn[0]*x[0] + kn[1]*x[1]), 2))*(x[0]*kn[1] - x[1]*kn[0]);
+  }
+  return res;
 };//manufacturedSourceNGammaStat
 
 };//hdg
@@ -90,7 +101,7 @@ void runHDGnGammaStat(SimRun * thisRun){
   myOpts.preconditionnerType = PCBJACOBI;
   PetscInterface petsciface(myOpts);
   HDGSolverOpts solveOpts;
-  solveOpts.type = globType;
+  solveOpts.type = IMPLICIT;
   solveOpts.verbosity = false;
   solveOpts.doubleValuedTau = true;
   HDGSolver mySolver;
@@ -122,6 +133,8 @@ void runHDGnGammaStat(SimRun * thisRun){
   //define scalars
   double diffCoeff = 1.0;//diffusive coeff
   double carLen = 1.0;
+  std::vector<double> kn = {3.0*M_PI, 3.0*M_PI};
+  std::vector<double> kGam = {3.0*M_PI, 3.0*M_PI};
   //create buffers  
   std::vector<int> cell;
   std::vector<double> node;
@@ -139,7 +152,7 @@ void runHDGnGammaStat(SimRun * thisRun){
       } else {
         myMesh.getGhostPoint(cell[j], &node);
       }
-      hdg::manufacturedNGammaStat(node, &dbuffer);
+      hdg::manufacturedNGammaStat(node, kn, kGam, &dbuffer);
       for(int k = 0; k < dbuffer.size(); k++){
         anaSol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
         sol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = (double)(k == 0);
@@ -177,7 +190,7 @@ void runHDGnGammaStat(SimRun * thisRun){
         } else {
           myMesh.getGhostPoint(cell[k], &node);
         }
-        hdg::manufacturedNGammaStat(node, &dbuffer);
+        hdg::manufacturedNGammaStat(node, kn, kGam, &dbuffer);
         for(int dof = 0; dof < nodeDim; dof++){
           dirichlet.getValues()->at((locFace * nNodesPerFace + k)*nodeDim + dof) = dbuffer[dof];
         }
@@ -200,7 +213,7 @@ void runHDGnGammaStat(SimRun * thisRun){
   //allocating and last set ups
   mySolver.initialize();
   mySolver.allocate();
-  transportMod.setSourceFunction([diffCoeff](const std::vector<double> & x, int i){return hdg::manufacturedSourceNGammaStat(x, diffCoeff, i);});
+  transportMod.setSourceFunction([kn, kGam, diffCoeff](const std::vector<double> & x, int i){return hdg::manufacturedSourceNGammaStat(x, kn, kGam, diffCoeff, i);});
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   //solve non-linear problem
@@ -239,11 +252,11 @@ void runHDGnGammaStat(SimRun * thisRun){
 
 TEST_CASE("Testing regression cases for the stationary HDGnGammaModel", "[regression][HDG][nGammaStat]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
-  //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
+  meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
-  meshSizes["2"] = {"7e-2"};
-  //std::vector<std::string> orders = {"1", "2", "3"};
-  std::vector<std::string> orders = {"3"};
+  //meshSizes["2"] = {"7e-2"};
+  std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
+  //std::vector<std::string> orders = {"3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -270,7 +283,7 @@ TEST_CASE("Testing regression cases for the stationary HDGnGammaModel", "[regres
   }
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
-    runHDGnGamma(&(*it));
+    runHDGnGammaStat(&(*it));
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
     CHECK(it->l2Err < 1);
