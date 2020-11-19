@@ -10,11 +10,9 @@
 #include "Field.h"
 #include "ZoltanPartitioner.h"
 #include "HDF5Io.h"
-#include "Operator.h"
-#include "HDGBurgersModel.h"
-#include "HDGDiffusionSource.h"
+#include "HDGnGammaModel.h"
 #include "RungeKutta.h"
-#include "DirichletModel.h"
+#include "IntegratedDirichletModel.h"
 #include "PetscInterface.h"
 #include "HDGSolver.h"
 #include "NonLinearWrapper.h"
@@ -22,89 +20,36 @@
 
 using namespace hfox;
 
+using namespace nGamma;
+
 namespace hdg{
 
-double potentialiBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0){
-  return (std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1])));
-};
+void manufacturedNGamma(double t, std::vector<double> x, double c, std::vector<double> kn, std::vector<double> kGam, std::vector<double> * nGamma){
+  nGamma->resize(2, 0.0);
+  nGamma->at(0) = 2.0 + std::cos(t*c + kn[0]*x[0] + kn[1]*x[1]);
+  nGamma->at(1) = std::cos(t*c + kGam[0]*x[0] + kGam[1]*x[1]);
+};//manufacturedNGamma
 
-void potentialiGradBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0, std::vector<double> * grad){
-  grad->resize(x.size());
-  grad->at(0) = Ax * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1]));
-  grad->at(1) = Ay * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::cos(Ay*(x[1] - x0[1]));
-};
+void manufacturedMagneticNGamma(std::vector<double> x, std::vector<double> * b){
+  b->resize(2, 0);
+  b->at(0) = -x[1]; b->at(1) = x[0];
+};//manufacturedMagneticNGamma
 
-void potentialiHessBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0, std::vector<double> * hess){
-  hess->resize(std::pow(x.size(), 2));
-  std::vector<double> grad;
-  potentialiGradBurgers(t, x, Ax, Ay, x0, &grad);
-  double pot = potentialiBurgers(t, x, Ax, Ay, x0);
-  hess->at(0) = std::pow(Ax, 2.0) * pot;
-  hess->at(1) = Ay * Ax * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::cos(Ay*(x[1] - x0[1]));
-  hess->at(2) = hess->at(1);
-  hess->at(3) = -std::pow(Ay, 2)*pot;
-};
-
-double potentialBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0){
-  return (potentialiBurgers(t, x, Ax0, Ay0, x0) + potentialiBurgers(t, x, Ax1, Ay1, x0));
-};
-
-void potentialGradBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0, std::vector<double> * grad){
-  grad->resize(x.size());
-  potentialiGradBurgers(t, x, Ax0, Ay0, x0, grad);
-  std::vector<double> buff;
-  potentialiGradBurgers(t, x, Ax1, Ay1, x0, &buff);
-  EMap<EVector>(grad->data(), grad->size()) += EMap<EVector>(buff.data(), buff.size());
-};
-
-void potentialHessBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0, std::vector<double> * hess){
-  potentialiHessBurgers(t, x, Ax0, Ay0, x0, hess);
-  std::vector<double> buff;
-  potentialiHessBurgers(t, x, Ax1, Ay1, x0, &buff);
-  EMap<EMatrix>(hess->data(), x.size(), x.size()) += EMap<EMatrix>(buff.data(), x.size(), x.size());
-};
-
-void analyticalBurgers(double t, std::vector<double> x, double D, std::vector<double> * sol){
-  double Ax0 = 3.0;
-  double Ay0 = 2.0;
-  double Ax1 = 2.0;
-  double Ay1 = 1.0;
-  std::vector<double> x0 = {1.1, 1.1};
-  sol->resize(x.size());
-  //sol->at(0) = 1.0;
-  potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, sol);
-  double buff = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
-  if(buff != 0){
-    EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
-  } else {
-    EMap<EVector>(sol->data(), sol->size()) *= 0.0;
+double manufacturedSourceNGamma(double t, std::vector<double> x, double c, std::vector<double> kn, std::vector<double> kGam, double diffCoeff, int i){
+  double res = 0.0;
+  if(i == 0){
+    res = -c*std::sin(t*c + kn[0]*x[0] + kn[1]*x[1]) + diffCoeff*(std::pow(kn[0], 2) + std::pow(kn[1], 2))*std::cos(t*c + kn[0]*x[0] + kn[1]*x[1]) - (x[0]*kGam[1] - x[1]*kGam[0])*std::sin(t*c + kGam[0]*x[0] + kGam[1]*x[1]);
+  } else if (i == 1){
+    res = -c*std::sin(t*c + kn[0]*x[0] + kn[1]*x[1]) + diffCoeff*(std::pow(kGam[0], 2) + std::pow(kGam[1], 2))*std::cos(t*c + kGam[0]*x[0] + kGam[1]*x[1]) - (x[0]*kn[1] - x[1]*kn[0])*std::sin(t*c + kn[0]*x[0] + kn[1]*x[1]);
+    res += -2.0*((std::sin(t*c + kGam[0]*x[0] + kGam[1]*x[1])*std::cos(t*c + kGam[0]*x[0] + kGam[1]*x[1]))/(2.0 + std::cos(t*c + kn[0]*x[0] + kn[1]*x[1])))*(x[0]*kGam[1] - x[1]*kGam[0]);
+    res += ((std::pow(std::cos(t*c + kGam[0]*x[0] + kGam[1]*x[1]),2)*std::sin(t*c + kn[0]*x[0] + kn[1]*x[1]))/std::pow(2.0 + std::cos(t*c + kn[0]*x[0] + kn[1]*x[1]), 2))*(x[0]*kn[1] - x[1]*kn[0]);
   }
-};
-
-void analyticalBurgersGrad(double t, std::vector<double> x, double D, std::vector<double> * gradSol){
-  double Ax0 = 3.0;
-  double Ay0 = 2.0;
-  double Ax1 = 2.0;
-  double Ay1 = 1.0;
-  std::vector<double> x0 = {1.1, 1.1};
-  //gradSol->resize(std::pow(x.size(), 2), 0.0);
-  double pot = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
-  std::vector<double> gradPot;
-  potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, &gradPot);
-  potentialHessBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, gradSol);
-  EMap<EMatrix> res(gradSol->data(), x.size(), x.size());
-  if(pot != 0){
-    res *= -2.0*D/pot;
-    EMap<EVector> gPot(gradPot.data(), gradPot.size());
-    res += (2.0*D/std::pow(pot, 2.0))*(gPot * gPot.transpose());
-  } else {
-    res = EMatrix::Zero(x.size(), x.size());
-  }
-};
+  return res;
+};//manufacturedSourceNGamma
 
 };//hdg
 
-void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
+void runHDGnGamma(SimRun * thisRun, HDGSolverType globType){
   //setup
   //Load mesh
   std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
@@ -154,7 +99,9 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   Field trace(&myMesh, Face, nNodesPerFace, nodeDim);
   Field oldTrace(&myMesh, Face, nNodesPerFace, nodeDim);
   Field partition(&myMesh, Node, 1, 1);
-  Field diffCoeff(&myMesh, Node, 1, 1);
+  Field b(&myMesh, Node, 1, nodeDim);
+  Field D(&myMesh, Node, 1, 1);
+  Field G(&myMesh, Node, 1, 1);
   Field tau(&myMesh, Face, nNodesPerFace, std::pow(nodeDim, 2)*2);
   Field anaSol(&myMesh, Cell, nNodesPerEl, nodeDim);
   Field residual(&myMesh, Cell, nNodesPerEl, 1);
@@ -177,10 +124,12 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   }
   fieldMap["Tau"] = &tau;
   fieldMap["Dirichlet"] = &dirichlet;
-  fieldMap["DiffusionTensor"] = &diffCoeff;
+  fieldMap["b"] = &b;
+  fieldMap["D"] = &D;
+  fieldMap["G"] = &G;
   //initialize models, solvers, etc.
-  DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
-  HDGBurgersModel transportMod(myMesh.getReferenceElement());
+  IntegratedDirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
+  HDGnGammaModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 3000;
   myOpts.rtol = 1e-12;
@@ -199,12 +148,13 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
   wrapper.setVerbosity(false);
-  wrapper.setMaxIterations(12);
+  int maxNRIter = 10;
+  wrapper.setMaxIterations(maxNRIter);
+  wrapper.setResidualTolerance(1e-6);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
+  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/nGamma/";
   if(globType == WEXPLICIT){
     writeDir += "WExp/";
   } else if(globType == SEXPLICIT){
@@ -228,20 +178,23 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
     writeDir += "Misc/";
   }
   writeDir += meshName + "_dt-" + thisRun->timeStep;
-  //if(zPart.getRank() == 0){
-    //boost::filesystem::create_directory(writeDir);
-  //}
+  if(zPart.getRank() == 0){
+    boost::filesystem::create_directory(writeDir);
+  }
   hdfio.setField("Solution", &sol);
   hdfio.setField("Flux", &flux);
+  hdfio.setField("b", &b);
   hdfio.setField("Analytical", &anaSol);
   hdfio.setField("Residual", &residual);
   hdfio.setField("Partition", &partition);
   //define scalars
-  double D = 1e-2;//diffusive coeff
+  double diffCoeff = 1.0;//diffusive coeff
   double timeStep = std::stod(thisRun->timeStep);
-  double carLen = 1.0;//std::sqrt(D*timeStep);
+  double carLen = 1.0;//std::sqrt(diffCoeff*timeStep);
+  std::vector<double> kn = {3.0*M_PI, 3.0*M_PI};
+  std::vector<double> kGam = {3.0*M_PI, 3.0*M_PI};
+  double c = 3.0*M_PI;
   double t = 0;
-  int dimGrad = std::pow(nodeDim, 2);
   double timeEnd = 1.0;
   int nIters = timeEnd/timeStep;
   //create buffers
@@ -250,7 +203,6 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   std::vector<int> face2Cell;
   std::vector<int> ibuffer;
   std::vector<double> dbuffer;
-  std::vector<EVector> normals(nNodesPerFace, EVector::Zero(nodeDim));
   //initialize field values
   for(int i = 0; i < myMesh.getNumberCells(); i++){
     myMesh.getCell(i, &cell);
@@ -261,23 +213,29 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
       } else {
         myMesh.getGhostPoint(cell[j], &node);
       }
-      hdg::analyticalBurgers(t, node, D, &dbuffer);
+      hdg::manufacturedNGamma(t, node, c, kn, kGam, &dbuffer);
       for(int k = 0; k < dbuffer.size(); k++){
+        anaSol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
         sol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
-      }
-      hdg::analyticalBurgersGrad(t, node, D, &dbuffer);
-      for(int k = 0; k < dbuffer.size(); k++){
-        flux.getValues()->at((i*nNodesPerEl + j)*dimGrad + k) = dbuffer[k];
       }
     }
   }
-  std::copy(sol.getValues()->begin(), sol.getValues()->end(), anaSol.getValues()->begin());
-  std::fill(diffCoeff.getValues()->begin(), diffCoeff.getValues()->end(), D);
+  std::copy(sol.getValues()->begin(), sol.getValues()->end(), buffSol.getValues()->begin());
+  std::fill(D.getValues()->begin(), D.getValues()->end(), diffCoeff);
+  std::fill(G.getValues()->begin(), G.getValues()->end(), diffCoeff);
+  for(int iNode = 0; iNode < myMesh.getNumberPoints(); iNode++){
+    myMesh.getPoint(iNode, &node);
+    hdg::manufacturedMagneticNGamma(node, &dbuffer);
+    for(int k = 0; k < dbuffer.size(); k++){
+      b.getValues()->at(iNode*nodeDim + k) = dbuffer[k];
+    }
+  }
   for(int iFace = 0; iFace < myMesh.getNumberFaces(); iFace++){
+    myMesh.getFace(iFace, &cell);
     for(int iN = 0; iN < nNodesPerFace; iN++){
       for(int iCell = 0; iCell < 2; iCell++){
         EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + iN)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim)
-          = EMatrix::Identity(nodeDim, nodeDim);
+          = EMatrix::Identity(nodeDim, nodeDim)*(diffCoeff/carLen)*2.0;
       }
     }
   }
@@ -294,7 +252,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   zPart.computePartition();
   zPart.update();
   //first output
-  //hdfio.write(writeDir + "/res_0.h5");
+  hdfio.write(writeDir + "/res_0.h5");
   //allocating and last set ups
   ts.setTimeStep(timeStep);
   transportMod.setTimeScheme(&ts);
@@ -302,15 +260,16 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   mySolver.allocate();
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
-  //time iteration
+ //time iteration
   int i = 0;
-  //ProgressBar pbar;
-  //pbar.setIterIndex(&i);
-  //pbar.setNumIterations(nIters);
-  //std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ", rank=" + std::to_string(zPart.getRank()) + ")" << std::endl;
-  //pbar.update();
+  ProgressBar pbar;
+  pbar.setIterIndex(&i);
+  pbar.setNumIterations(nIters);
+  std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ", rank=" + std::to_string(zPart.getRank()) + ")" << std::endl;
+  pbar.update();
   for(i = 0; i < nIters; i++){
     t += timeStep;
+    transportMod.setSourceFunction([t, c, kn, kGam, diffCoeff](const std::vector<double> & x, int k){return hdg::manufacturedSourceNGamma(t, x, c, kn, kGam, diffCoeff, k);});
     //compute necessary fields
     for(int j = 0; j < myMesh.getNumberCells(); j++){
       myMesh.getCell(j, &cell);
@@ -321,7 +280,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
         } else {
           myMesh.getGhostPoint(cell[l], &node);
         }
-        hdg::analyticalBurgers(t, node, D, &dbuffer);
+        hdg::manufacturedNGamma(t, node, c, kn, kGam, &dbuffer);
         for(int k = 0; k < dbuffer.size(); k++){
           anaSol.getValues()->at((j*nNodesPerEl + l)*nodeDim + k) = dbuffer[k];
         }
@@ -342,48 +301,13 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
           } else {
             myMesh.getGhostPoint(cell[k], &node);
           }
-          hdg::analyticalBurgers(t, node, D, &dbuffer);
+          hdg::manufacturedNGamma(t, node, c, kn, kGam, &dbuffer);
           for(int dof = 0; dof < nodeDim; dof++){
             dirichlet.getValues()->at((locFace * nNodesPerFace + k)*nodeDim + dof) = dbuffer[dof];
           }
         }
       }
     }
-    //need to try upwind tau
-    //for(int iFace = 0; iFace < myMesh.getNumberFaces(); iFace++){
-      //normals = TestUtils::calculateOutwardNormal(&myMesh, iFace);
-      //myMesh.getFace(iFace, &cell);
-      //myMesh.getFace2Cell(iFace, &face2Cell);
-      //for(int iCell = 0; iCell < face2Cell.size(); iCell++){
-        //int locInd = zPart.global2LocalElement(face2Cell[iCell]);
-        //if(locInd != -1){
-          //sol.getValues(locInd, &dbuffer);
-          //myMesh.getCell(locInd, &ibuffer);
-          //for(int j = 0; j < nNodesPerFace; j++){
-            //int offset = std::distance(ibuffer.begin(), std::find(ibuffer.begin(), ibuffer.end(), cell[j]));
-            //double pun = normals[j].dot(EMap<EVector>(dbuffer.data() + offset*nodeDim, nodeDim));
-            ////double mult = 0.0;
-            //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-              //= EMatrix::Identity(nodeDim, nodeDim);
-            ////EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-            ////= EMatrix::Identity(nodeDim, nodeDim)*mult;
-            ////EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-            ////= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
-            ////if((pun > 0 and iCell == 0) or (pun < 0 and iCell == 1)){
-            ////EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-            ////= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun) + D/carLen);
-            //////EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-            //////= EMatrix::Identity(nodeDim, nodeDim)*(std::fabs(pun));
-            ////} else {
-            ////EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-            ////= EMatrix::Identity(nodeDim, nodeDim)*(D/carLen);
-            //////EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + j)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim) 
-            //////= EMatrix::Identity(nodeDim, nodeDim)*0.0;
-            ////}
-          //}
-        //}
-      //}
-    //}
     zPart.updateSharedInformation();
     //solve non-linear problem
     start = std::chrono::high_resolution_clock::now();
@@ -417,7 +341,6 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
     zPart.updateSharedInformation();
     double l2Err = std::sqrt(TestUtils::l2ProjectionCellField(&residual, &residual, &myMesh));
     double dL2Err = std::sqrt(sumRes/sumAna);
-    //std::cout << "l2Err at time " << t << ": " << l2Err << std::endl;
     if(i != (nIters-1)){
       thisRun->linAlgErr += linAlgErr*timeStep;
       thisRun->l2Err += l2Err*timeStep;
@@ -428,36 +351,31 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
       thisRun->dL2Err += dL2Err*timeStep/2;
     }
     double quot = t/(5e-3);
-    //double quot = 0.0;
     double rem = quot - ((int)quot);
-    //std::cout << "rem: " << rem << std::endl;
-    //if(rem < timeStep/(5e-3)){
-      //hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
-    //}
+    if(rem < timeStep/(5e-3)){
+      hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+    }
     end = std::chrono::high_resolution_clock::now();
     thisRun->post += end - start;
-    //pbar.update();
-    if(thisRun->l2Err > 1.0){
+    pbar.update();
+    if((thisRun->l2Err > 1.0) or (std::isnan(thisRun->l2Err))){
       break;
     }
   }
-};
 
+};//runHDGnGamma
 
-
-TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG][BurgersModel]"){
+TEST_CASE("Testing regression cases for the HDGnGammaModel", "[regression][HDG][nGammaModel]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
-  //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
-  //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
-  //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
-  //meshSizes["2"] = {"7e-2"};
+  meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
+  //meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
+  //meshSizes["2"] = {"1e-1"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "1e-3", "5e-4", "2e-4"};
+  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "1e-3", "5e-4"};
   //std::vector<std::string> timeSteps = {"1e-3"};
   std::vector<std::string> orders = {"1", "2", "3"};
   //std::vector<std::string> orders = {"3"};
-  std::vector<std::string> rkTypes = {"BEuler"};
+  std::vector<std::string> rkTypes = {"IMidpoint"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
@@ -477,8 +395,7 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
     }
   }
 
-  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
+  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/nGamma/";
   //HDGSolverType globType = WEXPLICIT;
   HDGSolverType globType = IMPLICIT;
   //HDGSolverType globType = SEXPLICIT;
@@ -509,14 +426,14 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
   MPI_Comm_size(MPI_COMM_WORLD, &nParts);
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  //std::ofstream f;
-  //if(rank == 0){
-    //f.open(writePath + writeFile);
-    //f << "dim,order,h,dt,linAlgErr,l2Err,dL2Err,avgRuntime,maxRuntime,minRuntime\n" << std::flush;
-  //}
+  std::ofstream f;
+  if(rank == 0){
+    f.open(writePath + writeFile);
+    f << "dim,order,h,dt,linAlgErr,l2Err,dL2Err,avgRuntime,maxRuntime,minRuntime\n" << std::flush;
+  }
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
-    runHDGBurgers(&(*it), globType);
+    runHDGnGamma(&(*it), globType);
     std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
     it->runtime = end - start;
     CHECK(it->l2Err < 1);
@@ -526,22 +443,22 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
     MPI_Allreduce(&timeBuff, &minRuntime, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(&timeBuff, &avgRuntime, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     avgRuntime /= nParts;
-    //if(rank == 0){
-      //f << it->dim << ",";
-      //f << it->order << ",";
-      //f << it->meshSize << ",";
-      //f << it->timeStep << ",";
-      //f << it->linAlgErr << ",";
-      //f << it->l2Err << ",";
-      //f << it->dL2Err << ",";
-      //f << avgRuntime << ",";
-      //f << maxRuntime << ",";
-      //f << minRuntime << "\n";
-      //f << std::flush;
-    //}
+    if(rank == 0){
+      f << it->dim << ",";
+      f << it->order << ",";
+      f << it->meshSize << ",";
+      f << it->timeStep << ",";
+      f << it->linAlgErr << ",";
+      f << it->l2Err << ",";
+      f << it->dL2Err << ",";
+      f << avgRuntime << ",";
+      f << maxRuntime << ",";
+      f << minRuntime << "\n";
+      f << std::flush;
+    }
   }
-  //if(rank == 0){
-    //f << std::endl;
-    //f.close();
-  //}
+  if(rank == 0){
+    f << std::endl;
+    f.close();
+  }
 };
