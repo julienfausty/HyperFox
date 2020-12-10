@@ -8,14 +8,14 @@ void HDGBurgersModel::setFieldMap(const std::map<std::string, std::vector<double
   if(itfm != fm->end()){
     fieldMap["DiffusionTensor"] = &(itfm->second);
   }
-  itfm = fm->find("Solution");
+  itfm = fm->find("BufferSolution");
   if(itfm != fm->end()){
-    fieldMap["Solution"] = &(itfm->second);
+    fieldMap["BufferSolution"] = &(itfm->second);
   } else {
-    throw(ErrorHandle("HDGBurgersModel", "setFieldMap", "must provide a Solution field for the Newton-Raphson iterations"));
+    throw(ErrorHandle("HDGBurgersModel", "setFieldMap", "must provide a BufferSolution field for the Newton-Raphson iterations"));
   }
   if(itfm->second.size() != refEl->getDimension()*(refEl->getNumNodes())){
-    throw(ErrorHandle("HDGBurgersModel", "setFieldMap", "the Solution must have the same number of DOFs per node as spatial dimensions for the Burgers equation"));
+    throw(ErrorHandle("HDGBurgersModel", "setFieldMap", "the BufferSolution must have the same number of DOFs per node as spatial dimensions for the Burgers equation"));
   }
   itfm = fm->find("Trace");
   if(itfm != fm->end()){
@@ -146,7 +146,7 @@ std::vector<EMatrix> HDGBurgersModel::parseDiffusionVals() const{
 };//parseDiffusionVals
 
 std::vector<EVector> HDGBurgersModel::parseSolutionVals() const{
-  const std::vector<double> * velVals = fieldMap.at("Solution");
+  const std::vector<double> * velVals = fieldMap.at("BufferSolution");
   int nNodes = refEl->getNumNodes();
   int dimVelVal = velVals->size()/nNodes;
   int dimSpace = refEl->getDimension();

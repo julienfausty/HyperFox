@@ -112,7 +112,7 @@ void runHDGnGammaStat(SimRun * thisRun){
   mySolver.setModel(&transportMod);
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
-  wrapper.setVerbosity(true);
+  wrapper.setVerbosity(false);
   int maxNRIter = 10;
   wrapper.setMaxIterations(maxNRIter);
   wrapper.setResidualTolerance(1e-6);
@@ -121,9 +121,9 @@ void runHDGnGammaStat(SimRun * thisRun){
   //setup outputs
   std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/nGammaStat/";
   writeDir += meshName;
-  if(zPart.getRank() == 0){
-    boost::filesystem::create_directory(writeDir);
-  }
+  //if(zPart.getRank() == 0){
+    //boost::filesystem::create_directory(writeDir);
+  //}
   hdfio.setField("Solution", &sol);
   hdfio.setField("Flux", &flux);
   hdfio.setField("b", &b);
@@ -209,7 +209,7 @@ void runHDGnGammaStat(SimRun * thisRun){
   zPart.computePartition();
   zPart.update();
   //first output
-  hdfio.write(writeDir + "/res_0.h5");
+  //hdfio.write(writeDir + "/res_0.h5");
   //allocating and last set ups
   mySolver.initialize();
   mySolver.allocate();
@@ -245,14 +245,14 @@ void runHDGnGammaStat(SimRun * thisRun){
   thisRun->linAlgErr = linAlgErr;
   thisRun->l2Err = l2Err;
   thisRun->dL2Err = dL2Err;
-  hdfio.write(writeDir + "/res_" + std::to_string(maxNRIter) + ".h5");
+  //hdfio.write(writeDir + "/res_" + std::to_string(maxNRIter) + ".h5");
   end = std::chrono::high_resolution_clock::now();
   thisRun->post += end - start;
 };//runHDGnGamma
 
 TEST_CASE("Testing regression cases for the stationary HDGnGammaModel", "[regression][HDG][nGammaStat]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
-  meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
+  meshSizes["2"] = {"1e-1"};
   //meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
   //meshSizes["2"] = {"7e-2"};
   std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
@@ -276,11 +276,11 @@ TEST_CASE("Testing regression cases for the stationary HDGnGammaModel", "[regres
   MPI_Comm_size(MPI_COMM_WORLD, &nParts);
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  std::ofstream f;
-  if(rank == 0){
-    f.open(writePath + writeFile);
-    f << "dim,order,h,linAlgErr,l2Err,dL2Err,avgRuntime,maxRuntime,minRuntime\n" << std::flush;
-  }
+  //std::ofstream f;
+  //if(rank == 0){
+    //f.open(writePath + writeFile);
+    //f << "dim,order,h,linAlgErr,l2Err,dL2Err,avgRuntime,maxRuntime,minRuntime\n" << std::flush;
+  //}
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runHDGnGammaStat(&(*it));
@@ -293,21 +293,21 @@ TEST_CASE("Testing regression cases for the stationary HDGnGammaModel", "[regres
     MPI_Allreduce(&timeBuff, &minRuntime, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(&timeBuff, &avgRuntime, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     avgRuntime /= nParts;
-    if(rank == 0){
-      f << it->dim << ",";
-      f << it->order << ",";
-      f << it->meshSize << ",";
-      f << it->linAlgErr << ",";
-      f << it->l2Err << ",";
-      f << it->dL2Err << ",";
-      f << avgRuntime << ",";
-      f << maxRuntime << ",";
-      f << minRuntime << "\n";
-      f << std::flush;
-    }
+    //if(rank == 0){
+      //f << it->dim << ",";
+      //f << it->order << ",";
+      //f << it->meshSize << ",";
+      //f << it->linAlgErr << ",";
+      //f << it->l2Err << ",";
+      //f << it->dL2Err << ",";
+      //f << avgRuntime << ",";
+      //f << maxRuntime << ",";
+      //f << minRuntime << "\n";
+      //f << std::flush;
+    //}
   }
-  if(rank == 0){
-    f << std::endl;
-    f.close();
-  }
+  //if(rank == 0){
+    //f << std::endl;
+    //f.close();
+  //}
 };

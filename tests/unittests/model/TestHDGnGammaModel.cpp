@@ -27,12 +27,12 @@ TEST_CASE("Testing the HDGnGammaModel", "[unit][model][HDGnGammaModel]"){
       CHECK_NOTHROW(mod.setElementNodes(refEl.getNodes()));
       std::map<std::string, std::vector<double> > fm;
       CHECK_THROWS(mod.setFieldMap(&fm));
-      fm["Solution"] = std::vector<double>(refEl.getNumNodes()*2, 1.0);
+      fm["BufferSolution"] = std::vector<double>(refEl.getNumNodes()*2, 1.0);
       CHECK_THROWS(mod.setFieldMap(&fm));
       fm["Tau"] = std::vector<double>(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * std::pow(2, 2), 1.0);
       CHECK_THROWS(mod.setFieldMap(&fm));
-      fm["Trace"] = std::vector<double>(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * 2, 1.0);
-      CHECK_THROWS(mod.setFieldMap(&fm));
+      //fm["Trace"] = std::vector<double>(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * 2, 1.0);
+      //CHECK_THROWS(mod.setFieldMap(&fm));
       fm["D"] = std::vector<double>(refEl.getNumNodes()*4, 1.0);
       CHECK_THROWS(mod.setFieldMap(&fm));
       fm["G"] = std::vector<double>(refEl.getNumNodes()*4, 1.0);
@@ -88,8 +88,8 @@ TEST_CASE("Testing the HDGnGammaModel", "[unit][model][HDGnGammaModel]"){
       }
     }
     fm["Tau"] = tau;
-    fm["Solution"] = sol;
-    fm["Trace"] = trace;
+    fm["BufferSolution"] = sol;
+    //fm["Trace"] = trace;
     fm["D"] = diff;
     fm["G"] = diff;
     fm["b"] = b;

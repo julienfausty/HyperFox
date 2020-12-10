@@ -20,24 +20,24 @@ void HDGnGammaModel::setFieldMap(const std::map<std::string, std::vector<double>
   } else {
     throw(ErrorHandle("HDGnGammaModel", "setFieldMap", "must provide a b vector field to the nGamma model"));
   }
-  itfm = fm->find("Solution");
+  itfm = fm->find("BufferSolution");
   if(itfm != fm->end()){
-    fieldMap["Solution"] = &(itfm->second);
+    fieldMap["BufferSolution"] = &(itfm->second);
   } else {
-    throw(ErrorHandle("HDGnGammaModel", "setFieldMap", "must provide a Solution field for the Newton-Raphson iterations"));
+    throw(ErrorHandle("HDGnGammaModel", "setFieldMap", "must provide a BufferSolution field for the Newton-Raphson iterations"));
   }
   if(itfm->second.size() != 2*(refEl->getNumNodes())){
-    throw(ErrorHandle("HDGnGammaModel", "setFieldMap", "the Solution must have 2 DOFs per node n and Gamma"));
+    throw(ErrorHandle("HDGnGammaModel", "setFieldMap", "the BufferSolution must have 2 DOFs per node n and Gamma"));
   }
-  itfm = fm->find("Trace");
-  if(itfm != fm->end()){
-    fieldMap["Trace"] = &(itfm->second);
-  } else {
-    throw(ErrorHandle("HDGnGammaModel", "setFieldMap", "must provide a Trace field for the Newton-Raphson iterations"));
-  }
-  if(itfm->second.size() != 2*(refEl->getFaceElement()->getNumNodes())*(refEl->getNumFaces())){
-    throw(ErrorHandle("HDGnGammaModel", "setFieldMap", "the Trace must have 2 DOFs per node"));
-  }
+  //itfm = fm->find("Trace");
+  //if(itfm != fm->end()){
+    //fieldMap["Trace"] = &(itfm->second);
+  //} else {
+    //throw(ErrorHandle("HDGnGammaModel", "setFieldMap", "must provide a BufferTrace field for the Newton-Raphson iterations"));
+  //}
+  //if(itfm->second.size() != 2*(refEl->getFaceElement()->getNumNodes())*(refEl->getNumFaces())){
+    //throw(ErrorHandle("HDGnGammaModel", "setFieldMap", "the BufferTrace must have 2 DOFs per node"));
+  //}
   if(timeScheme != NULL){
     timeScheme->setFieldMap(fm);
   }
@@ -229,11 +229,11 @@ std::vector<EMatrix> HDGnGammaModel::parseGVals(){
 };//parseGVals
 
 std::vector<EVector> HDGnGammaModel::parseSolutionVals(){
-  const std::vector<double> * velVals = fieldMap.at("Solution");
+  const std::vector<double> * velVals = fieldMap.at("BufferSolution");
   int nNodes = refEl->getNumNodes();
   int dimVelVal = velVals->size()/nNodes;
   if(dimVelVal != 2){
-    throw(ErrorHandle("HDGnGammaModel", "parseSolutionVals", "the dimension of the Solution vector is not 2"));
+    throw(ErrorHandle("HDGnGammaModel", "parseSolutionVals", "the dimension of the BufferSolution vector is not 2"));
   }
   std::vector<EVector> res(nNodes, EVector::Zero(2));
   for(int i = 0; i < nNodes; i++){

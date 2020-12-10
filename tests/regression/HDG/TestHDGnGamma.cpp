@@ -47,6 +47,15 @@ double manufacturedSourceNGamma(double t, std::vector<double> x, double c, std::
   return res;
 };//manufacturedSourceNGamma
 
+void nGammaSolver(RungeKutta * ts, std::map<std::string, Field*> * fieldMap, Solver * solver){
+  for(int k = 0; k < ts->getNumStages(); k++){
+    solver->assemble();
+    solver->solve();
+    ts->computeStage(fieldMap);
+  }
+  ts->computeSolution(fieldMap);
+}//nGammaSolver
+
 };//hdg
 
 void runHDGnGamma(SimRun * thisRun, HDGSolverType globType){
@@ -153,6 +162,7 @@ void runHDGnGamma(SimRun * thisRun, HDGSolverType globType){
   wrapper.setResidualTolerance(1e-6);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
+  wrapper.setLinearizedSolver([&ts, &fieldMap](Solver * solver){hdg::nGammaSolver(&ts, &fieldMap, solver);});
   //setup outputs
   std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/nGamma/";
   if(globType == WEXPLICIT){
@@ -188,12 +198,13 @@ void runHDGnGamma(SimRun * thisRun, HDGSolverType globType){
   hdfio.setField("Residual", &residual);
   hdfio.setField("Partition", &partition);
   //define scalars
-  double diffCoeff = 1.0;//diffusive coeff
+  double diffCoeff = 1e-3;//diffusive coeff
   double timeStep = std::stod(thisRun->timeStep);
-  double carLen = 1.0;//std::sqrt(diffCoeff*timeStep);
-  std::vector<double> kn = {3.0*M_PI, 3.0*M_PI};
-  std::vector<double> kGam = {3.0*M_PI, 3.0*M_PI};
-  double c = 3.0*M_PI;
+  //double carLen = 1.0;//Imp
+  double carLen = std::sqrt(diffCoeff*timeStep);//Exp
+  std::vector<double> kn = {M_PI, M_PI};
+  std::vector<double> kGam = {M_PI, M_PI};
+  double c = M_PI;
   double t = 0;
   double timeEnd = 1.0;
   int nIters = timeEnd/timeStep;
@@ -311,13 +322,14 @@ void runHDGnGamma(SimRun * thisRun, HDGSolverType globType){
     zPart.updateSharedInformation();
     //solve non-linear problem
     start = std::chrono::high_resolution_clock::now();
-    for(int k = 0; k < ts.getNumStages(); k++){
-      wrapper.solve();
-      //mySolver.assemble();
-      //mySolver.solve();
-      ts.computeStage(&fieldMap);
-    }
-    ts.computeSolution(&fieldMap);
+    //for(int k = 0; k < ts.getNumStages(); k++){
+      //wrapper.solve();//Imp
+      ////mySolver.assemble();//Exp
+      ////mySolver.solve();//Exp
+      //ts.computeStage(&fieldMap);
+    //}
+    //ts.computeSolution(&fieldMap);
+    wrapper.solve();
     end = std::chrono::high_resolution_clock::now();
     thisRun->resolution += end - start;
     //output
@@ -367,15 +379,15 @@ void runHDGnGamma(SimRun * thisRun, HDGSolverType globType){
 
 TEST_CASE("Testing regression cases for the HDGnGammaModel", "[regression][HDG][nGammaModel]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
-  meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
+  meshSizes["2"] = {"2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
   //meshSizes["2"] = {"1e-1"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "1e-3", "5e-4"};
+  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "1e-3", "5e-4", "2e-4"};
   //std::vector<std::string> timeSteps = {"1e-3"};
   std::vector<std::string> orders = {"1", "2", "3"};
   //std::vector<std::string> orders = {"3"};
-  std::vector<std::string> rkTypes = {"IMidpoint"};
+  std::vector<std::string> rkTypes = {"ALX2"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
     for(auto itMs = it->second.begin(); itMs != it->second.end(); itMs++){
