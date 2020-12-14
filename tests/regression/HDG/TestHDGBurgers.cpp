@@ -479,7 +479,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
 
 
 
-TEST_CASE("Testing regression cases for the H);DGBurgersModel", "[regression][HDG][BurgersModel]"){
+TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG][BurgersModel]"){
   std::map<std::string, std::vector<std::string> > meshSizes;
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
