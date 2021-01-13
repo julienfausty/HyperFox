@@ -177,9 +177,9 @@ void runHDGBurgersStat(SimRun * thisRun, HDGSolverType globType){
   //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/BurgersStat/HDG/";
   std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/BurgersStat/HDG/";
   writeDir += meshName;
-  if(zPart.getRank() == 0){
-    boost::filesystem::create_directory(writeDir);
-  }
+  //if(zPart.getRank() == 0){
+    //boost::filesystem::create_directory(writeDir);
+  //}
   hdfio.setField("Solution", &sol);
   hdfio.setField("Buffer", &buffSol);
   hdfio.setField("Flux", &flux);
@@ -339,7 +339,7 @@ TEST_CASE("Testing stationary regression cases for the HDGBurgersModel", "[regre
   //meshSizes["3"] = {"3e-1"};
   meshSizes["2"] = {"2e-1", "1e-1"};
   //meshSizes["2"] = {"1e-1"};
-  std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
+  std::vector<std::string> orders = {"1", "2", "3"};
   //std::vector<std::string> orders = {"1"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){

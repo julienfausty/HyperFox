@@ -15,7 +15,7 @@ void CGSolver::allocate(){
   if(model == NULL){
     throw(ErrorHandle("CGSolver", "allocate", "must set the model before allocating."));
   }
-  if(boundaryModel == NULL){
+  if(bSystem.getBoundaryList()->empty()){
     throw(ErrorHandle("CGSolver", "allocate", "must set the boundary model before allocating."));
   }
   if(fieldMap->size() == 0){
@@ -33,7 +33,9 @@ void CGSolver::allocate(){
   int nNodes = myMesh->getNumberPoints();
   linSystem->allocate(nNodes*nDOFsPerNode, &diagSparsePattern, &offSparsePattern);
   model->allocate(nDOFsPerNode);
-  boundaryModel->allocate(nDOFsPerNode);
+  for(int iBoundary = 0; iBoundary < bSystem.getBoundaryList()->size(); iBoundary++){
+    std::get<0>(bSystem.getBoundaryList()->at(iBoundary))->allocate(nDOFsPerNode);
+  }
   allocated = 1;
 };//allocate
 
@@ -122,24 +124,64 @@ void CGSolver::assemble(){
     }
   }
   linSystem->assemble();
+  //boundary
   cell.resize(refEl->getFaceElement()->getNumNodes());
   locCell.resize(refEl->getFaceElement()->getNumNodes());
   dofs.resize(cell.size()*nDOFsPerNode);
   nodes.resize(0);
   nodes.resize(cell.size(), std::vector<double>(myMesh->getNodeSpaceDimension(), 0.0));
-  modelT.resize(boundaryModel->getLocalMatrix()->rows(), boundaryModel->getLocalMatrix()->cols());
-  modAssemble = boundaryModel->getAssemblyType();
-  std::vector<int> slice(1, 0);
-  std::vector<int> locSlice(1, 0);
-  const std::set<int> * boundaryFaces = myMesh->getBoundaryFaces();
-  std::set<int>::const_iterator itFace;
-  int index = 0;
-  if(verbose){
-    pb.setIterIndex(&index);
-    pb.setNumIterations(boundaryFaces->size());
-  }
-  if(modAssemble->matrix == Set){
+  for(int iBoundary = 0; iBoundary < bSystem.getBoundaryList()->size(); iBoundary++){
+    FEModel * boundaryModel = std::get<0>(bSystem.getBoundaryList()->at(iBoundary));
+    modelT.resize(boundaryModel->getLocalMatrix()->rows(), boundaryModel->getLocalMatrix()->cols());
+    modAssemble = boundaryModel->getAssemblyType();
+    std::vector<int> slice(1, 0);
+    std::vector<int> locSlice(1, 0);
+    const std::set<int> * boundaryFaces = std::get<1>(bSystem.getBoundaryList()->at(iBoundary));
+    std::set<int>::const_iterator itFace;
+    int index = 0;
     if(verbose){
+      pb.setIterIndex(&index);
+      pb.setNumIterations(boundaryFaces->size());
+    }
+    if(modAssemble->matrix == Set){
+      if(verbose){
+        int totCells = boundaryFaces->size();
+        bool speak = 1;
+        if(part != NULL){
+          int locBs = boundaryFaces->size();
+          MPI_Reduce(&locBs, &totCells, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+          if(part->getRank() != 0){
+            speak = 0;
+          }
+        }
+        if(speak){
+          std::cout << "Assembly - Zero loop (nFaces = " << totCells << ", nNodes/Face = " << cell.size() << "):" << std::endl;
+        }
+        pb.update();
+      }
+      std::set<int> zeroSet;
+      for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
+        if(part == NULL){
+          myMesh->getFace(*itFace, &cell);
+        } else {
+          myMesh->getFace(part->global2LocalFace(*itFace), &cell);
+        }
+        Utils::multiplyIndexes(nDOFsPerNode, &cell, &dofs);
+        for(int i = 0; i < dofs.size(); i++){ 
+          zeroSet.insert(dofs[i]);
+        }
+        if(verbose){
+          index += 1;
+          pb.update();
+        }
+      }
+      std::vector<int> zeroRows(zeroSet.size(), 0);
+      std::copy(zeroSet.begin(), zeroSet.end(), zeroRows.begin());
+      linSystem->zeroOutRows(zeroRows);
+      linSystem->assemble();
+    }
+    if(verbose){
+      index = 0;
       int totCells = boundaryFaces->size();
       bool speak = 1;
       if(part != NULL){
@@ -150,98 +192,62 @@ void CGSolver::assemble(){
         }
       }
       if(speak){
-        std::cout << "Assembly - Zero loop (nFaces = " << totCells << ", nNodes/Face = " << cell.size() << "):" << std::endl;
+        std::cout << "Assembly - Boundary loop (nFaces = " << totCells << ", nNodes/Face = " << cell.size() << "):" << std::endl;
       }
       pb.update();
     }
-    std::set<int> zeroSet;
     for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
       if(part == NULL){
         myMesh->getFace(*itFace, &cell);
+        myMesh->getSlicePoints(cell, &nodes);
+        slice[0] = *itFace;
+        constructLocalFields(slice, &faceFieldMap);
       } else {
-        myMesh->getFace(part->global2LocalFace(*itFace), &cell);
+        locSlice[0] = part->global2LocalFace(*itFace);
+        myMesh->getFace(locSlice[0], &cell);
+        part->global2LocalNodeSlice(cell, &locCell);
+        slice[0] = *itFace;
+        constructLocalFields(slice, locSlice, &faceFieldMap);
+        for(int i = 0; i < locCell.size(); i++){
+          if(locCell[i] != -1){
+            myMesh->getPoint(locCell[i], &(nodes[i]));
+          } else {
+            myMesh->getGhostPoint(cell[i], &(nodes[i]));
+          }
+        }
       }
+      boundaryModel->setElementNodes(&nodes);
+      boundaryModel->setFieldMap(&faceFieldMap);
+      boundaryModel->compute();
+      modelT = boundaryModel->getLocalMatrix()->transpose();
       Utils::multiplyIndexes(nDOFsPerNode, &cell, &dofs);
-      for(int i = 0; i < dofs.size(); i++){ 
-        zeroSet.insert(dofs[i]);
+      switch(modAssemble->matrix){
+        case Add:{
+                   linSystem->addValsMatrix(dofs, dofs, modelT.data());
+                   break;
+                 }
+        case Set:{
+                   linSystem->setValsMatrix(dofs, dofs, modelT.data());
+                   break;
+                 }
+      }
+      switch(modAssemble->rhs){
+        case Add:{
+                   linSystem->addValsRHS(dofs, boundaryModel->getLocalRHS()->data());
+                   break;
+                 }
+        case Set:{
+                   linSystem->setValsRHS(dofs, boundaryModel->getLocalRHS()->data());
+                   break;
+                 }
       }
       if(verbose){
         index += 1;
         pb.update();
       }
     }
-    std::vector<int> zeroRows(zeroSet.size(), 0);
-    std::copy(zeroSet.begin(), zeroSet.end(), zeroRows.begin());
-    linSystem->zeroOutRows(zeroRows);
     linSystem->assemble();
   }
-  if(verbose){
-    index = 0;
-    int totCells = boundaryFaces->size();
-    bool speak = 1;
-    if(part != NULL){
-      int locBs = boundaryFaces->size();
-      MPI_Reduce(&locBs, &totCells, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-      if(part->getRank() != 0){
-        speak = 0;
-      }
-    }
-    if(speak){
-      std::cout << "Assembly - Boundary loop (nFaces = " << totCells << ", nNodes/Face = " << cell.size() << "):" << std::endl;
-    }
-    pb.update();
-  }
-  for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
-    if(part == NULL){
-      myMesh->getFace(*itFace, &cell);
-      myMesh->getSlicePoints(cell, &nodes);
-      slice[0] = *itFace;
-      constructLocalFields(slice, &faceFieldMap);
-    } else {
-      locSlice[0] = part->global2LocalFace(*itFace);
-      myMesh->getFace(locSlice[0], &cell);
-      part->global2LocalNodeSlice(cell, &locCell);
-      slice[0] = *itFace;
-      constructLocalFields(slice, locSlice, &faceFieldMap);
-      for(int i = 0; i < locCell.size(); i++){
-        if(locCell[i] != -1){
-          myMesh->getPoint(locCell[i], &(nodes[i]));
-        } else {
-          myMesh->getGhostPoint(cell[i], &(nodes[i]));
-        }
-      }
-    }
-    boundaryModel->setElementNodes(&nodes);
-    boundaryModel->setFieldMap(&faceFieldMap);
-    boundaryModel->compute();
-    modelT = boundaryModel->getLocalMatrix()->transpose();
-    Utils::multiplyIndexes(nDOFsPerNode, &cell, &dofs);
-    switch(modAssemble->matrix){
-      case Add:{
-                 linSystem->addValsMatrix(dofs, dofs, modelT.data());
-                 break;
-               }
-      case Set:{
-                 linSystem->setValsMatrix(dofs, dofs, modelT.data());
-                 break;
-               }
-    }
-    switch(modAssemble->rhs){
-      case Add:{
-                 linSystem->addValsRHS(dofs, boundaryModel->getLocalRHS()->data());
-                 break;
-               }
-      case Set:{
-                 linSystem->setValsRHS(dofs, boundaryModel->getLocalRHS()->data());
-                 break;
-               }
-    }
-    if(verbose){
-      index += 1;
-      pb.update();
-    }
-  }
-  linSystem->assemble();
   assembled = 1;
 };//assemble
 

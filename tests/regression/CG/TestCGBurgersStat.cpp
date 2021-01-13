@@ -260,8 +260,8 @@ TEST_CASE("Testing stationary regression cases for the BurgersModel", "[regressi
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
   //meshSizes["2"] = {"7e-2"};
-  meshSizes["2"] = {"2e-1", "1e-1", "7e-2"};
-  std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
+  meshSizes["2"] = {"2e-1", "1e-1"};
+  std::vector<std::string> orders = {"1", "2", "3"};
   //std::vector<std::string> orders = {"3"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){

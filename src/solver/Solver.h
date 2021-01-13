@@ -5,6 +5,7 @@
 #include <string>
 #include "LinAlgebraInterface.h"
 #include "FEModel.h"
+#include "BoundarySystem.h"
 #include "Field.h"
 #include "Mesh.h"
 #include "Partitioner.h"
@@ -36,7 +37,14 @@ class Solver{
      *
      * @param m a pointer to the boundary model
      */
-    virtual void setBoundaryModel(FEModel * m){boundaryModel = m;};
+    virtual void setBoundaryModel(FEModel * m){bSystem.setBoundaryCondition(m, myMesh->getBoundaryFaces());};
+    /*!
+     * \brief a method to set the boundary condition on a specified set of faces
+     *
+     * @param m a pointer to the boundary model
+     * @param faces a pointer to a set of faces
+     */
+    virtual void setBoundaryCondition(FEModel * m, std::set<int> * faces){bSystem.setBoundaryCondition(m, faces);};
     /*!
      * \brief a method to set the linear algebra interface
      *
@@ -119,9 +127,9 @@ class Solver{
      */
     FEModel * model = NULL;
     /*!
-     * \brief the model of the boundary being simulated
+     * \brief the boundary system being simulated
      */
-    FEModel * boundaryModel = NULL;
+    BoundarySystem bSystem;
     /*!
      * \brief the map to the fields
      */

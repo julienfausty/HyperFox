@@ -24,14 +24,38 @@ using namespace hfox;
 
 namespace hdg{
 
+void manufacturedBurgersSolution(double t, std::vector<double> x, double D, std::vector<double> * sol){
+  sol->resize(x.size(), 0.0);
+  std::fill(sol->begin(), sol->end(), sol->size());
+  sol->at(0) = std::pow(x[0], 5) + std::pow(t, 3);
+  sol->at(1) = std::pow(x[1], 4) + std::pow(t, 2);
+}
+
+void manufacturedBurgersSolutionGrad(double t, std::vector<double> x, double D, std::vector<double> * sol){
+  sol->resize(std::pow(x.size(), 2), 0.0);
+  std::fill(sol->begin(), sol->end(), sol->size());
+  sol->at(0) = 5.0 * std::pow(x[0], 4);
+  sol->at(3) = 4.0 * std::pow(x[1], 3);
+}
+
+double manufacturedSourceBurgers(const double t, const std::vector<double> & x, int i, double D){
+  double res = 0.0;
+  if(i == 0){
+    res = (std::pow(x[0], 5) + std::pow(t, 3))*5.0 * std::pow(x[0], 4) - D * 5.0 * 4.0 * std::pow(x[0], 3) + 3.0*std::pow(t, 2.0);
+  } else if(i == 1){
+    res = (std::pow(x[1], 4) + std::pow(t, 2))*4.0 * std::pow(x[1], 3) - D * 4.0 * 3.0 * std::pow(x[1], 2) + 2.0*std::pow(t, 1.0);
+  }
+  return res;
+};
+
 double potentialiBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0){
-  return (std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1])));
+  return (std::exp((std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::cos(Ay*(x[1] - x0[1])));
 };
 
 void potentialiGradBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0, std::vector<double> * grad){
   grad->resize(x.size());
-  grad->at(0) = Ax * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1]));
-  grad->at(1) = Ay * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::cos(Ay*(x[1] - x0[1]));
+  grad->at(0) = Ax * std::exp((std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::cos(Ay*(x[1] - x0[1]));
+  grad->at(1) = - Ay * std::exp((std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) + std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1]));
 };
 
 void potentialiHessBurgers(double t, std::vector<double> x, double & Ax, double & Ay, std::vector<double> & x0, std::vector<double> * hess){
@@ -40,58 +64,61 @@ void potentialiHessBurgers(double t, std::vector<double> x, double & Ax, double 
   potentialiGradBurgers(t, x, Ax, Ay, x0, &grad);
   double pot = potentialiBurgers(t, x, Ax, Ay, x0);
   hess->at(0) = std::pow(Ax, 2.0) * pot;
-  hess->at(1) = Ay * Ax * std::exp(-(std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::cos(Ay*(x[1] - x0[1]));
+  hess->at(1) = -Ay * Ax * std::exp((std::pow(Ax, 2) - std::pow(Ay, 2))*t)*(std::exp(Ax*(x[0] - x0[0])) - std::exp(-Ax*(x[0]-x0[0])))*std::sin(Ay*(x[1] - x0[1]));
   hess->at(2) = hess->at(1);
   hess->at(3) = -std::pow(Ay, 2)*pot;
 };
 
-double potentialBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0){
-  return (potentialiBurgers(t, x, Ax0, Ay0, x0) + potentialiBurgers(t, x, Ax1, Ay1, x0));
+double potentialBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0, std::vector<double> & x1){
+  return (potentialiBurgers(t, x, Ax0, Ay0, x0) + potentialiBurgers(t, x, Ax1, Ay1, x1));
+  //return (potentialiBurgers(t, x, Ax0, Ay0, x0));
 };
 
-void potentialGradBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0, std::vector<double> * grad){
+void potentialGradBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0, std::vector<double> & x1, std::vector<double> * grad){
   grad->resize(x.size());
   potentialiGradBurgers(t, x, Ax0, Ay0, x0, grad);
   std::vector<double> buff;
-  potentialiGradBurgers(t, x, Ax1, Ay1, x0, &buff);
+  potentialiGradBurgers(t, x, Ax1, Ay1, x1, &buff);
   EMap<EVector>(grad->data(), grad->size()) += EMap<EVector>(buff.data(), buff.size());
 };
 
-void potentialHessBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0, std::vector<double> * hess){
+void potentialHessBurgers(double t, std::vector<double> x, double & Ax0, double & Ay0, double & Ax1, double & Ay1, std::vector<double> & x0, std::vector<double> & x1, std::vector<double> * hess){
   potentialiHessBurgers(t, x, Ax0, Ay0, x0, hess);
   std::vector<double> buff;
-  potentialiHessBurgers(t, x, Ax1, Ay1, x0, &buff);
+  potentialiHessBurgers(t, x, Ax1, Ay1, x1, &buff);
   EMap<EMatrix>(hess->data(), x.size(), x.size()) += EMap<EMatrix>(buff.data(), x.size(), x.size());
 };
 
 void analyticalBurgers(double t, std::vector<double> x, double D, std::vector<double> * sol){
-  double Ax0 = 3.0;
-  double Ay0 = 2.0;
-  double Ax1 = 2.0;
-  double Ay1 = 1.0;
-  std::vector<double> x0 = {1.1, 1.1};
+  double Ax0 = 1.2;
+  double Ay0 = 1.8;
+  double Ax1 = 0.6;
+  double Ay1 = 1.2;
+  std::vector<double> x0 = {0.25, 0.25};
+  std::vector<double> x1 = {0.75, 0.75};
   sol->resize(x.size());
   //sol->at(0) = 1.0;
-  potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, sol);
-  double buff = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
+  potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, x1, sol);
+  double buff = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, x1);
   if(buff != 0){
-    EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
+    EMap<EVector>(sol->data(), sol->size()) *= -2.0*D/buff;
   } else {
     EMap<EVector>(sol->data(), sol->size()) *= 0.0;
   }
 };
 
 void analyticalBurgersGrad(double t, std::vector<double> x, double D, std::vector<double> * gradSol){
-  double Ax0 = 3.0;
-  double Ay0 = 2.0;
-  double Ax1 = 2.0;
-  double Ay1 = 1.0;
-  std::vector<double> x0 = {1.1, 1.1};
-  //gradSol->resize(std::pow(x.size(), 2), 0.0);
-  double pot = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0);
+  double Ax0 = 1.2;
+  double Ay0 = 1.8;
+  double Ax1 = 0.6;
+  double Ay1 = 1.2;
+  std::vector<double> x0 = {0.25, 0.25};
+  std::vector<double> x1 = {0.75, 0.75};
+  gradSol->resize(std::pow(x.size(), 2), 0.0);
+  double pot = potentialBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, x1);
   std::vector<double> gradPot;
-  potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, &gradPot);
-  potentialHessBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, gradSol);
+  potentialGradBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, x1, &gradPot);
+  potentialHessBurgers(t, x, Ax0, Ay0, Ax1, Ay1, x0, x1, gradSol);
   EMap<EMatrix> res(gradSol->data(), x.size(), x.size());
   if(pot != 0){
     res *= -2.0*D/pot;
@@ -203,8 +230,8 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
   //setup outputs
-  //std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
-  std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
+  std::string writeDir = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
+  //std::string writeDir = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
   if(globType == WEXPLICIT){
     writeDir += "WExp/";
   } else if(globType == SEXPLICIT){
@@ -237,9 +264,9 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   hdfio.setField("Residual", &residual);
   hdfio.setField("Partition", &partition);
   //define scalars
-  double D = 1e-2;//diffusive coeff
+  double D = 1e-1;//diffusive coeff
   double timeStep = std::stod(thisRun->timeStep);
-  double carLen = 1.0;//std::sqrt(D*timeStep);
+  double carLen = std::sqrt(D*timeStep);
   double t = 0;
   int dimGrad = std::pow(nodeDim, 2);
   double timeEnd = 1.0;
@@ -261,11 +288,13 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
       } else {
         myMesh.getGhostPoint(cell[j], &node);
       }
-      hdg::analyticalBurgers(t, node, D, &dbuffer);
+      //hdg::analyticalBurgers(t, node, D, &dbuffer);
+      hdg::manufacturedBurgersSolution(t, node, D, &dbuffer);
       for(int k = 0; k < dbuffer.size(); k++){
         sol.getValues()->at((i*nNodesPerEl + j)*nodeDim + k) = dbuffer[k];
       }
-      hdg::analyticalBurgersGrad(t, node, D, &dbuffer);
+      //hdg::analyticalBurgersGrad(t, node, D, &dbuffer);
+      hdg::manufacturedBurgersSolutionGrad(t, node, D, &dbuffer);
       for(int k = 0; k < dbuffer.size(); k++){
         flux.getValues()->at((i*nNodesPerEl + j)*dimGrad + k) = dbuffer[k];
       }
@@ -278,6 +307,8 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
       for(int iCell = 0; iCell < 2; iCell++){
         EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + iN)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim)
           = EMatrix::Identity(nodeDim, nodeDim);
+        //EMap<EMatrix>(tau.getValues()->data() + ((iFace*nNodesPerFace + iN)*2 + iCell)*nodeDim*nodeDim, nodeDim, nodeDim)
+          //= EMatrix::Identity(nodeDim, nodeDim)*(D/carLen);
       }
     }
   }
@@ -300,6 +331,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   transportMod.setTimeScheme(&ts);
   mySolver.initialize();
   mySolver.allocate();
+  transportMod.setSourceFunction([&t, D](const std::vector<double> & x, int i){return hdg::manufacturedSourceBurgers(t, x, i, D);});
   std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
   thisRun->setup = end - start;
   //time iteration
@@ -321,7 +353,8 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
         } else {
           myMesh.getGhostPoint(cell[l], &node);
         }
-        hdg::analyticalBurgers(t, node, D, &dbuffer);
+        //hdg::analyticalBurgers(t, node, D, &dbuffer);
+        hdg::manufacturedBurgersSolution(t, node, D, &dbuffer);
         for(int k = 0; k < dbuffer.size(); k++){
           anaSol.getValues()->at((j*nNodesPerEl + l)*nodeDim + k) = dbuffer[k];
         }
@@ -342,7 +375,8 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
           } else {
             myMesh.getGhostPoint(cell[k], &node);
           }
-          hdg::analyticalBurgers(t, node, D, &dbuffer);
+          //hdg::analyticalBurgers(t, node, D, &dbuffer);
+          hdg::manufacturedBurgersSolution(t, node, D, &dbuffer);
           for(int dof = 0; dof < nodeDim; dof++){
             dirichlet.getValues()->at((locFace * nNodesPerFace + k)*nodeDim + dof) = dbuffer[dof];
           }
@@ -477,8 +511,8 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
     }
   }
 
-  //std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
-  std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
+  std::string writePath = "/home/jfausty/workspace/Postprocess/results/Burgers/HDG/";
+  //std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/Burgers/HDG/";
   //HDGSolverType globType = WEXPLICIT;
   HDGSolverType globType = IMPLICIT;
   //HDGSolverType globType = SEXPLICIT;

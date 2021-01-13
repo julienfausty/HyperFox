@@ -15,7 +15,7 @@ void HDGSolver::allocate(){
   if(model == NULL){
     throw(ErrorHandle("HDGSolver", "allocate", "must set the model before allocating."));
   }
-  if(boundaryModel == NULL){
+  if(bSystem.getBoundaryList()->empty()){
     throw(ErrorHandle("HDGSolver", "allocate", "must set the boundary model before allocating."));
   }
   if(fieldMap->size() == 0){
@@ -91,7 +91,9 @@ void HDGSolver::allocate(){
     S0 = new Field(myMesh, Face, 1, nDOFsPerNode*nNodesPFace);
   }
   model->allocate(nDOFsPerNode);
-  boundaryModel->allocate(nDOFsPerNode);
+  for(int iBoundary = 0; iBoundary < bSystem.getBoundaryList()->size(); iBoundary++){
+    std::get<0>(bSystem.getBoundaryList()->at(iBoundary))->allocate(nDOFsPerNode);
+  }
   if(U != NULL){delete U;}
   U = new Field(myMesh, Cell, 1, nDOFsPerNode*nNodesPEl*nDOFsPerNode*nFacesPEl*nNodesPFace);
   if(Q != NULL){delete Q;}
@@ -421,131 +423,135 @@ void HDGSolver::assemble(){
   if(myOpts.type != SEXPLICIT){
     linSystem->assemble();
   }
+  //boundary
   matRowCols.resize(nNodesPFc*nDOFsPerNode);
   cell.resize(nNodesPFc);
   locCell.resize(nNodesPFc);
   nodes.resize(nNodesPFc);
-  modAssembly = boundaryModel->getAssemblyType();
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> boundaryT(
-      boundaryModel->getLocalMatrix()->rows(), 
-      boundaryModel->getLocalMatrix()->cols());
-  const std::set<int> * boundaryFaces = myMesh->getBoundaryFaces();
-  std::set<int>::const_iterator itFace;
-  int locFaceInd;
-  int index = 0;
-  if(verbose){
-    pb.setIterIndex(&index);
-    pb.setNumIterations(boundaryFaces->size());
-  }
-  if(myOpts.type != SEXPLICIT){
-    if(modAssembly->matrix == Set){
-      if(verbose){
-        std::cout << "Assembly - Zero loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << nNodesPFc << "):" << std::endl;
-        pb.update();
-      }
-      std::set<int> zeroSet;
-      for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
-        std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
-        for(int i = 0; i < matRowCols.size(); i++){
-          zeroSet.insert(matRowCols[i]);
-        }
+  for(int iBoundary = 0; iBoundary < bSystem.getBoundaryList()->size(); iBoundary++){
+    FEModel * boundaryModel = std::get<0>(bSystem.getBoundaryList()->at(iBoundary));
+    modAssembly = boundaryModel->getAssemblyType();
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> boundaryT(
+        boundaryModel->getLocalMatrix()->rows(), 
+        boundaryModel->getLocalMatrix()->cols());
+    const std::set<int> * boundaryFaces = std::get<1>(bSystem.getBoundaryList()->at(iBoundary));
+    std::set<int>::const_iterator itFace;
+    int locFaceInd;
+    int index = 0;
+    if(verbose){
+      pb.setIterIndex(&index);
+      pb.setNumIterations(boundaryFaces->size());
+    }
+    if(myOpts.type != SEXPLICIT){
+      if(modAssembly->matrix == Set){
         if(verbose){
-          index += 1;
+          std::cout << "Assembly - Zero loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << nNodesPFc << "):" << std::endl;
           pb.update();
         }
-      }
-      std::vector<int> zeroRows(zeroSet.size(), 0);
-      std::copy(zeroSet.begin(), zeroSet.end(), zeroRows.begin());
-      linSystem->zeroOutRows(zeroRows);
-      linSystem->assemble();
-    }
-  }
-  if(verbose){
-    index = 0;
-    std::cout << "Assembly - Boundary loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << nNodesPFc << "):" << std::endl;
-    pb.update();
-  }
-  for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
-    locFaceInd = *itFace;
-    if(part != NULL){
-      locFaceInd = part->global2LocalFace(*itFace);
-    }
-    myMesh->getFace(locFaceInd, &cell);
-    unitCell[0] = *itFace;
-    if(part == NULL){
-      myMesh->getSlicePoints(cell, &nodes);
-      constructLocalFields(unitCell, &faceFieldMap);    
-    } else {
-      locUnitCell[0] = locFaceInd;
-      constructLocalFields(unitCell, locUnitCell, &faceFieldMap);
-      part->global2LocalNodeSlice(cell, &locCell);
-      for(int i = 0; i < locCell.size(); i++){
-        if(locCell[i] != -1){
-          myMesh->getPoint(locCell[i], &(nodes[i]));
-        } else {
-          myMesh->getGhostPoint(cell[i], &(nodes[i]));
+        std::set<int> zeroSet;
+        for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
+          std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
+          for(int i = 0; i < matRowCols.size(); i++){
+            zeroSet.insert(matRowCols[i]);
+          }
+          if(verbose){
+            index += 1;
+            pb.update();
+          }
         }
-      }
-    }
-    boundaryModel->setElementNodes(&nodes);
-    boundaryModel->setFieldMap(&faceFieldMap);
-    boundaryModel->compute();
-    if(myOpts.type != SEXPLICIT){
-      boundaryT = *(boundaryModel->getLocalMatrix());
-      std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
-      switch(modAssembly->matrix){
-        case Add:{
-                   linSystem->addValsMatrix(matRowCols, matRowCols, boundaryT.data());
-                   break;
-                 }
-        case Set:{
-                   linSystem->setValsMatrix(matRowCols, matRowCols, boundaryT.data());
-                   break;
-                 }
-      }
-      switch(modAssembly->rhs){
-        case Add:{
-                   linSystem->addValsRHS(matRowCols, boundaryModel->getLocalRHS()->data());
-                   break;
-                 }
-        case Set:{
-                   linSystem->setValsRHS(matRowCols, boundaryModel->getLocalRHS()->data());
-                   break;
-                 }
-      }
-    } else {
-      buff = nDOFsPerNode*nNodesPFc;
-      EMap<EVector> S0map(S0->getValues()->data() + (*itFace)*buff, buff);
-      switch(modAssembly->rhs){
-        case Add:{
-                   S0map += *(boundaryModel->getLocalRHS());
-                   break;
-                 }
-        case Set:{
-                   S0map = *(boundaryModel->getLocalRHS());
-                   break;
-                 }
-      }
-      int buff2 = std::pow(buff, 2);
-      EMap<EMatrix> Smap(S->getValues()->data() + (*itFace)*buff2, buff, buff);
-      switch(modAssembly->rhs){
-        case Add:{
-                   Smap += *(boundaryModel->getLocalMatrix());
-                   break;
-                 }
-        case Set:{
-                   Smap = *(boundaryModel->getLocalMatrix());
-                   break;
-                 }
+        std::vector<int> zeroRows(zeroSet.size(), 0);
+        std::copy(zeroSet.begin(), zeroSet.end(), zeroRows.begin());
+        linSystem->zeroOutRows(zeroRows);
+        linSystem->assemble();
       }
     }
     if(verbose){
-      index += 1;
+      index = 0;
+      std::cout << "Assembly - Boundary loop (nFaces = " << boundaryFaces->size() << ", nNodes/Face = " << nNodesPFc << "):" << std::endl;
       pb.update();
     }
-  }
-  if(myOpts.type != SEXPLICIT){
-    linSystem->assemble();
+    for(itFace = boundaryFaces->begin(); itFace != boundaryFaces->end(); itFace++){
+      locFaceInd = *itFace;
+      if(part != NULL){
+        locFaceInd = part->global2LocalFace(*itFace);
+      }
+      myMesh->getFace(locFaceInd, &cell);
+      unitCell[0] = *itFace;
+      if(part == NULL){
+        myMesh->getSlicePoints(cell, &nodes);
+        constructLocalFields(unitCell, &faceFieldMap);    
+      } else {
+        locUnitCell[0] = locFaceInd;
+        constructLocalFields(unitCell, locUnitCell, &faceFieldMap);
+        part->global2LocalNodeSlice(cell, &locCell);
+        for(int i = 0; i < locCell.size(); i++){
+          if(locCell[i] != -1){
+            myMesh->getPoint(locCell[i], &(nodes[i]));
+          } else {
+            myMesh->getGhostPoint(cell[i], &(nodes[i]));
+          }
+        }
+      }
+      boundaryModel->setElementNodes(&nodes);
+      boundaryModel->setFieldMap(&faceFieldMap);
+      boundaryModel->compute();
+      if(myOpts.type != SEXPLICIT){
+        boundaryT = *(boundaryModel->getLocalMatrix());
+        std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
+        switch(modAssembly->matrix){
+          case Add:{
+                     linSystem->addValsMatrix(matRowCols, matRowCols, boundaryT.data());
+                     break;
+                   }
+          case Set:{
+                     linSystem->setValsMatrix(matRowCols, matRowCols, boundaryT.data());
+                     break;
+                   }
+        }
+        switch(modAssembly->rhs){
+          case Add:{
+                     linSystem->addValsRHS(matRowCols, boundaryModel->getLocalRHS()->data());
+                     break;
+                   }
+          case Set:{
+                     linSystem->setValsRHS(matRowCols, boundaryModel->getLocalRHS()->data());
+                     break;
+                   }
+        }
+      } else {
+        buff = nDOFsPerNode*nNodesPFc;
+        EMap<EVector> S0map(S0->getValues()->data() + (*itFace)*buff, buff);
+        switch(modAssembly->rhs){
+          case Add:{
+                     S0map += *(boundaryModel->getLocalRHS());
+                     break;
+                   }
+          case Set:{
+                     S0map = *(boundaryModel->getLocalRHS());
+                     break;
+                   }
+        }
+        int buff2 = std::pow(buff, 2);
+        EMap<EMatrix> Smap(S->getValues()->data() + (*itFace)*buff2, buff, buff);
+        switch(modAssembly->rhs){
+          case Add:{
+                     Smap += *(boundaryModel->getLocalMatrix());
+                     break;
+                   }
+          case Set:{
+                     Smap = *(boundaryModel->getLocalMatrix());
+                     break;
+                   }
+        }
+      }
+      if(verbose){
+        index += 1;
+        pb.update();
+      }
+    }
+    if(myOpts.type != SEXPLICIT){
+      linSystem->assemble();
+    }
   }
   assembled = 1;
 };//assemble
