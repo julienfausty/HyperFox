@@ -177,6 +177,7 @@ void runCGBurgers(SimRun * thisRun){
   mySolver.setModel(&transportMod);
   mySolver.setBoundaryModel(&dirMod);
   NonLinearWrapper wrapper;
+  wrapper.setVerbosity(false);
   wrapper.setMaxIterations(50);
   wrapper.setSolutionFields(&sol, &buffSol);
   wrapper.setSolver(&mySolver);
@@ -199,9 +200,9 @@ void runCGBurgers(SimRun * thisRun){
     writeDir += "Misc/";
   }
   writeDir += meshName + "_dt-" + thisRun->timeStep;
-  if(zPart.getRank() == 0){
-    boost::filesystem::create_directory(writeDir);
-  }
+  //if(zPart.getRank() == 0){
+    //boost::filesystem::create_directory(writeDir);
+  //}
   hdfio.setField("Solution", &sol);
   hdfio.setField("Analytical", &anaSol);
   hdfio.setField("Residual", &residual);
@@ -241,7 +242,7 @@ void runCGBurgers(SimRun * thisRun){
   zPart.computePartition();
   zPart.update();
   //first output
-  hdfio.write(writeDir + "/res_0.h5");
+  //hdfio.write(writeDir + "/res_0.h5");
   //allocating and last set ups
   ts.setTimeStep(timeStep);
   transportMod.setTimeScheme(&ts);
@@ -253,11 +254,11 @@ void runCGBurgers(SimRun * thisRun){
   thisRun->setup = end - start;
   //time iteration
   int i;
-  ProgressBar pbar;
-  pbar.setIterIndex(&i);
-  pbar.setNumIterations(nIters);
-  std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
-  pbar.update();
+  //ProgressBar pbar;
+  //pbar.setIterIndex(&i);
+  //pbar.setNumIterations(nIters);
+  //std::cout << "Simulation (d=" + thisRun->dim + ", h=" + thisRun->meshSize + ", p=" + thisRun->order + ", dt=" + thisRun->timeStep + ")" << std::endl;
+  //pbar.update();
   for(i = 0; i < nIters; i++){
     //compute necessary fields
     t += timeStep;
@@ -329,12 +330,12 @@ void runCGBurgers(SimRun * thisRun){
     //double quot = 0.0;
     double rem = quot - ((int)quot);
     //std::cout << "rem: " << rem << std::endl;
-    if(rem < timeStep/(5e-3)){
-      hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
-    }
+    //if(rem < timeStep/(5e-3)){
+      //hdfio.write(writeDir + "/res_" + std::to_string(i+1) + ".h5");
+    //}
     end = std::chrono::high_resolution_clock::now();
     thisRun->post += end - start;
-    pbar.update();
+    //pbar.update();
     if(thisRun->l2Err > 1.0){
       break;
     }
@@ -348,12 +349,12 @@ TEST_CASE("Testing regression cases for the BurgersModel", "[regression][CG][Bur
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"7e-2"};
-  //meshSizes["2"] = {"2e-1", "1e-1"};
+  //meshSizes["2"] = {"7e-2"};
+  meshSizes["2"] = {"2e-1", "1e-1"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-3"};
-  //std::vector<std::string> orders = {"1", "2"};
-  std::vector<std::string> orders = {"3"};
+  std::vector<std::string> timeSteps = {"1e-2", "5e-3"};
+  std::vector<std::string> orders = {"1", "2"};
+  //std::vector<std::string> orders = {"3"};
   std::vector<std::string> rkTypes = {"BEuler"};
   std::vector<SimRun> simRuns;
   for(auto it = meshSizes.begin(); it != meshSizes.end(); it++){
@@ -397,11 +398,11 @@ TEST_CASE("Testing regression cases for the BurgersModel", "[regression][CG][Bur
   //writePath += std::to_string(nParts) + "/";
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  std::ofstream f;
-  if(rank == 0){
-    f.open(writePath + writeFile);
-    f << "dim, order, h, linAlgErr, l2Err, dL2Err, avgRuntime, maxRuntime, minRuntime\n" << std::flush;
-  }
+  //std::ofstream f;
+  //if(rank == 0){
+    //f.open(writePath + writeFile);
+    //f << "dim, order, h, linAlgErr, l2Err, dL2Err, avgRuntime, maxRuntime, minRuntime\n" << std::flush;
+  //}
   for(auto it = simRuns.begin(); it != simRuns.end(); it++){
     std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
     runCGBurgers(&(*it));
@@ -414,21 +415,21 @@ TEST_CASE("Testing regression cases for the BurgersModel", "[regression][CG][Bur
     MPI_Allreduce(&timeBuff, &minRuntime, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(&timeBuff, &avgRuntime, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     avgRuntime /= nParts;
-    if(rank == 0){
-      f << it->dim << ", ";
-      f << it->order << ", ";
-      f << it->meshSize << ", ";
-      f << it->linAlgErr << ", ";
-      f << it->l2Err << ", ";
-      f << it->dL2Err << ", ";
-      f << avgRuntime << ", ";
-      f << maxRuntime << ", ";
-      f << minRuntime << "\n";
-      f << std::flush;
-    }
+    //if(rank == 0){
+      //f << it->dim << ", ";
+      //f << it->order << ", ";
+      //f << it->meshSize << ", ";
+      //f << it->linAlgErr << ", ";
+      //f << it->l2Err << ", ";
+      //f << it->dL2Err << ", ";
+      //f << avgRuntime << ", ";
+      //f << maxRuntime << ", ";
+      //f << minRuntime << "\n";
+      //f << std::flush;
+    //}
   }
-  if(rank == 0){
-    f << std::endl;
-    f.close();
-  }
+  //if(rank == 0){
+    //f << std::endl;
+    //f.close();
+  //}
 };

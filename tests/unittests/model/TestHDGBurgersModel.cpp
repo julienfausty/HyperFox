@@ -23,6 +23,7 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
         std::map<std::string, std::vector<double> > fm;
         CHECK_THROWS(mod.setFieldMap(&fm));
         fm["Solution"] = std::vector<double>(refEl.getNumNodes()*(i+1), 1.0);
+        fm["BufferSolution"] = std::vector<double>(refEl.getNumNodes()*(i+1), 1.0);
         CHECK_THROWS(mod.setFieldMap(&fm));
         fm["Tau"] = std::vector<double>(refEl.getNumFaces() * (refEl.getFaceElement()->getNumNodes()) * std::pow(i+1, 2), 1.0);
         CHECK_THROWS(mod.setFieldMap(&fm));
@@ -55,6 +56,7 @@ TEST_CASE("Testing the HDGBurgersModel", "[unit][model][HDGBurgersModel]"){
       }
       fm["Tau"] = tau;
       fm["Solution"] = sol;
+      fm["BufferSolution"] = sol;
       fm["DiffusionTensor"] = diff;
       fm["Trace"] = trace;
       mod.setFieldMap(&fm);

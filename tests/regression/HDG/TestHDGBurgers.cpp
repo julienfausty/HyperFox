@@ -450,10 +450,10 @@ TEST_CASE("Testing regression cases for the HDGBurgersModel", "[regression][HDG]
   //meshSizes["3"] = {"3e-1", "2e-1", "1e-1"};
   //meshSizes["2"] = {"3e-1", "2e-1", "1e-1", "7e-2", "5e-2"};
   //meshSizes["3"] = {"3e-1"};
-  meshSizes["2"] = {"1e-1", "7e-2", "5e-2"};
+  meshSizes["2"] = {"2e-1", "1e-1"};
   //meshSizes["2"] = {"7e-2"};
   //std::vector<std::string> timeSteps = {"1e-2", "5e-3", "2e-3", "1e-3", "5e-4", "2e-4", "1e-4", "5e-5", "2e-5"};
-  std::vector<std::string> timeSteps = {"1e-2", "5e-3", "1e-3", "5e-4", "2e-4"};
+  std::vector<std::string> timeSteps = {"1e-2"};
   //std::vector<std::string> timeSteps = {"1e-3"};
   std::vector<std::string> orders = {"1", "2", "3"};
   //std::vector<std::string> orders = {"3"};

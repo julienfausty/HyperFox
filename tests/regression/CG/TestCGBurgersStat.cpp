@@ -136,7 +136,7 @@ void runCGBurgersStat(SimRun * thisRun){
   BurgersModel transportMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
   myOpts.maxits = 10000;
-  myOpts.rtol = 1e-20;
+  myOpts.rtol = 1e-10;
   myOpts.verbose = false;
   PetscInterface petsciface(myOpts);
   CGSolver mySolver;
