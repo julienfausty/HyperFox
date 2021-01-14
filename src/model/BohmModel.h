@@ -33,7 +33,10 @@ class BohmModel : public FEModel{
     /*!
      * \brief set the transfer function
      */
-    void setTransferFunction(std::function<double(double, double)> tf){transferFunction = tf;};
+    void setTransferFunction(std::function<double(double, double)> tf, std::function<std::vector<double>(double, double)> derivTf){
+      transferFunction = tf; 
+      derivTransferFunction = derivTf;
+    };
   protected:
     /*!
      * \brief initialize all the operators for the class
@@ -51,6 +54,14 @@ class BohmModel : public FEModel{
      * \brief transfer function
      */
     std::function<double(double, double)> transferFunction;
+    /*!
+     * \brief the vector derivative of the transfer function
+     */
+    std::function<std::vector<double>(double, double)> derivTransferFunction;
+    /*!
+     * \brief originalNonDerived part of the system
+     */
+    EMatrix originalSystem;
 
 };//BohmModel
 
