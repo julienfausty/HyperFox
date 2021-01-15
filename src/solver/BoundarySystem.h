@@ -4,7 +4,7 @@
 #include <set>
 #include <vector>
 #include <tuple>
-#include "FEModel.h"
+#include "BoundaryModel.h"
 
 namespace hfox{
 
@@ -15,7 +15,7 @@ namespace hfox{
  * for the Solver class.
  */
 
-typedef std::vector< std::tuple<FEModel*, const std::set<int> * > > BoundaryConditionList;
+typedef std::vector< std::tuple<BoundaryModel*, const std::set<int> * > > BoundaryConditionList;
 
 class BoundarySystem{
 
@@ -32,7 +32,7 @@ class BoundarySystem{
      * @param bModel a model to set on the boundary as a boundary condition
      * @param faces a pointer to a set of face indeces that constitute the boundary
      */
-    void setBoundaryCondition(FEModel * bModel, const std::set<int> * faces);
+    void setBoundaryCondition(BoundaryModel * bModel, const std::set<int> * faces);
 
     /*!
      * \brief a method to get a constant pointer to the boundary list

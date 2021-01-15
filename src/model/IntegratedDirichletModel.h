@@ -1,7 +1,7 @@
 #ifndef INTEGRATEDDIRICHLETMODEL_H
 #define INTEGRATEDDIRICHLETMODEL_H
 
-#include "FEModel.h"
+#include "BoundaryModel.h"
 #include "Mass.h"
 
 namespace hfox{
@@ -14,13 +14,13 @@ namespace hfox{
  * in Element
  */
 
-class IntegratedDirichletModel : public FEModel{
+class IntegratedDirichletModel : public BoundaryModel{
 
   public:
     /*!
      * \brief constructor inheritance
      */
-    using FEModel::FEModel;
+    using BoundaryModel::BoundaryModel;
     /*!
      * \brief a method to set the local fields
      *

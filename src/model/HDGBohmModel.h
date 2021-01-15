@@ -1,8 +1,8 @@
-#ifndef BOHMMODEL_H
-#define BOHMMODEL_H
+#ifndef HDGBOHMMODEL_H
+#define HDGBOHMMODEL_H
 
 #include <functional>
-#include "FEModel.h"
+#include "BoundaryModel.h"
 #include "Mass.h"
 
 namespace hfox{
@@ -13,13 +13,13 @@ namespace nGamma{
  * \brief A model that implements a Bohm-Chodura like boundary for an nGamma system
  */
 
-class BohmModel : public FEModel{
+class HDGBohmModel : public BoundaryModel{
 
   public:
     /*!
      * \brief constructor inheritance
      */
-    using FEModel::FEModel;
+    using BoundaryModel::BoundaryModel;
     /*!
      * \brief a method to set the local fields
      *
@@ -63,10 +63,10 @@ class BohmModel : public FEModel{
      */
     EMatrix originalSystem;
 
-};//BohmModel
+};//HDGBohmModel
 
 };//nGamma
 
 };//hfox
 
-#endif//BOHMMODEL_H
+#endif//HDGBOHMMODEL_H

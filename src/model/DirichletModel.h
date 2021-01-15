@@ -1,7 +1,7 @@
 #ifndef DIRICHLETMODEL_H
 #define DIRICHLETMODEL_H
 
-#include "FEModel.h"
+#include "BoundaryModel.h"
 
 namespace hfox{
 
@@ -9,13 +9,13 @@ namespace hfox{
  * \brief A model that implements Dirichlet boundary conditions: u = u_d in Element
  */
 
-class DirichletModel : public FEModel{
+class DirichletModel : public BoundaryModel{
 
   public:
     /*!
      * \brief constructor inheritance
      */
-    using FEModel::FEModel;
+    using BoundaryModel::BoundaryModel;
     /*!
      * \brief a method to set the local fields
      *

@@ -1,10 +1,10 @@
-#include "BohmModel.h"
+#include "HDGBohmModel.h"
 
 namespace hfox{
 
 namespace nGamma{
 
-void BohmModel::setFieldMap(const std::map<std::string, std::vector<double> > * fm){
+void HDGBohmModel::setFieldMap(const std::map<std::string, std::vector<double> > * fm){
   std::map<std::string, std::vector<double> >::const_iterator it;
   for(it = fm->begin(); it != fm->end(); it++){
     if(it->first == "b"){
@@ -12,8 +12,8 @@ void BohmModel::setFieldMap(const std::map<std::string, std::vector<double> > * 
     }
   }
   if(fieldMap.find("b") == fieldMap.end()){
-    throw(ErrorHandle("BohmModel", "setFieldMap", 
-          "need to give a field named b to the BohmModel"));
+    throw(ErrorHandle("HDGBohmModel", "setFieldMap", 
+          "need to give a field named b to the HDGBohmModel"));
   }
   for(it = fm->begin(); it != fm->end(); it++){
     if(it->first == "SoundVelocity"){
@@ -21,8 +21,8 @@ void BohmModel::setFieldMap(const std::map<std::string, std::vector<double> > * 
     }
   }
   if(fieldMap.find("SoundVelocity") == fieldMap.end()){
-    throw(ErrorHandle("BohmModel", "setFieldMap", 
-          "need to give a field named SoundVelocity to the BohmModel"));
+    throw(ErrorHandle("HDGBohmModel", "setFieldMap", 
+          "need to give a field named SoundVelocity to the HDGBohmModel"));
   }
   for(it = fm->begin(); it != fm->end(); it++){
     if(it->first == "ExteriorNormals"){
@@ -30,8 +30,17 @@ void BohmModel::setFieldMap(const std::map<std::string, std::vector<double> > * 
     }
   }
   if(fieldMap.find("ExteriorNormals") == fieldMap.end()){
-    throw(ErrorHandle("BohmModel", "setFieldMap", 
-          "need to give a field named ExteriorNormals to the BohmModel"));
+    throw(ErrorHandle("HDGBohmModel", "setFieldMap", 
+          "need to give a field named ExteriorNormals to the HDGBohmModel"));
+  }
+  for(it = fm->begin(); it != fm->end(); it++){
+    if(it->first == "Solution"){
+      fieldMap[it->first] = &(it->second);
+    }
+  }
+  if(fieldMap.find("Solution") == fieldMap.end()){
+    throw(ErrorHandle("HDGBohmModel", "setFieldMap", 
+          "need to give a field named Solution to the HDGBohmModel"));
   }
   for(it = fm->begin(); it != fm->end(); it++){
     if(it->first == "Trace"){
@@ -39,8 +48,8 @@ void BohmModel::setFieldMap(const std::map<std::string, std::vector<double> > * 
     }
   }
   if(fieldMap.find("Trace") == fieldMap.end()){
-    throw(ErrorHandle("BohmModel", "setFieldMap", 
-          "need to give a field named Trace to the BohmModel"));
+    throw(ErrorHandle("HDGBohmModel", "setFieldMap", 
+          "need to give a field named Trace to the HDGBohmModel"));
   }
   for(it = fm->begin(); it != fm->end(); it++){
     if(it->first == "Flux"){
@@ -48,15 +57,20 @@ void BohmModel::setFieldMap(const std::map<std::string, std::vector<double> > * 
     }
   }
   if(fieldMap.find("Flux") == fieldMap.end()){
-    throw(ErrorHandle("BohmModel", "setFieldMap", 
-          "need to give a field named Flux to the BohmModel"));
+    throw(ErrorHandle("HDGBohmModel", "setFieldMap", 
+          "need to give a field named Flux to the HDGBohmModel"));
   }
   fieldSet = 1;
 };//setFieldMap
 
-void BohmModel::allocate(int nDOFsPerNode){
+void HDGBohmModel::allocate(int nDOFsPerNode){
+  if(nDOFsPerNode != 2){
+    throw(ErrorHandle("HDGBohmModel", "allocate", 
+          "the number of degrees of freedom per node must be 2"));
+  }
   assembly.matrix = Set;
   assembly.rhs = Set;
+  myType = HDGType;
   initializeOperators();
   localMatrix = EMatrix::Zero(nDOFsPerNode*refEl->getNumNodes(), nDOFsPerNode*refEl->getNumNodes()*4);
   originalSystem = localMatrix;
@@ -67,16 +81,16 @@ void BohmModel::allocate(int nDOFsPerNode){
   allocated = 1;
 };//allocate
 
-void BohmModel::initializeOperators(){
+void HDGBohmModel::initializeOperators(){
 };//initializeOperators
 
-void BohmModel::computeLocalMatrix(){
+void HDGBohmModel::computeLocalMatrix(){
   if(!(fieldSet and allocated)){
-    throw(ErrorHandle("BohmModel", "computeLocalMatrix", 
+    throw(ErrorHandle("HDGBohmModel", "computeLocalMatrix", 
           "the fields should be set and the object allocated before computing."));
   }
   if(!transferFunction){
-    throw(ErrorHandle("BohmModel", "computeLocalMatrix", 
+    throw(ErrorHandle("HDGBohmModel", "computeLocalMatrix", 
           "the transfer function should be set before computing."));
   }
   jacobians = Operator::calcJacobians(*elementNodes, refEl);
@@ -102,7 +116,7 @@ void BohmModel::computeLocalMatrix(){
   EMatrix bMat = EMatrix::Zero(2, nNodes);
   EMatrix tMat = EMatrix::Zero(2, nNodes);
   EMatrix qMat = EMatrix::Zero(4, nNodes);
-  EMap<const EVector> soundSpeedVec(fieldMap["SoundSpeed"]->data(), fieldMap["SoundSpeed"]->size());
+  EMap<const EVector> soundSpeedVec(fieldMap["SoundVelocity"]->data(), fieldMap["SoundVelocity"]->size());
   EVector vecBuff = EVector::Zero(2);
   EMatrix matBuff;
   //setup
@@ -112,7 +126,7 @@ void BohmModel::computeLocalMatrix(){
     tMat.col(ndof) = EMap<const EVector>(fieldMap["Trace"]->data() + ndof*2, 2);
     qMat.col(ndof) = EMap<const EVector>(fieldMap["Flux"]->data() + ndof*4, 4);
   }
-  for(int ip = 0; ip < refEl->getNumIPs(); ip++){
+  for(int ip = 0; ip < nIPs; ip++){
     EMap<const EVector> shapeVec(shapes->at(ip).data(), shapes->at(ip).size());
     normals[ip] = normalMat * shapeVec;
     ipSoundSpeed[ip] = shapeVec.dot(soundSpeedVec);
@@ -132,8 +146,10 @@ void BohmModel::computeLocalMatrix(){
     for(int ndof = 0; ndof < nNodes; ndof++){
       for(int mdof = 0; mdof < nNodes; mdof++){
         dbuff = dV[ip]*(shapes->at(ip)[ndof])*(shapes->at(ip)[mdof]);
+        originalSystem(mdof*2, ndof*2) += dbuff;
+        originalSystem(mdof*2, nNodes*6 + ndof*2) -= dbuff;
         for(int d = 0; d < 2; d++){
-          originalSystem(mdof*2, nNodes + (ndof*2 + d)*2) += dbuff*normals[ip][d];
+          originalSystem(mdof*2, 2*nNodes + (ndof*2 + d)*2) += dbuff*normals[ip][d];
         }
       }
     }
@@ -144,14 +160,14 @@ void BohmModel::computeLocalMatrix(){
       for(int mdof = 0; mdof < nNodes; mdof++){
         dbuff = dV[ip]*(shapes->at(ip)[ndof])*(shapes->at(ip)[mdof]);
         //neumann
+        originalSystem(mdof*2 + 1, ndof*2 + 1) += (1-transferVals[ip])*dbuff;
+        originalSystem(mdof*2 + 1, nNodes*6 + ndof*2 + 1) -= (1-transferVals[ip])*dbuff;
         for(int d = 0; d < 2; d++){
-          originalSystem(mdof*2 + 1, nNodes + (ndof*2 + d)*2 + 1) += (1-transferVals[ip])*dbuff*normals[ip][d];
+          originalSystem(mdof*2 + 1, 2*nNodes + (ndof*2 + d)*2 + 1) += (1-transferVals[ip])*dbuff*normals[ip][d];
         }
         //dirichlet
         originalSystem(mdof*2 + 1, nNodes*6 + ndof*2) -= transferVals[ip]*dbuff*ipSoundSpeed[ip]*std::abs(bdotN[ip]);
         originalSystem(mdof*2 + 1, nNodes*6 + ndof*2 + 1) += transferVals[ip]*dbuff*bdotN[ip];
-        //add in original system to matrix
-        localMatrix += originalSystem;
         //mixed
         dirichlet = dbuff*(traces[ip][1]*bdotN[ip] - traces[ip][0]*ipSoundSpeed[ip]*std::abs(bdotN[ip]));
         neumann = dbuff*normals[ip].dot(fluxes[ip].row(1));
@@ -160,20 +176,23 @@ void BohmModel::computeLocalMatrix(){
       }
     }
   }
+  //add in original system to matrix
+  localMatrix += originalSystem;
 };//computeLocalMatrix
 
 
-void BohmModel::computeLocalRHS(){
+void HDGBohmModel::computeLocalRHS(){
   if(!(allocated and fieldSet)){
-    throw(ErrorHandle("BohmModel", "computeLocalRHS", 
+    throw(ErrorHandle("HDGBohmModel", "computeLocalRHS", 
           "the fields should be set and the object allocated before computing."));
   }
   if(!transferFunction){
-    throw(ErrorHandle("BohmModel", "computeLocalRHS", 
+    throw(ErrorHandle("HDGBohmModel", "computeLocalRHS", 
           "the transfer function should be set before computing."));
   }
   EVector U0 = EVector::Zero(localMatrix.cols());
   int nNodes = refEl->getNumNodes();
+  U0.segment(0, nNodes*2) = EMap<const EVector>(fieldMap["Solution"]->data(), fieldMap["Solution"]->size());
   U0.segment(nNodes*2, nNodes*4) = EMap<const EVector>(fieldMap["Flux"]->data(), fieldMap["Flux"]->size());
   U0.segment(nNodes*6, nNodes*2) = EMap<const EVector>(fieldMap["Trace"]->data(), fieldMap["Trace"]->size());
   localRHS = (localMatrix - originalSystem)*U0;
