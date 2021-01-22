@@ -438,7 +438,7 @@ void HDGSolver::assemble(){
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> boundaryT(
         nNodesPFc*nDOFsPerNode, 
         nNodesPFc*nDOFsPerNode);
-    EVector bRHS(nNodesPFc*nDOFsPerNode, 0);
+    EVector bRHS(nNodesPFc*nDOFsPerNode);
     const std::set<int> * boundaryFaces = std::get<1>(bSystem.getBoundaryList()->at(iBoundary));
     std::set<int>::const_iterator itFace;
     int locCellInd;
@@ -481,11 +481,9 @@ void HDGSolver::assemble(){
       if(part != NULL){
         locFaceInd = part->global2LocalFace(*itFace);
       }
-      std::cout << "at boundary face " << *itFace << std::endl;
       myMesh->getFace(locFaceInd, &cell);
       myMesh->getFace2Cell(locFaceInd, &face2Cells);
       for(int iEl = 0; iEl < face2Cells.size(); iEl++){      
-        std::cout << "at element " << face2Cells[iEl] << " side" << std::endl;
         unitCell[0] = *itFace;
         if(part == NULL){
           myMesh->getSlicePoints(cell, &nodes);
@@ -517,7 +515,6 @@ void HDGSolver::assemble(){
             myMesh->getGhostCell(face2Cells[iEl], &elementCell);
           }
         }
-        std::cout << "constructing full field map " << std::endl;
         boundaryModel->setElementNodes(&nodes);
         for(itfm = nodalFieldMap.begin(); itfm != nodalFieldMap.end(); itfm++){locFieldMap[itfm->first] = itfm->second;}
         for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){locFieldMap[itfm->first] = itfm->second;}
@@ -526,12 +523,10 @@ void HDGSolver::assemble(){
             elementFacesCell[j*nNodesPFc + i] = elementCell[nodeMap->at(j)[i]];
           }
         }
-        std::cout << "constructing cell-face maps " << std::endl;
         for(int i = 0; i < nNodesPFc; i++){
           cell2FaceMap[i] = std::distance(elementCell.begin(), (std::find(elementCell.begin(), elementCell.end(), cell[i])));
           cellFaces2FaceMap[i] = std::distance(elementFacesCell.begin(), (std::find(elementFacesCell.begin(), elementFacesCell.end(), cell[i])));
         }
-        std::cout << "constructing face values of cell" << std::endl;
         for(itfm = cellFieldMap.begin(); itfm != cellFieldMap.end(); itfm++){
           int len = itfm->second.size()/(nNodesPEl);
           locFieldMap[itfm->first].resize(nNodesPFc*len);
@@ -539,11 +534,8 @@ void HDGSolver::assemble(){
             std::copy(itfm->second.begin() + cell2FaceMap[i]*len, itfm->second.begin() + (cell2FaceMap[i]+1)*len, locFieldMap[itfm->first].begin() + i*len);
           }
         }
-        std::cout << "setting field map" << std::endl;
         boundaryModel->setFieldMap(&locFieldMap);
-        std::cout << "set field map" << std::endl;
         boundaryModel->compute();
-        std::cout << "computed" << std::endl;
         if(boundaryModel->getBoundaryModelType() == CGType){
           boundaryT = *(boundaryModel->getLocalMatrix());
           bRHS = *(boundaryModel->getLocalRHS());
@@ -580,7 +572,6 @@ void HDGSolver::assemble(){
         } else {
           throw(ErrorHandle("HDGSolver", "assemble", "the boundary type must be CG or HDG"));
         }
-        std::cout << "finished bRHS and boundaryT" << std::endl;
         if(myOpts.type != SEXPLICIT){
           std::iota(matRowCols.begin(), matRowCols.end(), (*itFace)*(matRowCols.size()));
           switch(modAssembly->matrix){
