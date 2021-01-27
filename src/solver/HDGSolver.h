@@ -45,6 +45,18 @@ class HDGSolver : public Solver{
      */
     void calcSparsityPattern();
     /*!
+     * \brief a method to calculate the elemental matrices
+     */
+    void calcElementalMatrices();
+    /*!
+     * \brief a method that applies boundary conditions to the elemental matrices
+     */
+    void applyBoundaryConditions();
+    /*!
+     * \brief assemble the linear system from S and S0
+     */
+    void assembleSystem();
+    /*!
      * \brief a pointer to a field holding the values of the face to bulk operator for the solution
      */
     Field * U = NULL;
