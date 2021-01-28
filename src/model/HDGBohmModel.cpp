@@ -97,6 +97,7 @@ void HDGBohmModel::computeLocalMatrix(){
   invJacobians = Operator::calcInvJacobians(jacobians);
   dV = Operator::calcMeasure(Operator::calcDetJacobians(jacobians), refEl);
   localMatrix = EMatrix::Zero(localMatrix.rows(), localMatrix.cols());
+  originalSystem = EMatrix::Zero(originalSystem.rows(), originalSystem.cols());
   //refEl data
   int nNodes = refEl->getNumNodes();
   int nIPs = refEl->getNumIPs();
