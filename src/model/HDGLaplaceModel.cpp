@@ -4,7 +4,7 @@ namespace hfox{
 
 void HDGLaplaceModel::allocate(int nDOFsPerNode){
   assembly.matrix = Add;
-  assembly.rhs = None;
+  assembly.rhs = Add;
   HDGModel::allocate(nDOFsPerNode);
 };//allocate
 

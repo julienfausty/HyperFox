@@ -1010,7 +1010,7 @@ void HDGSolver::assembleSystem(){
     std::cout << "Assembly - Element loop (nElements = " << myMesh->getNumberCells() << ", nNodes/El = " << nNodesPEl << "):" << std::endl;
     pb.update();
   }
-  for(iEl = 0; iEl < myMesh->getNumberCells(); iEl++){
+  for(iEl = 0; iEl < myMesh->getNumberCells(); iEl++){ 
     //compute indexes
     myMesh->getCell(iEl, &cell);
     myMesh->getCell2Face(iEl, &facesInCell);
@@ -1044,13 +1044,6 @@ void HDGSolver::assembleSystem(){
     locS = locSStored;
     EMap<EVector> locS0Stored(S0->getValues()->data() + iEl*lenL, lenL);
     locS0 = locS0Stored;
-    std::cout << "matRowCols" << std::endl;
-    for(int k = 0; k < matRowCols.size(); k++){std::cout << matRowCols[k] << " ";}
-    std::cout << std::endl;
-    std::cout << "locS" << std::endl;
-    std::cout << locS << std::endl;
-    std::cout << "locS0" << std::endl;
-    std::cout << locS0 << std::endl;
     if((myOpts.type == IMPLICIT) or (myOpts.type == WEXPLICIT)){
       switch(modAssembly->matrix){
         case Add:{
