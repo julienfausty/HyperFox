@@ -22,7 +22,7 @@ def readGroup(grp):
 
 dirName = '../ressources/meshes/regression/'
 
-meshName = 'regression_dim-2_h-7e-2_ord-4.h5'
+meshName = 'regression_dim-2_h-7e-2_ord-2.h5'
 
 f = h5py.File(dirName + meshName, 'r')
 

@@ -387,6 +387,7 @@ void HDGSolver::applyBoundaryConditions(){
   std::vector< std::vector<double> > nodes(nNodesPFc, std::vector<double>(dim, 0.0));
   std::vector<int> cell2FaceMap(nNodesPFc);
   std::set<int>::const_iterator itFace;
+  std::vector<double> fieldBuffer;
   int locCellInd;
   int locFaceInd;
   int locFaceInEl;
@@ -444,6 +445,17 @@ void HDGSolver::applyBoundaryConditions(){
           }
         }
         boundaryModel->setElementNodes(&nodes);
+        if(myOpts.doubleValuedTau){
+          int matLen = std::pow(nDOFsPerNode, 2);
+          fieldBuffer.resize(faceFieldMap["Tau"].size()/2, 0.0);
+          for(int j = 0; j < nNodesPFc; j++){
+            int buff = j*matLen;
+            for(int k = 0; k < matLen; k++){
+              fieldBuffer[buff + k] = faceFieldMap["Tau"][buff*2 + iEl*matLen + k];
+            }
+          }
+          faceFieldMap["Tau"] = fieldBuffer;
+        }
         for(itfm = nodalFieldMap.begin(); itfm != nodalFieldMap.end(); itfm++){locFieldMap[itfm->first] = itfm->second;}
         for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){locFieldMap[itfm->first] = itfm->second;}
         for(int i = 0; i < nNodesPFc; i++){

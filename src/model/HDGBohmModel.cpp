@@ -60,6 +60,15 @@ void HDGBohmModel::setFieldMap(const std::map<std::string, std::vector<double> >
     throw(ErrorHandle("HDGBohmModel", "setFieldMap", 
           "need to give a field named Flux to the HDGBohmModel"));
   }
+  for(it = fm->begin(); it != fm->end(); it++){
+    if(it->first == "Tau"){
+      fieldMap[it->first] = &(it->second);
+    }
+  }
+  if(fieldMap.find("Tau") == fieldMap.end()){
+    throw(ErrorHandle("HDGBohmModel", "setFieldMap", 
+          "need to give a field named Tau to the HDGBohmModel"));
+  }
   fieldSet = 1;
 };//setFieldMap
 
@@ -107,6 +116,8 @@ void HDGBohmModel::computeLocalMatrix(){
   std::vector<EVector> normals(nIPs, EVector::Zero(2));
   std::vector<EVector> traces(nIPs, EVector::Zero(2));
   std::vector<EVector> fluxes(nIPs, EMatrix::Zero(2, 2));
+  std::vector<EVector> taus(nIPs, EMatrix::Zero(2, 2));
+  std::vector<EVector> solution(nIPs, EVector::Zero(2));
   std::vector<double> ipSoundSpeed(nIPs, 0);
   std::vector<double> bdotN(nIPs, 0);
   double tfInput0, tfInput1;
@@ -117,6 +128,8 @@ void HDGBohmModel::computeLocalMatrix(){
   EMatrix bMat = EMatrix::Zero(2, nNodes);
   EMatrix tMat = EMatrix::Zero(2, nNodes);
   EMatrix qMat = EMatrix::Zero(4, nNodes);
+  EMatrix tauMat = EMatrix::Zero(4, nNodes);
+  EMatrix uMat = EMatrix::Zero(2, nNodes);
   EMap<const EVector> soundSpeedVec(fieldMap["SoundVelocity"]->data(), fieldMap["SoundVelocity"]->size());
   EVector vecBuff = EVector::Zero(2);
   EMatrix matBuff;
@@ -126,6 +139,8 @@ void HDGBohmModel::computeLocalMatrix(){
     bMat.col(ndof) = EMap<const EVector>(fieldMap["b"]->data() + ndof*2, 2);
     tMat.col(ndof) = EMap<const EVector>(fieldMap["Trace"]->data() + ndof*2, 2);
     qMat.col(ndof) = EMap<const EVector>(fieldMap["Flux"]->data() + ndof*4, 4);
+    tauMat.col(ndof) = EMap<const EVector>(fieldMap["Tau"]->data() + ndof*4, 4);
+    uMat.col(ndof) = EMap<const EVector>(fieldMap["Solution"]->data() + ndof*2, 2);
   }
   for(int ip = 0; ip < nIPs; ip++){
     EMap<const EVector> shapeVec(shapes->at(ip).data(), shapes->at(ip).size());
@@ -136,8 +151,11 @@ void HDGBohmModel::computeLocalMatrix(){
     traces[ip] = tMat*shapeVec;
     matBuff = qMat*shapeVec;
     fluxes[ip] = EMap<EMatrix>((matBuff).data(), 2, 2);
-    tfInput0 = traces[ip][1]*bdotN[ip];
-    tfInput1 = traces[ip][0]*ipSoundSpeed[ip]*bdotN[ip];
+    matBuff = tauMat*shapeVec;
+    taus[ip] = EMap<EMatrix>((matBuff).data(), 2, 2);
+    solution[ip] = uMat*shapeVec;
+    tfInput0 = solution[ip][1]*bdotN[ip];
+    tfInput1 = solution[ip][0]*ipSoundSpeed[ip]*bdotN[ip];
     transferVals[ip] = transferFunction(tfInput0, tfInput1);
     transferDerivVals[ip] = derivTransferFunction(tfInput0, tfInput1);
   }
@@ -147,8 +165,10 @@ void HDGBohmModel::computeLocalMatrix(){
     for(int ndof = 0; ndof < nNodes; ndof++){
       for(int mdof = 0; mdof < nNodes; mdof++){
         dbuff = dV[ip]*(shapes->at(ip)[ndof])*(shapes->at(ip)[mdof]);
-        originalSystem(mdof*2, ndof*2) += dbuff;
-        originalSystem(mdof*2, nNodes*6 + ndof*2) -= dbuff;
+        originalSystem(mdof*2, ndof*2) += taus[ip](0,0)*dbuff;
+        originalSystem(mdof*2, ndof*2 + 1) += taus[ip](0,1)*dbuff;
+        originalSystem(mdof*2, nNodes*6 + ndof*2) -= taus[ip](0,0)*dbuff;
+        originalSystem(mdof*2, nNodes*6 + ndof*2 + 1) -= taus[ip](0,1)*dbuff;
         for(int d = 0; d < 2; d++){
           originalSystem(mdof*2, 2*nNodes + (ndof*2 + d)*2) += dbuff*normals[ip][d];
         }
@@ -161,19 +181,25 @@ void HDGBohmModel::computeLocalMatrix(){
       for(int mdof = 0; mdof < nNodes; mdof++){
         dbuff = dV[ip]*(shapes->at(ip)[ndof])*(shapes->at(ip)[mdof]);
         //neumann
-        originalSystem(mdof*2 + 1, ndof*2 + 1) += (1-transferVals[ip])*dbuff;
-        originalSystem(mdof*2 + 1, nNodes*6 + ndof*2 + 1) -= (1-transferVals[ip])*dbuff;
+        originalSystem(mdof*2 + 1, ndof*2) += taus[ip](1, 0)*(1-transferVals[ip])*dbuff;
+        originalSystem(mdof*2 + 1, ndof*2 + 1) += taus[ip](1, 1)*(1-transferVals[ip])*dbuff;
+        originalSystem(mdof*2 + 1, nNodes*6 + ndof*2) -= taus[ip](1, 0)*(1-transferVals[ip])*dbuff;
+        originalSystem(mdof*2 + 1, nNodes*6 + ndof*2 + 1) -= taus[ip](1, 1)*(1-transferVals[ip])*dbuff;
         for(int d = 0; d < 2; d++){
           originalSystem(mdof*2 + 1, 2*nNodes + (ndof*2 + d)*2 + 1) += (1-transferVals[ip])*dbuff*normals[ip][d];
         }
         //dirichlet
-        originalSystem(mdof*2 + 1, nNodes*6 + ndof*2) -= transferVals[ip]*dbuff*ipSoundSpeed[ip]*std::abs(bdotN[ip]);
-        originalSystem(mdof*2 + 1, nNodes*6 + ndof*2 + 1) += transferVals[ip]*dbuff*bdotN[ip];
+        //originalSystem(mdof*2 + 1, nNodes*6 + ndof*2) -= transferVals[ip]*dbuff*ipSoundSpeed[ip]*std::abs(bdotN[ip]);
+        //originalSystem(mdof*2 + 1, nNodes*6 + ndof*2 + 1) += transferVals[ip]*dbuff*bdotN[ip];
+        originalSystem(mdof*2 + 1, ndof*2) -= transferVals[ip]*dbuff*ipSoundSpeed[ip]*std::abs(bdotN[ip]);
+        originalSystem(mdof*2 + 1, ndof*2 + 1) += transferVals[ip]*dbuff*bdotN[ip];
         //mixed
-        dirichlet = dbuff*(traces[ip][1]*bdotN[ip] - traces[ip][0]*ipSoundSpeed[ip]*std::abs(bdotN[ip]));
-        neumann = dbuff*normals[ip].dot(fluxes[ip].row(1));
-        localMatrix(mdof*2 + 1, nNodes*6 + ndof*2) += (ipSoundSpeed[ip]*bdotN[ip]*transferDerivVals[ip][1])*(dirichlet - neumann);
-        localMatrix(mdof*2 + 1, nNodes*6 + ndof*2 + 1) += (bdotN[ip]*transferDerivVals[ip][0])*(dirichlet - neumann);
+        dirichlet = dbuff*(solution[ip][1]*bdotN[ip] - solution[ip][0]*ipSoundSpeed[ip]*std::abs(bdotN[ip]));
+        neumann = dbuff*(normals[ip].dot(fluxes[ip].row(1)) + solution[ip][1] - traces[ip][1]);
+        //localMatrix(mdof*2 + 1, nNodes*6 + ndof*2) += (ipSoundSpeed[ip]*bdotN[ip]*transferDerivVals[ip][1])*(dirichlet - neumann);
+        //localMatrix(mdof*2 + 1, nNodes*6 + ndof*2 + 1) += (bdotN[ip]*transferDerivVals[ip][0])*(dirichlet - neumann);
+        localMatrix(mdof*2 + 1, ndof*2) += (ipSoundSpeed[ip]*bdotN[ip]*transferDerivVals[ip][1])*(dirichlet - neumann);
+        localMatrix(mdof*2 + 1, ndof*2 + 1) += (bdotN[ip]*transferDerivVals[ip][0])*(dirichlet - neumann);
       }
     }
   }
