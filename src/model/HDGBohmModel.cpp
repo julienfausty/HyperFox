@@ -170,7 +170,7 @@ void HDGBohmModel::computeLocalMatrix(){
         originalSystem(mdof*2, nNodes*6 + ndof*2) -= taus[ip](0,0)*dbuff;
         originalSystem(mdof*2, nNodes*6 + ndof*2 + 1) -= taus[ip](0,1)*dbuff;
         for(int d = 0; d < 2; d++){
-          originalSystem(mdof*2, 2*nNodes + (ndof*2 + d)*2) += dbuff*normals[ip][d];
+          originalSystem(mdof*2, 2*nNodes + (ndof*2 + d)*2) -= dbuff*normals[ip][d];
         }
       }
     }
@@ -186,18 +186,14 @@ void HDGBohmModel::computeLocalMatrix(){
         originalSystem(mdof*2 + 1, nNodes*6 + ndof*2) -= taus[ip](1, 0)*(1-transferVals[ip])*dbuff;
         originalSystem(mdof*2 + 1, nNodes*6 + ndof*2 + 1) -= taus[ip](1, 1)*(1-transferVals[ip])*dbuff;
         for(int d = 0; d < 2; d++){
-          originalSystem(mdof*2 + 1, 2*nNodes + (ndof*2 + d)*2 + 1) += (1-transferVals[ip])*dbuff*normals[ip][d];
+          originalSystem(mdof*2 + 1, 2*nNodes + (ndof*2 + d)*2 + 1) -= (1-transferVals[ip])*dbuff*normals[ip][d];
         }
         //dirichlet
-        //originalSystem(mdof*2 + 1, nNodes*6 + ndof*2) -= transferVals[ip]*dbuff*ipSoundSpeed[ip]*std::abs(bdotN[ip]);
-        //originalSystem(mdof*2 + 1, nNodes*6 + ndof*2 + 1) += transferVals[ip]*dbuff*bdotN[ip];
         originalSystem(mdof*2 + 1, ndof*2) -= transferVals[ip]*dbuff*ipSoundSpeed[ip]*std::abs(bdotN[ip]);
         originalSystem(mdof*2 + 1, ndof*2 + 1) += transferVals[ip]*dbuff*bdotN[ip];
         //mixed
         dirichlet = dbuff*(solution[ip][1]*bdotN[ip] - solution[ip][0]*ipSoundSpeed[ip]*std::abs(bdotN[ip]));
-        neumann = dbuff*(normals[ip].dot(fluxes[ip].row(1)) + solution[ip][1] - traces[ip][1]);
-        //localMatrix(mdof*2 + 1, nNodes*6 + ndof*2) += (ipSoundSpeed[ip]*bdotN[ip]*transferDerivVals[ip][1])*(dirichlet - neumann);
-        //localMatrix(mdof*2 + 1, nNodes*6 + ndof*2 + 1) += (bdotN[ip]*transferDerivVals[ip][0])*(dirichlet - neumann);
+        neumann = dbuff*(-normals[ip].dot(fluxes[ip].row(1)) + taus[ip](1,1)*(solution[ip][1] - traces[ip][1]) + taus[ip](1, 0)*(solution[ip][0] - traces[ip][0]));
         localMatrix(mdof*2 + 1, ndof*2) += (ipSoundSpeed[ip]*bdotN[ip]*transferDerivVals[ip][1])*(dirichlet - neumann);
         localMatrix(mdof*2 + 1, ndof*2 + 1) += (bdotN[ip]*transferDerivVals[ip][0])*(dirichlet - neumann);
       }

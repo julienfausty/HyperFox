@@ -472,6 +472,9 @@ void HDGSolver::applyBoundaryConditions(){
         boundaryModel->compute();
         //put in S
         //FROM HERE ON LOCCELLIND MUST NOT BE -1: COMMUNICATION NECESSARY IF IT IS THE CASE (BOUNDARY FACE CANNOT ALSO BE PARTITION BOUNDARY FACES)
+        if(locCellInd == -1){
+          throw(ErrorHandle("HDGSolver", "applyBoundaryConditions", "boundary face is on the partition boundary"));
+        }
         EMap<EMatrix> locU(U->getValues()->data() + locCellInd*lenU*lenL, lenU, lenL);
         EMap<EMatrix> locQ(Q->getValues()->data() + locCellInd*lenQ*lenL, lenQ, lenL);
         EMap<EMatrix> locS(S->getValues()->data() + locCellInd*lenL*lenL, lenL, lenL);
@@ -492,10 +495,6 @@ void HDGSolver::applyBoundaryConditions(){
           locS.block(lenT*locFaceInEl, lenT*locFaceInEl, lenT, lenT) += *(boundaryModel->getLocalMatrix());
           locS0.segment(lenT*locFaceInEl, lenT) += *(boundaryModel->getLocalRHS());
         } else if(boundaryModel->getBoundaryModelType() == HDGType){
-          locCellInd = face2Cells[iEl];
-          if(part != NULL){
-            locCellInd = part->global2LocalElement(face2Cells[iEl]);
-          }
           EMatrix locUFc(lenT, lenL);
           EMatrix locQFc(dim*lenT, lenL);
           EVector locU0Fc(lenT);
@@ -507,8 +506,8 @@ void HDGSolver::applyBoundaryConditions(){
             locQ0Fc.segment(iN*nDOFsPerNode*dim, nDOFsPerNode*dim) = locQ0.segment(cell2FaceMap[iN]*nDOFsPerNode*dim, nDOFsPerNode*dim);
           }
           locS.block(lenT*locFaceInEl, 0, lenT, lenL) += boundaryModel->getLocalMatrix()->block(0, 0, lenT, lenT) *locUFc  + 
-            boundaryModel->getLocalMatrix()->block(0, lenT, lenT, lenT*dim) * locQFc + 
-            boundaryModel->getLocalMatrix()->block(0, lenT*(1+dim), lenT, lenT);
+            boundaryModel->getLocalMatrix()->block(0, lenT, lenT, lenT*dim) * locQFc;
+          locS.block(lenT*locFaceInEl, lenT*locFaceInEl, lenT, lenT) += boundaryModel->getLocalMatrix()->block(0, lenT*(1+dim), lenT, lenT);
           locS0.segment(lenT*locFaceInEl, lenT) += *(boundaryModel->getLocalRHS()) - 
             boundaryModel->getLocalMatrix()->block(0, 0, lenT, lenT)*locU0Fc - 
             boundaryModel->getLocalMatrix()->block(0, lenT, lenT, lenT*dim) * locQ0Fc;
@@ -574,7 +573,7 @@ void HDGSolver::assembleSystem(){
     }
     for(int i = 0; i < nFacesPEl; i++){
       if(part == NULL){
-        myMesh->getFace(facesInCell[i], &face);
+        myMesh->getFace(locFacesInCell[i], &face);
       } else {
         if(locFacesInCell[i] != -1){
           myMesh->getFace(locFacesInCell[i], &face);
