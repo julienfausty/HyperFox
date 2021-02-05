@@ -61,7 +61,9 @@ void runHDGSimulation(SimRun * thisRun){
   std::fill(tau.getValues()->begin(), tau.getValues()->end(), 1.0);
   Field anaSol(&myMesh, Cell, nNodes, 1);
   Field residual(&myMesh, Cell, nNodes, 1);
-  std::vector<Field*> fieldList = {&sol, &flux, &trace, &tau, &anaSol, &dirichlet, &residual};
+  Field partitionE(&myMesh, Cell, nNodes, 1);
+  Field partitionN(&myMesh, Node, 1, 1);
+  std::vector<Field*> fieldList = {&sol, &flux, &trace, &tau, &anaSol, &dirichlet, &residual, &partitionE, &partitionN};
   //calculate analytical solution
   std::vector<double> node(myMesh.getNodeSpaceDimension());
   for(int iCell = 0; iCell < myMesh.getNumberCells(); iCell++){
@@ -85,6 +87,15 @@ void runHDGSimulation(SimRun * thisRun){
   zPart.setFields(fieldList);
   zPart.computePartition();
   zPart.update();
+  //fill partition fields
+  for(int i = 0; i < myMesh.getNumberCells(); i++){
+    for(int k = 0; k < nNodes; k++){
+      partitionE.getValues()->at(i*nNodes + k) = zPart.getRank();
+    }
+  }
+  for(int i = 0; i < myMesh.getNumberPoints(); i++){
+    partitionN.getValues()->at(i) = zPart.getRank();
+  }
   DirichletModel dirMod(myMesh.getReferenceElement()->getFaceElement());
   HDGLaplaceModel lapMod(myMesh.getReferenceElement());
   PetscOpts myOpts;
@@ -124,6 +135,8 @@ void runHDGSimulation(SimRun * thisRun){
   thisRun->dL2Err = errBuff;
   hdfio.setField("Solution", &sol);
   hdfio.setField("Analytical", &anaSol);
+  hdfio.setField("PartitionE", &partitionE);
+  hdfio.setField("PartitionN", &partitionN);
   std::string writePath = "/home/julien/workspace/M2P2/Postprocess/results/parallel/HDG/";
   //hdfio.write(writePath + meshName);
 };
