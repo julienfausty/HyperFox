@@ -185,6 +185,13 @@ class Mesh{
      */
     void getCell2Face(int i, std::vector<int> * cell2Face) const;
     /*!
+     * \brief get the faces of a specific adjacent cell on an adjacent partition
+     *
+     * @param i global index of cell
+     * @param cell2Face pointer to vector to fill with face indexes
+     */
+    void getGhostCell2Face(int i, std::vector<int> * cell2Face) const;
+    /*!
      * \brief get a face to element map
      */
     const std::vector<int> * getFace2CellMap() const;
@@ -195,6 +202,19 @@ class Mesh{
      * @param face2Cell pointer to vector to fill with cell indexes
      */
     void getFace2Cell(int i, std::vector<int> * face2Cell) const;
+    /*!
+     * \brief get the cells adjoining a specific adjacent face on an adjacent partition
+     *
+     * @param i global index of face
+     * @param face2Cell pointer to vector to fill with cell indexes
+     */
+    void getGhostFace2Cell(int i, std::vector<int> * face2Cell) const;
+    /*! \brief A method for geting a const pointer to the ghost face to cell map of the mesh.
+     */
+    const std::vector<int> * getGhostFace2CellMap() const{return &ghostFace2CellMap;};
+    /*! \brief A method for geting a const pointer to the ghost ghost cell to face map of the mesh.
+     */
+    const std::vector<int> * getGhostCell2FaceMap() const{return &ghostCell2FaceMap;};
     /*!
      * \brief get the indexes of the faces on the boundary
      */
@@ -247,6 +267,18 @@ class Mesh{
      */
     template<class T>
     void modifyGhostFaces(Modifier< std::vector<T> > * faceMod){faceMod->modify(&ghostFaces);};
+    /*!
+     * \brief modify mesh ghostFace2CellMap
+     * @param face2CellMod a modifier configured for the ghostFace2CellMap
+     */
+    template<class T>
+    void modifyGhostFace2CellMap(Modifier< std::vector<T> > * face2CellMod){face2CellMod->modify(&ghostFace2CellMap);};
+    /*!
+     * \brief modify mesh ghostCell2FaceMap
+     * @param cell2FaceMod a modifier configured for the ghostCell2FaceMap
+     */
+    template<class T>
+    void modifyGhostCell2FaceMap(Modifier< std::vector<T> > * cell2FaceMod){cell2FaceMod->modify(&ghostCell2FaceMap);};
     /*!
      * \brief update the members after modication
      */
@@ -345,9 +377,17 @@ class Mesh{
      */
     std::vector<int> face2CellMap;
     /*!
+     * \brief the face 2 cell information of adjacent faces held on adjacent partitions (partition globalIndex cellIndexes)
+     */
+    std::vector<int> ghostFace2CellMap;
+    /*!
      * \brief the cell 2 face map
      */
     std::vector<int> cell2FaceMap;
+    /*!
+     * \brief the cell 2 face information of adjacent cells held on adjacent partitions (partition globalIndex faceIndexes)
+     */
+    std::vector<int> ghostCell2FaceMap;
     /*!
      * \brief number of faces per cell
      */

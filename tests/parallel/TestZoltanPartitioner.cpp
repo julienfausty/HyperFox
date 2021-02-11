@@ -266,6 +266,12 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
     std::vector<int> faces(totFaces*(parMesh.getReferenceElement()->getFaceElement()->getNumNodes()));
     std::copy(seqMesh.getFaces()->begin(), seqMesh.getFaces()->end(), faces.begin());
     MPI_Bcast(faces.data(), faces.size(), MPI_INT, 0, MPI_COMM_WORLD);
+    std::vector<int> face2CellMap(totFaces*2);
+    std::copy(seqMesh.getFace2CellMap()->begin(), seqMesh.getFace2CellMap()->end(), face2CellMap.begin());
+    MPI_Bcast(face2CellMap.data(), face2CellMap.size(), MPI_INT, 0, MPI_COMM_WORLD);
+    std::vector<int> cell2FaceMap(totCells*(seqMesh.getReferenceElement()->getNumFaces()));
+    std::copy(seqMesh.getCell2FaceMap()->begin(), seqMesh.getCell2FaceMap()->end(), cell2FaceMap.begin());
+    MPI_Bcast(cell2FaceMap.data(), cell2FaceMap.size(), MPI_INT, 0, MPI_COMM_WORLD);
     int dimSpace = parMesh.getNodeSpaceDimension();
     int nNodesPFace = parMesh.getReferenceElement()->getFaceElement()->getNumNodes();
     int globIndex, locIndex;
@@ -286,12 +292,33 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
             for(int j = 0; j < dimSpace; j++){
               CHECK(point[j] == nodes[cell[k]*dimSpace + j]);
             }
-          } 
+          }
+          CHECK_NOTHROW(parMesh.getGhostFace2Cell(cell2Face[i], &face2Cell));
+          for(int k = 0; k < face2Cell.size(); k++){
+            CHECK(face2Cell[k] == face2CellMap[cell2Face[i]*2 + k]);
+          }
           CHECK_NOTHROW(faceField.getParValues(cell2Face[i], &fVals));
           CHECK(fVals[0] == cell2Face[i]);
           for(int k = 0; k < cell.size(); k++){
             CHECK_NOTHROW(nodeField.getParValues(cell[k], &fVals));
             CHECK(fVals[0] == cell[k]);
+          }
+        }
+      }
+    }
+    std::fill(cell2Face.begin(), cell2Face.end(), 0);
+    std::cout << "ghostCell2FaceMap size: " << parMesh.getGhostCell2FaceMap()->size() << std::endl;
+    for(int k = 0; k < parMesh.getGhostCell2FaceMap()->size(); k++){std::cout << parMesh.getGhostCell2FaceMap()->at(k) << std::endl;}
+    for(int iFace = 0; iFace < parMesh.getNumberFaces(); iFace++){
+      parMesh.getFace2Cell(iFace, &face2Cell);
+      for(int iCell = 0; iCell < face2Cell.size(); iCell++){
+        locIndex = zPart.global2LocalElement(face2Cell[iCell]);
+        if(locIndex == -1){
+          CHECK_NOTHROW(parMesh.getGhostCell2Face(face2Cell[iCell], &cell2Face));
+          std::cout << "cell2Face" << std::endl;
+          for(int k = 0; k < cell2Face.size(); k++){std::cout << cell2Face[k] << std::endl;}
+          for(int k = 0; k < cell2Face.size(); k++){
+            CHECK(cell2Face[k] == cell2FaceMap[face2Cell[iCell]*cell2Face.size() + k]);
           }
         }
       }

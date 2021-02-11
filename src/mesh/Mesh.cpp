@@ -342,6 +342,38 @@ void Mesh::getGhostFace(int i, std::vector<int> * cell) const{
   }
 };//getGhostCell
 
+void Mesh::getGhostFace2Cell(int i, std::vector<int> * face2Cell) const{
+  face2Cell->resize(2, 0);
+  bool found = 0;
+  int nDataP = 4;
+  for(int k = 0; k < ghostFace2CellMap.size()/nDataP; k++){
+    if(ghostFace2CellMap[k*nDataP + 1] == i){
+      face2Cell->assign(ghostFace2CellMap.begin() + k*nDataP + 2, ghostFace2CellMap.begin() + k*nDataP + 4);
+      found = 1;
+      break;
+    }
+  }
+  if(!found){
+    throw(ErrorHandle("Mesh", "getGhostFace2Cell", "face index " + std::to_string(i) + " not found in ghostFace2CellMap"));
+  }
+};//getGhostFace2Cell
+
+void Mesh::getGhostCell2Face(int i, std::vector<int> * cell2Face) const{
+  cell2Face->resize(nFacesPerCell, 0);
+  bool found = 0;
+  int nDataP = 2 + nFacesPerCell;
+  for(int k = 0; k < ghostCell2FaceMap.size()/nDataP; k++){
+    if(ghostCell2FaceMap[k*nDataP + 1] == i){
+      cell2Face->assign(ghostCell2FaceMap.begin() + k*nDataP + 2, ghostCell2FaceMap.begin() + (k+1)*nDataP);
+      found = 1;
+      break;
+    }
+  }
+  if(!found){
+    throw(ErrorHandle("Mesh", "getGhostCell2Face", "cell index " + std::to_string(i) + " not found in ghostCell2FaceMap"));
+  }
+};//getGhostFace2Cell
+
 void Mesh::computeFace2CellMap(moab::Interface * mbInterface, moab::EntityHandle & meshset){
   moab::ErrorCode mbErr;
   moab::Range moabFaces;

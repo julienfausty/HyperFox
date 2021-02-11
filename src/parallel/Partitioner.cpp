@@ -81,6 +81,12 @@ void Partitioner::computeSharedFaces(){
         sharedFaceList.push_back(allSharedFaces[i*4 + k]);
       }
     }
+    //adjEl = global2LocalElement(allSharedFaces[i*4+2]);
+    //if(adjEl != -1){
+      //sharedFaceList.push_back(allSharedFaces[i*4]);
+      //sharedFaceList.push_back(allSharedFaces[i*4 + 1]);
+      //sharedFaceList.push_back(allSharedFaces[i*4 + 3]);
+    //}
   }
 };//computeSharedFaces
 
@@ -676,6 +682,18 @@ void Partitioner::updateSharedInformation(){
     remover.setValues(&ind2Del);
     myMesh->modifyGhostCells(&remover);
   }
+  if(myMesh->getGhostFace2CellMap()->size() != 0){
+    ind2Del.resize(myMesh->getGhostFace2CellMap()->size(), 0);
+    std::iota(ind2Del.begin(), ind2Del.end(), 0);
+    remover.setValues(&ind2Del);
+    myMesh->modifyGhostFace2CellMap(&remover);
+  }
+  if(myMesh->getGhostCell2FaceMap()->size() != 0){
+    ind2Del.resize(myMesh->getGhostCell2FaceMap()->size(), 0);
+    std::iota(ind2Del.begin(), ind2Del.end(), 0);
+    remover.setValues(&ind2Del);
+    myMesh->modifyGhostCell2FaceMap(&remover);
+  }
   for(int i = 0; i < fields.size(); i++){
    fields[i]->getParIds()->clear();
    fields[i]->getParValues()->clear();
@@ -689,6 +707,7 @@ void Partitioner::updateSharedInformation(){
   int nFacesPCell = myMesh->getNumFacesPerCell();
   int nDataPObj;
   for(itMap = importMap.begin(); itMap != importMap.end(); itMap++){
+    //nodes
     nDataPObj = 2 + dimSpace;
     dApp.resize(itMap->second[Node].size()*nDataPObj);
     for(int i = 0; i < itMap->second[Node].size(); i++){
@@ -698,6 +717,7 @@ void Partitioner::updateSharedInformation(){
     }
     dAppender.setValues(&dApp);
     myMesh->modifyGhostNodes(&dAppender);
+    //cells
     nDataPObj = 2 + nNodesPCell;
     iApp.resize(itMap->second[Cell].size()*nDataPObj);
     for(int i = 0; i < itMap->second[Cell].size(); i++){
@@ -707,9 +727,21 @@ void Partitioner::updateSharedInformation(){
     }
     iAppender.setValues(&iApp);
     myMesh->modifyGhostCells(&iAppender);
+    //cell2Face
+    int offset = itMap->second[Cell].size()*(nNodesPCell);
+    nDataPObj = 2 + nFacesPCell;
+    iApp.resize(itMap->second[Cell].size()*nDataPObj);
+    for(int i = 0; i < itMap->second[Cell].size(); i++){
+      iApp[i*nDataPObj] = itMap->first;
+      iApp[i*nDataPObj + 1] = itMap->second[Cell][i];
+      std::copy(iRecvBuffer[itMap->first].begin() + offset + i*nFacesPCell, iRecvBuffer[itMap->first].begin() + offset + (i+1)*nFacesPCell, iApp.begin() + i*nDataPObj + 2);
+    }
+    iAppender.setValues(&iApp);
+    myMesh->modifyGhostCell2FaceMap(&iAppender);
+    //faces
     nDataPObj = 2 + nNodesPFace;
     iApp.resize(itMap->second[Face].size()*nDataPObj);
-    int offset = itMap->second[Cell].size()*(nNodesPCell + nFacesPCell);
+    offset += itMap->second[Cell].size()*(nFacesPCell);
     for(int i = 0; i < itMap->second[Face].size(); i++){
       iApp[i*nDataPObj] = itMap->first;
       iApp[i*nDataPObj + 1] = itMap->second[Face][i];
@@ -717,6 +749,8 @@ void Partitioner::updateSharedInformation(){
     }
     iAppender.setValues(&iApp);
     myMesh->modifyGhostFaces(&iAppender);
+    //face2Cell
+    //fields
     std::vector<FieldType> fts = {Cell, Face, Node};
     offset = itMap->second[Node].size()*dimSpace;
     for(int fti = 0; fti < fts.size(); fti++){
