@@ -307,16 +307,12 @@ TEST_CASE("Testing ZoltanPartitioner class", "[par][unit][parallel][ZoltanPartit
       }
     }
     std::fill(cell2Face.begin(), cell2Face.end(), 0);
-    std::cout << "ghostCell2FaceMap size: " << parMesh.getGhostCell2FaceMap()->size() << std::endl;
-    for(int k = 0; k < parMesh.getGhostCell2FaceMap()->size(); k++){std::cout << parMesh.getGhostCell2FaceMap()->at(k) << std::endl;}
     for(int iFace = 0; iFace < parMesh.getNumberFaces(); iFace++){
       parMesh.getFace2Cell(iFace, &face2Cell);
       for(int iCell = 0; iCell < face2Cell.size(); iCell++){
         locIndex = zPart.global2LocalElement(face2Cell[iCell]);
         if(locIndex == -1){
           CHECK_NOTHROW(parMesh.getGhostCell2Face(face2Cell[iCell], &cell2Face));
-          std::cout << "cell2Face" << std::endl;
-          for(int k = 0; k < cell2Face.size(); k++){std::cout << cell2Face[k] << std::endl;}
           for(int k = 0; k < cell2Face.size(); k++){
             CHECK(cell2Face[k] == cell2FaceMap[face2Cell[iCell]*cell2Face.size() + k]);
           }

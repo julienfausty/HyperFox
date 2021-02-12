@@ -59,6 +59,18 @@ void Partitioner::computeSharedFaces(){
       }
     }
   }
+  for(int i = 0; i < myMesh->getNumberCells(); i++){
+    myMesh->getCell2Face(i, &cell);
+    for(int k = 0; k < cell.size(); k++){
+      localCellInd = global2LocalFace(cell[k]);
+      if(localCellInd == -1){
+        localSharedFaces.push_back(cell[k]);
+        localSharedFaces.push_back(rank);
+        localSharedFaces.push_back(local2GlobalEl(i));
+        localSharedFaces.push_back(-1);
+      }
+    }
+  }
   int nSharedFaces = localSharedFaces.size()/4;
   std::vector<int> nSharedFacesPerProc(nPartitions, 0);
   MPI_Allgather(&nSharedFaces, 1, MPI_INT, nSharedFacesPerProc.data(), 1, MPI_INT, MPI_COMM_WORLD);
@@ -75,18 +87,21 @@ void Partitioner::computeSharedFaces(){
   int adjEl;
   sharedFaceList.resize(0);
   for(int i = 0; i < totNSharedFaces; i++){
-    adjEl = global2LocalElement(allSharedFaces[i*4+3]);
-    if(adjEl != -1){
-      for(int k = 0; k < 3; k++){
-        sharedFaceList.push_back(allSharedFaces[i*4 + k]);
+    if(allSharedFaces[i*4 + 3] != -1){
+      adjEl = global2LocalElement(allSharedFaces[i*4+3]);
+      if(adjEl != -1){
+        for(int k = 0; k < 3; k++){
+          sharedFaceList.push_back(allSharedFaces[i*4 + k]);
+        }
+      }
+    } else {
+      adjEl = global2LocalFace(allSharedFaces[i*4]);
+      if(adjEl != -1){
+        for(int k = 0; k < 3; k++){
+          sharedFaceList.push_back(allSharedFaces[i*4 + k]);
+        }
       }
     }
-    //adjEl = global2LocalElement(allSharedFaces[i*4+2]);
-    //if(adjEl != -1){
-      //sharedFaceList.push_back(allSharedFaces[i*4]);
-      //sharedFaceList.push_back(allSharedFaces[i*4 + 1]);
-      //sharedFaceList.push_back(allSharedFaces[i*4 + 3]);
-    //}
   }
 };//computeSharedFaces
 
@@ -536,13 +551,19 @@ void Partitioner::updateSharedInformation(){
   //if(rank == 0){
     //std::cout << "Updating shared information" << std::endl;
   //}
+  int locF = 0;
   emptyImportExportMaps();
   for(int i = 0; i < sharedFaceList.size()/3; i++){
     if(importMap.find(sharedFaceList[i*3+1]) == importMap.end()){
       importMap[sharedFaceList[i*3+1]] = {{Cell, std::vector<int>()}, {Face, std::vector<int>()}};
     }
-    importMap[sharedFaceList[i*3+1]][Cell].push_back(sharedFaceList[i*3 + 2]);
-    importMap[sharedFaceList[i*3+1]][Face].push_back(sharedFaceList[i*3]);
+    locF = global2LocalFace(sharedFaceList[i*3]);
+    if(locF == -1){
+      importMap[sharedFaceList[i*3+1]][Cell].push_back(sharedFaceList[i*3 + 2]);
+      importMap[sharedFaceList[i*3+1]][Face].push_back(sharedFaceList[i*3]);
+    } else {
+      importMap[sharedFaceList[i*3+1]][Cell].push_back(sharedFaceList[i*3 + 2]);
+    }
   }
   std::vector<int> dimImport(importMap.size() * 4);
   std::map<int, std::map<FieldType, std::vector<int> > >::iterator itMap;
@@ -750,6 +771,16 @@ void Partitioner::updateSharedInformation(){
     iAppender.setValues(&iApp);
     myMesh->modifyGhostFaces(&iAppender);
     //face2Cell
+    nDataPObj = 4;
+    iApp.resize(itMap->second[Face].size()*nDataPObj);
+    offset += itMap->second[Face].size()*(nNodesPFace);
+    for(int i = 0; i < itMap->second[Face].size(); i++){
+      iApp[i*nDataPObj] = itMap->first;
+      iApp[i*nDataPObj + 1] = itMap->second[Face][i];
+      std::copy(iRecvBuffer[itMap->first].begin() + offset + i*2, iRecvBuffer[itMap->first].begin() + offset + (i+1)*2, iApp.begin() + i*nDataPObj + 2);
+    }
+    iAppender.setValues(&iApp);
+    myMesh->modifyGhostFace2CellMap(&iAppender);
     //fields
     std::vector<FieldType> fts = {Cell, Face, Node};
     offset = itMap->second[Node].size()*dimSpace;
