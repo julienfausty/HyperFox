@@ -274,30 +274,33 @@ void HDGSolver::calcElementalMatrices(){
       }
     }
     //check if Tau field is supposed to be double valued and deal with it
-    if(myOpts.doubleValuedTau){
-      fieldBuffer.resize(faceFieldMap["Tau"].size()/2, 0.0);
-      for(int i = 0; i < nFacesPEl; i++){
-        if(part == NULL){
-          myMesh->getFace2Cell(facesInCell[i], &face2Cells);
-        } else {
-          if(locFacesInCell[i] != -1){
-            myMesh->getFace2Cell(locFacesInCell[i], &face2Cells);
+    for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){
+      if(fieldMap->at(itfm->first)->isDoubleValued()){
+        int entLen = *(fieldMap->at(itfm->first)->getNumValsPerObj())/2;
+        fieldBuffer.resize(itfm->second.size()/2, 0.0);
+        for(int i = 0; i < nFacesPEl; i++){
+          if(part == NULL){
+            myMesh->getFace2Cell(facesInCell[i], &face2Cells);
           } else {
-            face2Cells[0] = unitCell[0];
+            if(locFacesInCell[i] != -1){
+              myMesh->getFace2Cell(locFacesInCell[i], &face2Cells);
+            } else {
+              myMesh->getGhostFace2Cell(facesInCell[i], &face2Cells);
+            }
+          }
+          offset = 1;
+          if(unitCell[0] == face2Cells[0]){
+            offset = 0;
+          }
+          for(int j = 0; j < nNodesPFc; j++){
+            buff = (i*nNodesPFc + j)*entLen;
+            for(int k = 0; k < entLen; k++){
+              fieldBuffer[buff + k] = itfm->second[buff*2 + offset*entLen + k];
+            }
           }
         }
-        offset = 1;
-        if(unitCell[0] == face2Cells[0]){
-          offset = 0;
-        }
-        for(int j = 0; j < nNodesPFc; j++){
-          buff = (i*nNodesPFc + j)*matLen;
-          for(int k = 0; k < matLen; k++){
-            fieldBuffer[buff + k] = faceFieldMap["Tau"][buff*2 + offset*matLen + k];
-          }
-        }
+        itfm->second = fieldBuffer;
       }
-      faceFieldMap["Tau"] = fieldBuffer;
     }
     //re order the face fields correctly for local ordering
     for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){
@@ -445,16 +448,18 @@ void HDGSolver::applyBoundaryConditions(){
           }
         }
         boundaryModel->setElementNodes(&nodes);
-        if(myOpts.doubleValuedTau){
-          int matLen = std::pow(nDOFsPerNode, 2);
-          fieldBuffer.resize(faceFieldMap["Tau"].size()/2, 0.0);
-          for(int j = 0; j < nNodesPFc; j++){
-            int buff = j*matLen;
-            for(int k = 0; k < matLen; k++){
-              fieldBuffer[buff + k] = faceFieldMap["Tau"][buff*2 + iEl*matLen + k];
+        for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){
+          if(fieldMap->at(itfm->first)->isDoubleValued()){
+            int entLen = *(fieldMap->at(itfm->first)->getNumValsPerObj())/2;;
+            fieldBuffer.resize(itfm->second.size()/2, 0.0);
+            for(int j = 0; j < nNodesPFc; j++){
+              int buff = j*entLen;
+              for(int k = 0; k < entLen; k++){
+                fieldBuffer[buff + k] = itfm->second[buff*2 + iEl*entLen + k];
+              }
             }
+            itfm->second = fieldBuffer;
           }
-          faceFieldMap["Tau"] = fieldBuffer;
         }
         for(itfm = nodalFieldMap.begin(); itfm != nodalFieldMap.end(); itfm++){locFieldMap[itfm->first] = itfm->second;}
         for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){locFieldMap[itfm->first] = itfm->second;}

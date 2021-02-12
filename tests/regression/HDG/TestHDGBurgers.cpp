@@ -183,6 +183,7 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   Field partition(&myMesh, Node, 1, 1);
   Field diffCoeff(&myMesh, Node, 1, 1);
   Field tau(&myMesh, Face, nNodesPerFace, std::pow(nodeDim, 2)*2);
+  tau.setDoubleValued(true);
   Field anaSol(&myMesh, Cell, nNodesPerEl, nodeDim);
   Field residual(&myMesh, Cell, nNodesPerEl, 1);
   std::vector<Field> rkStages(nStages, Field(&myMesh, Cell, nNodesPerEl, nodeDim));
@@ -216,7 +217,6 @@ void runHDGBurgers(SimRun * thisRun, HDGSolverType globType){
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
   solveOpts.verbosity = false;
-  solveOpts.doubleValuedTau = true;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);

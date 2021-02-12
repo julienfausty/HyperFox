@@ -76,6 +76,7 @@ void runHDGnGammaStat(SimRun * thisRun){
   Field D(&myMesh, Node, 1, 1);
   Field G(&myMesh, Node, 1, 1);
   Field tau(&myMesh, Face, nNodesPerFace, std::pow(nodeDim, 2)*2);
+  tau.setDoubleValued(true);
   Field anaSol(&myMesh, Cell, nNodesPerEl, nodeDim);
   Field residual(&myMesh, Cell, nNodesPerEl, 1);
   //create fieldMap
@@ -103,7 +104,6 @@ void runHDGnGammaStat(SimRun * thisRun){
   HDGSolverOpts solveOpts;
   solveOpts.type = IMPLICIT;
   solveOpts.verbosity = false;
-  solveOpts.doubleValuedTau = true;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);

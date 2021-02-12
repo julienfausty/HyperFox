@@ -103,6 +103,16 @@ class Field {
      * @param vals a pointer to the vector to fill with the vals
      */
     void getParValues(int i, std::vector<double> * vals);
+    /*!
+     * \brief a method to set a field to double valued
+     *
+     * @param doubleValed the boolean to set the doubleValued to
+     */
+    void setDoubleValued(bool doubleValed){doubleValued = doubleValed;};
+    /*!
+     * \brief a method to check if a field is double valued
+     */
+    bool isDoubleValued(){return doubleValued;};
   protected:
     /*!
      * \brief list of values of the field
@@ -136,6 +146,10 @@ class Field {
      * \brief values of the field on objects that are held by another partition
      */
     std::vector<double> parValues;
+    /*!
+     * \brief a boolean value indicating if the field is double valued (only important for Face fields)
+     */
+    bool doubleValued = false;
 };//Field
 
 } //hfox

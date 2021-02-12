@@ -251,6 +251,7 @@ void runnGammaBohmSimulation(SimRun * thisRun, HDGSolverType globType){
   Field G(&myMesh, Node, 1, 1);
   Field c(&myMesh, Node, 1, 1);
   Field tau(&myMesh, Face, nNodesPerFace, std::pow(nodeDim, 2)*2);
+  tau.setDoubleValued(true);
   std::vector<Field> rkStages(nStages, Field(&myMesh, Cell, nNodesPerEl, nodeDim));
   std::vector<Field> rkFluxStages(nStages, Field(&myMesh, Cell, nNodesPerEl, std::pow(nodeDim, 2)));
   std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, nodeDim));
@@ -293,7 +294,6 @@ void runnGammaBohmSimulation(SimRun * thisRun, HDGSolverType globType){
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
   solveOpts.verbosity = false;
-  solveOpts.doubleValuedTau = true;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);

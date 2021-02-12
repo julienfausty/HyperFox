@@ -131,6 +131,7 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   Field diff(&myMesh, Node, 1, 1);
   std::fill(diff.getValues()->begin(), diff.getValues()->end(), D);
   Field tau(&myMesh, Face, nNodesPerFace, 2);
+  tau.setDoubleValued(true);
   Field anaSol(&myMesh, Node, 1, 1);
   Field residual(&myMesh, Cell, nNodes, 1);
   std::map<std::string, Field*> fieldMap;
@@ -161,7 +162,6 @@ void runHDGCDRS(SimRun * thisRun,  HDGSolverType globType){
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
   solveOpts.verbosity = false;
-  solveOpts.doubleValuedTau = true;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);

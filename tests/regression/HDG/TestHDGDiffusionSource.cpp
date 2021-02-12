@@ -126,6 +126,7 @@ void runHDGDiffSrc(SimRun * thisRun, HDGSolverType globType){
   Field oldTrace(&myMesh, Face, nNodesPerFace, 1);
   std::vector<Field> rkTraceStages(nStages, Field(&myMesh, Face, nNodesPerFace, 1));
   Field tau(&myMesh, Face, nNodesPerFace, 2);
+  tau.setDoubleValued(true);
   std::fill(tau.getValues()->begin(), tau.getValues()->end(), 1/std::sqrt(std::stod(thisRun->timeStep)));
   //double multiplier = 1000.0;
   //double multiplier = 1/std::sqrt(std::stod(thisRun->timeStep));
@@ -162,7 +163,6 @@ void runHDGDiffSrc(SimRun * thisRun, HDGSolverType globType){
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
   solveOpts.verbosity = false;
-  solveOpts.doubleValuedTau = true;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);

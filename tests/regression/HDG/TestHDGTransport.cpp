@@ -104,6 +104,7 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
     vel.getValues()->at(i) = invSqrt2;
   }
   Field tau(&myMesh, Face, nNodesPerFace, 2);
+  tau.setDoubleValued(true);
   Field anaSol(&myMesh, Node, 1, 1);
   Field residual(&myMesh, Cell, nNodes, 1);
   std::map<std::string, Field*> fieldMap;
@@ -134,7 +135,6 @@ void runHDGTransport(SimRun * thisRun,  HDGSolverType globType){
   HDGSolverOpts solveOpts;
   solveOpts.type = globType;
   solveOpts.verbosity = false;
-  solveOpts.doubleValuedTau = true;
   HDGSolver mySolver;
   mySolver.setOptions(solveOpts);
   mySolver.setMesh(&myMesh);
