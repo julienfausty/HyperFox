@@ -47,7 +47,11 @@ TEST_CASE("Testing the HDGBohmModel", "[unit][model][HDGBohmModel]"){
       CHECK_THROWS(mod.setFieldMap(&fm));
       fm["SoundVelocity"] = std::vector<double>(refEl.getNumNodes(), 1.0);
       CHECK_THROWS(mod.setFieldMap(&fm));
-      fm["Tau"] =std::vector<double>(refEl.getNumNodes()*4.0, 1.0);;
+      fm["Tau"] =std::vector<double>(refEl.getNumNodes()*4.0, 1.0);
+      CHECK_THROWS(mod.setFieldMap(&fm));
+      fm["D"] =std::vector<double>(refEl.getNumNodes()*4.0, 1.0);
+      CHECK_THROWS(mod.setFieldMap(&fm));
+      fm["G"] =std::vector<double>(refEl.getNumNodes()*4.0, 1.0);
       CHECK_NOTHROW(mod.setFieldMap(&fm));
       CHECK_THROWS(mod.compute());
       CHECK_NOTHROW(mod.setTransferFunction(tanhTransfer, tanhDerivTransfer));
@@ -67,10 +71,14 @@ TEST_CASE("Testing the HDGBohmModel", "[unit][model][HDGBohmModel]"){
       fm["Trace"] = std::vector<double>(nNodes*2, 1.0);
       fm["Flux"] = std::vector<double>(nNodes*4, 0.0);
       fm["Tau"] = std::vector<double>(nNodes*4, 0.0);
+      fm["D"] = std::vector<double>(nNodes*4, 0.0);
+      fm["G"] = std::vector<double>(nNodes*4, 0.0);
       fm["ExteriorNormals"] = std::vector<double>(nNodes*2.0, 0.0);
       for(int k = 0; k < nNodes; k++){
         fm["ExteriorNormals"][2*k+1] = -1.0;
         EMap<EMatrix>(fm["Tau"].data() + 4*k, 2, 2) = EMatrix::Identity(2,2);
+        EMap<EMatrix>(fm["D"].data() + 4*k, 2, 2) = EMatrix::Identity(2,2);
+        EMap<EMatrix>(fm["G"].data() + 4*k, 2, 2) = EMatrix::Identity(2,2);
       }
       fm["b"] = fm["ExteriorNormals"];
       fm["SoundVelocity"] = std::vector<double>(nNodes, 10.0);
@@ -106,11 +114,15 @@ TEST_CASE("Testing the HDGBohmModel", "[unit][model][HDGBohmModel]"){
       fm["Flux"] = std::vector<double>(nNodes*4, 0.0);
       fm["ExteriorNormals"] = std::vector<double>(nNodes*2.0, 0.0);
       fm["Tau"] = std::vector<double>(nNodes*4, 0.0);
+      fm["D"] = std::vector<double>(nNodes*4, 0.0);
+      fm["G"] = std::vector<double>(nNodes*4, 0.0);
       for(int k = 0; k < nNodes; k++){
         fm["Solution"][2*k+1] = 10.0;
         fm["Trace"][2*k+1] = 10.0;
         fm["ExteriorNormals"][2*k+1] = -1.0;
         EMap<EMatrix>(fm["Tau"].data() + 4*k, 2, 2) = EMatrix::Identity(2,2);
+        EMap<EMatrix>(fm["D"].data() + 4*k, 2, 2) = EMatrix::Identity(2,2);
+        EMap<EMatrix>(fm["G"].data() + 4*k, 2, 2) = EMatrix::Identity(2,2);
       }
       fm["b"] = fm["ExteriorNormals"];
       fm["SoundVelocity"] = std::vector<double>(nNodes, 1.0);

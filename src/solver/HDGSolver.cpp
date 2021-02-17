@@ -273,7 +273,7 @@ void HDGSolver::calcElementalMatrices(){
         face2CellMap[i*nNodesPFc + j] = std::distance(face.begin(), intIt);
       }
     }
-    //check if Tau field is supposed to be double valued and deal with it
+    //check if field is supposed to be double valued and deal with it
     for(itfm = faceFieldMap.begin(); itfm != faceFieldMap.end(); itfm++){
       if(fieldMap->at(itfm->first)->isDoubleValued()){
         int entLen = *(fieldMap->at(itfm->first)->getNumValsPerObj())/2;
