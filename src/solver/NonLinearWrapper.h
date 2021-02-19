@@ -67,6 +67,11 @@ class NonLinearWrapper{
      * @param solCom a method for solving the linearized problem (optional)
      */
     void setLinearizedSolver(std::function<void(Solver*)> solComp){linearizedSolver = solComp;};
+    /*!
+     * \brief method to set dampening coefficient
+     * @param damp the suggested value
+     */
+    void setDampening(double damp){dampening = damp;};
   protected:
     /*!
      * \brief the vanilla residual computation (currentField - prevField)^2/(currentField)^2
@@ -115,6 +120,10 @@ class NonLinearWrapper{
      * \brief a boolean controling verbosity
      */
     bool verbose = true;
+    /*!
+     * \brief a positive value used to dampen or overconverge the solution
+     */
+    double dampening = 0.0;
 };//NonLinearWrapper
 
 }//hfox

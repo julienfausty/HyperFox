@@ -2,7 +2,7 @@
 
 namespace hfox{
 
-NonLinearWrapper::NonLinearWrapper() : mySolver(NULL), currentSolution(NULL), previousSolution(NULL), resTol(1e-6), maxIters(1000){
+NonLinearWrapper::NonLinearWrapper() : mySolver(NULL), currentSolution(NULL), previousSolution(NULL), resTol(1e-6), maxIters(1000), dampening(0.0){
   setResidualComputer(NonLinearWrapper::vanillaResidualComputer);
   setLinearizedSolver(NonLinearWrapper::vanillaLinearizedSolver);
 };//constructor
@@ -53,14 +53,20 @@ void NonLinearWrapper::solve(){
   }
   for(int i = 0; i < maxIters; i++){
     linearizedSolver(mySolver);
-    residual = residualComputer(currentSolution, previousSolution);
+    this->residual = residualComputer(currentSolution, previousSolution);
     if(speak){
-      std::cout << "\r" << "Iteration " + std::to_string(i+1) + " at residual value " + std::to_string(residual) << std::flush;
+      std::cout << "\r" << "Iteration " + std::to_string(i+1) + " at residual value " + std::to_string(this->residual) << std::flush;
     }
-    if(residual < resTol){
+    if(residual < this->resTol){
       break;
     } else {
-      std::copy(currentSolution->getValues()->begin(), currentSolution->getValues()->end(), previousSolution->getValues()->begin());
+      double val = 0.0;
+      for(int iVal = 0; iVal < currentSolution->getValues()->size(); iVal++){
+        val = (1.0 - dampening)*(currentSolution->getValues()->at(iVal)) + dampening*(previousSolution->getValues()->at(iVal));
+        currentSolution->getValues()->at(iVal) = val;
+        previousSolution->getValues()->at(iVal) = val;
+      }
+      //std::copy(currentSolution->getValues()->begin(), currentSolution->getValues()->end(), previousSolution->getValues()->begin());
       if(part != NULL){
         part->updateSharedInformation();
       }
