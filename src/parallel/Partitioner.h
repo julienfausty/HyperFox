@@ -162,6 +162,10 @@ class Partitioner{
      */
     static void multiplyIndexes(int dim, const std::vector<int> * indexes, std::vector<int> * multiIndexes);
     /*!
+     * \brief a method for computing the global to local maps for all entities
+     */
+    void computeGlobal2LocalMaps();
+    /*!
      * \brief a method for computing the shared faces of the partition
      */
     void computeSharedFaces();
@@ -194,13 +198,25 @@ class Partitioner{
      */
     std::vector<int> nodeIDs;
     /*!
+     * \brief map of global to local node IDs
+     */
+    std::map<int, int> glob2LocNodeIDs;
+    /*!
      * \brief list of global face IDs
      */
     std::vector<int> faceIDs;
     /*!
+     * \brief map of global to local face IDs
+     */
+    std::map<int, int> glob2LocFaceIDs;
+    /*!
      * \brief list of global element IDs
      */
     std::vector<int> elementIDs;
+    /*!
+     * \brief map of global to local element IDs
+     */
+    std::map<int, int> glob2LocElementIDs;
     /*!
      * \brief a list of shared faces of the partition with structure [[globIdFace, rankOtherPartition, globIdAdjacentEl]]
      */

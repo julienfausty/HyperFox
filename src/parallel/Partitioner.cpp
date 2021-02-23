@@ -34,6 +34,7 @@ void Partitioner::initialize(){
   }
   elementIDs.resize(locNCells, 0);
   std::iota(elementIDs.begin(), elementIDs.end(), globalStartingIndex);
+  computeGlobal2LocalMaps();
   computeSharedFaces();
   initialized = 1;
 };//initialize
@@ -140,11 +141,11 @@ int Partitioner::getTotalNumberEls() const{
 };//getTotalNumberEls
 
 void Partitioner::local2GlobalNodeSlice(const std::vector<int> & loc, std::vector<int> * glob) const{
-  Utils::slice(loc, &nodeIDs, glob);
+Utils::slice(loc, &nodeIDs, glob);
 };//local2GlobalNodeSlice
 
 void Partitioner::local2GlobalFaceSlice(const std::vector<int> & loc, std::vector<int> * glob) const{
-  Utils::slice(loc, &faceIDs, glob);
+Utils::slice(loc, &faceIDs, glob);
 };//local2GlobalFaceSlice
 
 void Partitioner::local2GlobalElementSlice(const std::vector<int> & loc, std::vector<int> * glob) const{
@@ -152,28 +153,28 @@ void Partitioner::local2GlobalElementSlice(const std::vector<int> & loc, std::ve
 };//local2GlobalElementSlice
 
 int Partitioner::global2LocalNode(int glob) const{
-  std::vector<int>::const_iterator it = std::find(nodeIDs.begin(), nodeIDs.end(), glob);
   int loc = -1;
-  if(it != nodeIDs.end()){
-    loc = std::distance(nodeIDs.begin(), it);
+  std::map<int, int>::const_iterator it = glob2LocNodeIDs.find(glob);
+  if(it != glob2LocNodeIDs.end()){
+    loc = it->second;
   }
   return loc;
 };//global2LocalNode
 
 int Partitioner::global2LocalFace(int glob) const{
-  std::vector<int>::const_iterator it = std::find(faceIDs.begin(), faceIDs.end(), glob);
   int loc = -1;
-  if(it != faceIDs.end()){
-    loc = std::distance(faceIDs.begin(), it);
+  std::map<int, int>::const_iterator it = glob2LocFaceIDs.find(glob);
+  if(it != glob2LocFaceIDs.end()){
+    loc = it->second;
   }
   return loc;
 };//global2LocalFace
 
 int Partitioner::global2LocalElement(int glob) const{
-  std::vector<int>::const_iterator it = std::find(elementIDs.begin(), elementIDs.end(), glob);
   int loc = -1;
-  if(it != elementIDs.end()){
-    loc = std::distance(elementIDs.begin(), it);
+  std::map<int, int>::const_iterator it = glob2LocElementIDs.find(glob);
+  if(it != glob2LocElementIDs.end()){
+    loc = it->second;
   }
   return loc;
 };//global2LocalElement
@@ -310,6 +311,7 @@ void Partitioner::update(){
     for(int i = 0; i < fields.size(); i++){
       fields[i]->computeNumEntities();
     }
+    computeGlobal2LocalMaps();
   }
   std::vector<int> iBuffData;
   std::vector<double> dBuffData;
@@ -393,6 +395,7 @@ void Partitioner::update(){
     for(int i = 0; i < fields.size(); i++){
       fields[i]->computeNumEntities();
     }
+    computeGlobal2LocalMaps();
   }
   emptyImportExportMaps();
   //compute the shared faces list
@@ -403,6 +406,21 @@ void Partitioner::update(){
     //std::cout << "... finished updating partition" << std::endl;
   //}
 };//update
+
+void Partitioner::computeGlobal2LocalMaps(){
+  glob2LocNodeIDs.clear();
+  glob2LocFaceIDs.clear();
+  glob2LocElementIDs.clear();
+  for(int iN = 0; iN < nodeIDs.size(); iN++){
+    glob2LocNodeIDs[nodeIDs[iN]] = iN;
+  }
+  for(int iF = 0; iF < faceIDs.size(); iF++){
+    glob2LocFaceIDs[faceIDs[iF]] = iF;
+  }
+  for(int iEl = 0; iEl < elementIDs.size(); iEl++){
+    glob2LocElementIDs[elementIDs[iEl]] = iEl;
+  }
+};//computeGlobal2LocalMaps
 
 void Partitioner::transmitData(std::map<int, std::vector<int> > * iRecvBuffer, std::map<int, std::vector<double> > * dRecvBuffer, std::map<FieldType, std::vector<Field*> > & fieldMap){
   iRecvBuffer->clear();
