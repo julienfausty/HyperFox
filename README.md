@@ -25,12 +25,14 @@ Io classes.
 The idea behind the structure of the software is to sufficiently separate all the unitary 
 operations and achieve a certain level of abstraction. As such, the development of a new 
 Model does not need the rewritting of a Solver. Including a new element geometry 
-should not generate any issues in the already implemented classes. The parallelism of the 
-code only comes into play at the Solver and Mesh levels and thus writing new models for existing 
-Solvers can be done rather transparently in serial. The entire software should remain modular.
+should not generate any issues in the already implemented classes. 
 
-In a context where developpers are usually active for only three years and at a high turnover rate, 
-the structure of the code should ensure its longevity.
+The parallelism of the code only comes into play at the Solver and Mesh levels and thus writing new models 
+for existing Solvers can be done rather transparently in serial. The entire software should remain modular.
+ Meshes are partitioned in an MPI setting using the Zoltan Partitioner.
+
+In a context where developpers are usually active for only three years and at a high turnover rate 
+(Ph.D students), the structure of the code should ensure its longevity.
 
 Every new implementation should have its methods unittested in the "tests/unittests" directory. 
 Also, when applicable, small test cases should be included in the "tests/regression" directory 
@@ -40,16 +42,10 @@ allows for mistakes to be made and unmade at no cost to the integrity of the app
 
 # Goals
 
-- Short term (~ weeks):
-  - Parallelize the code: the plan is to link to an external partitionner (Zoltan or Metis) to partition the 
-  mesh and then to adapt the Solvers to parallel assembly (the current linear algebra package PetsC is 
-  already parallel)
-  - Re-visit the previous explicit/implicit HDG study in parallel
-
-- Long term (~ months):
-  - Implement plasma models
-  - Adapt parallelism for more heterogeneous architectures (maybe GPU acceleration? PetsC already integrates 
-  cuda and OpenCL specific code -> towards intensive computing for 3D)
+- Adapt parallelism for more heterogeneous architectures (maybe GPU acceleration? PetsC already integrates 
+cuda and OpenCL specific code -> towards intensive computing for 3D)
+- More advanced plasma models
+- h-adaptivity
 
 # Dependencies
 
@@ -58,8 +54,6 @@ For now the project has the following dependencies:
 - CMake: for generating the makefiles easily
 
 - OpenMpi: For MPI parallelism support (check that mpi-io capabilities are present for full parallel hdf5 support)
-
-- OpenMP: A compiler with OpenMP support should be used
 
 - Boost: a group of libraries for tons of algorithm and container support.
 
@@ -108,4 +102,10 @@ In order to run tests for one specific class run
 
 ```bash
 ./bin/tests_hyperfox [class_name]
+```
+
+In order to run all regression tests run
+
+```bash
+./bin/tests_hyperfox [regression]
 ```
