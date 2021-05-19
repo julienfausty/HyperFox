@@ -1,0 +1,95 @@
+#######################################################################
+# Dockerfile with PETSC, MOAB, ZOLTAN
+#
+#######################################################################
+
+FROM ubuntu:latest
+
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+ENV DEBIAN_FRONTEND noninteractive
+
+# Install standard Ubuntu packages
+RUN apt-get --yes -qq update \
+ && apt-get --yes -qq upgrade \
+ && apt-get --yes -qq install \
+                      apt-utils \
+                      software-properties-common \
+                      python3 \
+                      python3-distutils\
+                      bzip2 \
+                      cmake \
+                      cpio \
+                      curl \
+                      g++ \
+                      gcc \
+                      gfortran \
+                      git \
+                      libblas-dev \
+                      liblapack-dev \
+                      libopenmpi-dev \
+                      openmpi-bin \
+                      wget \
+                      autoconf \
+                      libtool \
+                      automake \
+ && apt-get --yes -qq clean \
+ && rm -rf /var/lib/apt/lists/*
+
+#Install more specialized ubuntu packages
+RUN add-apt-repository -y universe \
+ && apt-get --yes -qq update \
+ && apt-get --yes -qq upgrade \
+ && apt-get --yes -qq install \
+                      libhdf5-mpi-dev  \
+                      libnetcdf-mpi-dev \
+                      libeigen3-dev \
+ && apt-get --yes -qq clean \
+ && rm -rf /var/lib/apt/lists/*
+
+
+#Install Zoltan
+RUN git clone https://github.com/sandialabs/Zoltan.git \
+  && cd Zoltan \
+  && mkdir build && cd build \
+  && CFLAGS="-fPIC" CPPFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ../configure --prefix=/usr/local --enable-mpi \
+  && make everything && make install
+
+
+#Install MOAB
+RUN git clone https://bitbucket.org/fathomteam/moab.git
+RUN cd moab \
+  && autoreconf -fi \
+  && echo $PWD && ls -lah \
+  && ./configure --disable-debug --enable-optimize --enable-shared --disable-static --with-mpi CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx FC=/usr/bin/mpif90 F77=/usr/bin/mpif77 --with-hdf5=/usr/lib/x86_64-linux-gnu/hdf5/openmpi/ \
+  && make && make install
+
+#Install Catch2
+RUN git clone --depth 1 --branch v2.13.6 https://github.com/catchorg/Catch2.git \
+  && cd Catch2 \
+  && mkdir build && cd build && cmake .. && make all install
+
+#Install Boost
+RUN curl -OL https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.bz2 \
+  && tar --bzip2 -xf boost_1_76_0.tar.bz2 \
+  && cd boost_1_76_0 \
+  && ./bootstrap.sh --prefix=/usr/local --with-libraries=math,filesystem \
+  && ./b2 install \
+  && cd .. && rm -rfv boost_1_76_0.tar.bz2
+
+
+#Install PETSC
+RUN git clone -b release https://gitlab.com/petsc/petsc.git usr/local/petsc \
+  && cd /usr/local/petsc \
+  && ./configure --with-openmp --with-clanguage=CXX \ 
+  && make all
+
+ENV ZOLTAN_PREFIX /usr/local
+ENV PETSC_DIR /usr/local/petsc
+ENV PETSC_ARCH arch-linux-cxx-debug
+
+#Install Hyperfox
+RUN git clone https://github.com/julienfausty/HyperFox.git \
+  && cd HyperFox \
+  && mkdir build && cd build && cmake .. && make -j 4 && make install
+
