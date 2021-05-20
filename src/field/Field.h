@@ -113,6 +113,19 @@ class Field {
      * \brief a method to check if a field is double valued
      */
     bool isDoubleValued(){return doubleValued;};
+    /*!
+     * \brief a method for integrating a Node, Face or Element field
+     * 
+     * @param integral a vector of length nValPerObj
+     */
+    void integrate(std::vector<double> * integral);
+    /*!
+     * \brief a method for computing the L2 inner product between two fields
+     *
+     * @param rfield a pointer to the field to calculate the ineer product with
+     * @param integral the result of the inner product
+     */
+    void innerProduct(Field * rfield, std::vector<double> * integral);
   protected:
     /*!
      * \brief list of values of the field
