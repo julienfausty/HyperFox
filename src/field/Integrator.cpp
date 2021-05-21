@@ -25,6 +25,7 @@ void Integrator::integrate(std::vector<double> * integral){
   int nIPs = refEl->getNumIPs();
   const std::vector< std::vector<double> > * phis = refEl->getIPShapeFunctions();
   EMatrix phiMat(nIPs*dimIntegral, nNodesEnt*dimIntegral);
+  phiMat = EMatrix::Zero(nIPs*dimIntegral, nNodesEnt*dimIntegral);
   for(int ip = 0; ip < nIPs; ip++){
     const std::vector<double> * phiAtIP = &(phis->at(ip));
     for(int iN = 0; iN < nNodesEnt; iN++){

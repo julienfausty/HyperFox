@@ -50,6 +50,7 @@ void FieldIntegrator::evaluateIntegrand(int iEnt, std::vector<double> * ipVals){
   int nIPs = refEl->getNumIPs();
   const std::vector< std::vector<double> > * phis = refEl->getIPShapeFunctions();
   EMatrix phiMat(nIPs*dimIntegral, nNodesEnt*dimIntegral);
+  phiMat = EMatrix::Zero(nIPs*dimIntegral, nNodesEnt*dimIntegral);
   for(int ip = 0; ip < nIPs; ip++){
     const std::vector<double> * phiAtIP = &(phis->at(ip));
     for(int iN = 0; iN < nNodesEnt; iN++){
@@ -65,7 +66,11 @@ void FieldIntegrator::evaluateIntegrand(int iEnt, std::vector<double> * ipVals){
   std::vector<int> cell;
   std::vector<double> dbuff(dimIntegral, 0.0);
   if(ftype == Node){
-    pmesh->getCell(iEnt, &cell);
+    if(type == Cell){
+      pmesh->getCell(iEnt, &cell);
+    } else if(type == Face){
+      pmesh->getFace(iEnt, &cell);
+    }
     for(int iN = 0; iN < nNodesEnt; iN++){
       int locN = cell[iN];
       if(part != NULL){

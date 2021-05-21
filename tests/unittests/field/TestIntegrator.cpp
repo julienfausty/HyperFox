@@ -18,7 +18,7 @@ TEST_CASE("Unit testing the Integrator class (using FieldIntegrator)", "[unit][f
 
   int dimMax = 3;
   int orderMax = 5;
-  double tol = 1e-2;
+  double tol = 1e-6;
 
   std::string meshDirPath = TestUtils::getRessourcePath() + "/meshes/regression/";
 
@@ -95,14 +95,14 @@ TEST_CASE("Unit testing the Integrator class (using FieldIntegrator)", "[unit][f
           myMesh.getCell(iEl, &cell);
           for(int iN = 0; iN < refEl->getNumNodes(); iN++){
             myMesh.getPoint(cell[iN], &coords);
-            myCellField.getValues()->at(iEl * (refEl->getNumNodes()) + iN) = std::pow(coords[0], 2*iOrd);
-            myNodeField.getValues()->at(cell[iN]) = std::pow(coords[0], 2*iOrd);
+            myCellField.getValues()->at(iEl * (refEl->getNumNodes()) + iN) = std::pow(coords[0], iOrd);
+            myNodeField.getValues()->at(cell[iN]) = std::pow(coords[0], iOrd);
           }
         }
         //integrate cell field
         myFI.setField(&myCellField);
         myFI.integrate(&dbuff);
-        double intVal = integralMonomial(2*iOrd);
+        double intVal = integralMonomial(iOrd);
         CHECK(std::abs(dbuff[0] - intVal) < tol);
         myFI.setField(&myNodeField);
         myFI.integrate(&dbuff);
