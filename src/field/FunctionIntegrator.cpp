@@ -57,13 +57,11 @@ void FunctionIntegrator::evaluateIntegrand(int iEnt, std::vector<double> * ipVal
     std::copy(dbuff.begin(), dbuff.end(), elCoords.begin() + iN*dimSpace);
   }
   EMap<EVector>(ipCoords.data(), ipCoords.size()) = phiMat *EMap<EVector>(elCoords.data(), elCoords.size());
-  for(int i = 0; i < fieldFuncs.size(); i++){
-    for(int iN = 0; iN < nIPs; iN++){
-      dbuff.resize(dimSpace, 0.0);
-      std::copy(ipCoords.begin() + iN*dimSpace, ipCoords.begin() + (iN+1)*dimSpace, dbuff.begin());
-      myFunc(dbuff, &valbuff);
-      std::copy(valbuff.begin(), valbuff.end(), ipVals.begin() + iN*dimIntegral);
-    }
+  for(int iN = 0; iN < nIPs; iN++){
+    dbuff.resize(dimSpace, 0.0);
+    std::copy(ipCoords.begin() + iN*dimSpace, ipCoords.begin() + (iN+1)*dimSpace, dbuff.begin());
+    myFunc(dbuff, &valbuff);
+    std::copy(valbuff.begin(), valbuff.end(), ipVals->begin() + iN*dimIntegral);
   }
 };//evaluateIntegrand
 
