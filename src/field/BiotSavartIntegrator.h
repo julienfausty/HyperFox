@@ -1,6 +1,8 @@
 #ifndef BIOTSAVARTINTEGRATOR_H
 #define BIOTSAVARTINTEGRATOR_H
 
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <vector>
 #include <mpi.h>
 #include "DenseEigen.h"
@@ -42,6 +44,13 @@ class BiotSavartIntegrator : public Integrator{
      * @param dim the dimension of the result of the integral, for Biot-Savart should always be equal to 3
      */
     void setDim(int dim);
+
+    /*!
+     * \brief main method of the class to perform the integral
+     *
+     * @param integral the return value in place (an array if it is multivalued)
+     */
+    void integrate(std::vector<double> * integral);
 
   protected:
 

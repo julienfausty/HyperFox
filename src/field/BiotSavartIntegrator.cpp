@@ -102,4 +102,10 @@ void BiotSavartIntegrator::evaluateIntegrand(int iEnt, std::vector<double> * ipV
   }
 };//evaluateIntegrand
 
+void BiotSavartIntegrator::integrate(std::vector<double> * integral){
+  Integrator::integrate(integral);
+  double mu0 = 1.25663706212*(1e-6);
+  EMap<EVector>(integral->data(), integral->size()) *= mu0/(4.0*M_PI);
+};//integrate
+
 };//hfox
