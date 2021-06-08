@@ -18,8 +18,8 @@
 using namespace hfox;
 
 std::string usage();
-void generateHigherOrderMesh(Mesh * hoMesh, std::string input);
-void readMesh(std::string input, std::vector<double> * linNodes, std::vector< std::vector<int> > * linCells,
+void generateHigherOrderMesh(Mesh * hoMesh, int spaceDim, std::string input);
+void readMesh(std::string input, int spaceDim, std::vector<double> * linNodes, std::vector< std::vector<int> > * linCells,
     std::vector< std::vector<int> > * elementAdjacencies);
 void generateCellNodes(const ReferenceElement * refElement, std::vector<double> * linCellNodes, 
     std::vector<double> * cellNodes);
@@ -28,8 +28,9 @@ int main(int argc, char **argv){
   MPI_Init(&argc, &argv);
   std::string inputFile, outputFile;
   int dimension = 0;
+  int spaceDim = 0;
   int order = 0;
-  std::string optstr("i:d:r:o:vh");
+  std::string optstr("i:d:s:r:o:vh");
   int opt;
   while((opt = getopt(argc, argv, optstr.c_str())) != -1){
     switch(opt){
@@ -41,6 +42,11 @@ int main(int argc, char **argv){
       case 'd':
         {
           dimension = std::stoi(optarg);
+          break;
+        }
+      case 's':
+        {
+          spaceDim = std::stoi(optarg);
           break;
         }
       case 'r':
@@ -76,6 +82,9 @@ int main(int argc, char **argv){
     std::cout << "convertGmsh2H5HO: main: dimension variable cannot be null and must be specified" + addUsage << std::endl;
     return EXIT_FAILURE;
   }
+  if(spaceDim == 0){
+    spaceDim = dimension;
+  }
   if(order == 0){
     std::cout << "convertGmsh2H5HO: main: requiredOrder variable cannot be null and must be specified" + addUsage << std::endl;
     return EXIT_FAILURE;
@@ -86,7 +95,7 @@ int main(int argc, char **argv){
   }
   Mesh hoMesh(dimension, order, "simplex");
   try{
-    generateHigherOrderMesh(&hoMesh, inputFile);
+    generateHigherOrderMesh(&hoMesh, spaceDim, inputFile);
   } catch(const std::exception & e){
     std::cout << "The mesh generation process failed with an exception:" << std::endl;
     std::cout << e.what() << std::endl;
@@ -94,6 +103,7 @@ int main(int argc, char **argv){
   }
   std::cout << "New mesh characteristics" << std::endl;
   std::cout << "Dimension: " << hoMesh.getDimension() << std::endl;
+  std::cout << "Space dimension: " << hoMesh.getNodeSpaceDimension() << std::endl;
   std::cout << "Number of nodes: " << hoMesh.getNumberPoints() << std::endl;
   std::cout << "Number of cells: " << hoMesh.getNumberCells() << std::endl;
   std::cout << "Number of faces: " << hoMesh.getNumberFaces() << std::endl;
@@ -111,19 +121,19 @@ int main(int argc, char **argv){
 };//main
 
 std::string usage(){
-  return std::string("Usage is: convertGmsh2H5HO [-i inputFile] [-d dimension] [-r requiredOrder] [-o outputFile] [-h]");
+  return std::string("Usage is: convertGmsh2H5HO [-i inputFile] [-d dimension] [-r requiredOrder] [-o outputFile] [-s space dimension] [-h]");
 };
 
-void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
+void generateHigherOrderMesh(Mesh * hoMesh, int spaceDim, std::string input){
   int dim = hoMesh->getDimension();
   std::vector<double> linNodes;
   std::vector< std::vector<int> > linCells(dim);
   std::vector< std::vector<int> > elementAdjacencies(dim);
 
-  readMesh(input, &linNodes, &linCells, &elementAdjacencies);
+  readMesh(input, spaceDim, &linNodes, &linCells, &elementAdjacencies);
 
   std::cout << "Linear mesh characteristics" << std::endl;
-  std::cout << "Number of nodes: " << linNodes.size()/dim << std::endl;
+  std::cout << "Number of nodes: " << linNodes.size()/spaceDim << std::endl;
   for(int i = 0; i < dim; i++){
     std::cout << "Number of " + std::to_string(i+1) + " cells: " << linCells[i].size()/(i+2) << std::endl;
   }
@@ -138,8 +148,8 @@ void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
   std::vector<int> nInnerNodesPerCell(dim);
   std::vector<ReferenceElement *> refElements(dim);
   std::vector< std::vector<bool> > tracking(dim+1);
-  tracking[0].resize(linNodes.size()/dim , false);
-  hoCells[0].resize(linNodes.size()/dim);
+  tracking[0].resize(linNodes.size()/spaceDim , false);
+  hoCells[0].resize(linNodes.size()/spaceDim);
   for(int i = 0; i < dim; i++){
     nCellsPerTopDim[i] = elementAdjacencies[i].size()/nCells;
     refElements[i] = new ReferenceElement(i+1, hoMesh->getReferenceElement()->getOrder(), "simplex");
@@ -148,9 +158,9 @@ void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
     hoCells[i+1].resize(nInnerNodesPerCell[i]*((linCells[i].size())/(i+2)));
   }
 
-  std::vector<double> cellNodes, totalCellNodes, elNodes, linCellNodes, linElNodes((dim+1)*dim);
+  std::vector<double> cellNodes, totalCellNodes, elNodes, linCellNodes, linElNodes((dim+1)*spaceDim);
   std::vector<int> cell;
-  std::vector<double> cellNode(dim);
+  std::vector<double> cellNode(spaceDim);
   int cellId, nodeId;
   int hoNodesIndex = 0;
   //big element loop
@@ -158,12 +168,12 @@ void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
     cell.resize(dim+1);
     for(int i = 0; i < dim+1; i++){
       nodeId = linCells[dim-1][iEl*(dim+1) + i];
-      for(int j = 0; j < dim; j++){
-        linElNodes[i*dim + j] = linNodes[nodeId*dim + j];
+      for(int j = 0; j < spaceDim; j++){
+        linElNodes[i*spaceDim + j] = linNodes[nodeId*spaceDim + j];
       }
       if(!tracking[0][nodeId]){
-        for(int j = 0; j < dim ; j++){
-          hoNodes.push_back(linElNodes[i*dim + j]);
+        for(int j = 0; j < spaceDim ; j++){
+          hoNodes.push_back(linElNodes[i*spaceDim + j]);
         }
         tracking[0][nodeId] = true;
         hoCells[0][nodeId] = hoNodesIndex;
@@ -180,7 +190,7 @@ void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
     generateCellNodes(hoMesh->getReferenceElement(), &linElNodes, &elNodes);
     //topological dim loop
     for(int i = 0; i < dim; i++){
-      linCellNodes.resize((i+2)*dim);
+      linCellNodes.resize((i+2)*spaceDim);
       //cells in element loop
       for(int j = 0; j < nCellsPerTopDim[i]; j++){
         cellId = elementAdjacencies[i][iEl*nCellsPerTopDim[i] + j];
@@ -190,8 +200,8 @@ void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
           //generate the nodes and the cell
           for(int l = 0; l < (i+2); l++){
             nodeId = linCells[i][cellId*(i+2) + l];
-            for(int k = 0; k < dim ; k++){
-              linCellNodes[l*dim + k] = linNodes[nodeId*dim + k];
+            for(int k = 0; k < spaceDim ; k++){
+              linCellNodes[l*spaceDim + k] = linNodes[nodeId*spaceDim + k];
             }
           }
           generateCellNodes(refElements[i], &linCellNodes, &totalCellNodes);
@@ -199,11 +209,11 @@ void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
           std::iota(cell.begin(), cell.end(), hoNodesIndex);
           //put these new nodes in the hoNodes (only inner nodes though)
           const std::vector<int> * innerNodes = refElements[i]->getInnerNodes();
-          cellNodes.resize(nInnerNodesPerCell[i]*dim);
+          cellNodes.resize(nInnerNodesPerCell[i]*spaceDim);
           for(int l = 0; l < innerNodes->size(); l++){
-            for(int k = 0; k < dim; k++){
-              cellNodes[l*dim + k] = totalCellNodes[(*innerNodes)[l]*dim + k];
-              hoNodes.push_back(cellNodes[l*dim+k]);
+            for(int k = 0; k < spaceDim; k++){
+              cellNodes[l*spaceDim + k] = totalCellNodes[(*innerNodes)[l]*spaceDim + k];
+              hoNodes.push_back(cellNodes[l*spaceDim+k]);
             }
             hoNodesIndex += 1;
           }
@@ -218,22 +228,22 @@ void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
           cell.assign(hoCells[i+1].begin() + cellId*nInnerNodesPerCell[i], 
               hoCells[i+1].begin() + (cellId+1)*nInnerNodesPerCell[i]);
           //get the cellNodes from hoNodes
-          cellNodes.resize(cell.size()*dim);
+          cellNodes.resize(cell.size()*spaceDim);
           for(int l = 0; l < cell.size(); l++){
-            for(int k = 0; k < dim; k++){
-              cellNodes[l*dim + k] = hoNodes[cell[l]*dim + k];
+            for(int k = 0; k < spaceDim; k++){
+              cellNodes[l*spaceDim + k] = hoNodes[cell[l]*spaceDim + k];
             }
           }
         }
         //put the cell in hoElements in the right order using elNodes
         bool areEqual;
         for(int l = 0; l < cell.size(); l++){
-          for(int k = 0; k < dim; k++){
-            cellNode[k] = cellNodes[l*dim + k];
+          for(int k = 0; k < spaceDim; k++){
+            cellNode[k] = cellNodes[l*spaceDim + k];
           }
           for(int k = 0; k < nNodesPerEl; k++){
-            for(int p = 0; p < dim; p++){
-              areEqual = (std::abs((cellNode[p] - elNodes[k*dim + p])) < 1e-8);
+            for(int p = 0; p < spaceDim; p++){
+              areEqual = (std::abs((cellNode[p] - elNodes[k*spaceDim + p])) < 1e-8);
               if(!areEqual){
                 break;
               }
@@ -250,13 +260,13 @@ void generateHigherOrderMesh(Mesh * hoMesh, std::string input){
       }
     }
   }
-  hoMesh->setMesh(dim, hoNodes, hoElements);
+  hoMesh->setMesh(spaceDim, hoNodes, hoElements);
   for(int i = 0; i < refElements.size(); i++){
     delete refElements[i];
   }
 };
 
-void readMesh(std::string input, std::vector<double> * linNodes, std::vector< std::vector<int> > * linCells,
+void readMesh(std::string input, int spaceDim, std::vector<double> * linNodes, std::vector< std::vector<int> > * linCells,
     std::vector< std::vector<int> > * elementAdjacencies){
   int dim = linCells->size();
   moab::ErrorCode mbErr;
@@ -279,7 +289,7 @@ void readMesh(std::string input, std::vector<double> * linNodes, std::vector< st
   if(mbErr != moab::MB_SUCCESS){
     throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not get vertexes from meshset"));
   }
-  linNodes->resize(vertexes.size()*dim);
+  linNodes->resize(vertexes.size()*spaceDim);
   std::vector<double> vertex(3);
   for(moab::Range::iterator it = vertexes.begin(); it != vertexes.end(); it++){
     mbErr = mbIFace->get_coords(&(*it), 1, vertex.data());
@@ -287,8 +297,8 @@ void readMesh(std::string input, std::vector<double> * linNodes, std::vector< st
       throw(ErrorHandle("convertGmsh2H5HO", "readMesh", "could not get vertex coords from list"));
     }
     int index = mbIFace->id_from_handle(*it) -1;
-    for(int i = 0; i < dim ; i++){
-      (*linNodes)[index*dim + i] = vertex[i];
+    for(int i = 0; i < spaceDim ; i++){
+      (*linNodes)[index*spaceDim + i] = vertex[i];
     }
   }
   //fill cells
