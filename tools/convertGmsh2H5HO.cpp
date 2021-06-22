@@ -25,6 +25,7 @@ void generateCellNodes(const ReferenceElement * refElement, std::vector<double> 
     std::vector<double> * cellNodes);
 
 int main(int argc, char **argv){
+  MPI_Init(&argc, &argv);
   std::string inputFile, outputFile;
   int dimension = 0;
   int order = 0;
@@ -105,6 +106,7 @@ int main(int argc, char **argv){
     std::cout << e.what() << std::endl;
     return EXIT_FAILURE;
   }
+  MPI_Finalize();
   return EXIT_SUCCESS;
 };//main
 
