@@ -33,6 +33,7 @@ RUN apt-get --yes -qq update \
                       autoconf \
                       libtool \
                       automake \
+                      vim \
  && apt-get --yes -qq clean \
  && rm -rf /var/lib/apt/lists/*
 
@@ -53,7 +54,8 @@ RUN git clone https://github.com/sandialabs/Zoltan.git \
   && cd Zoltan \
   && mkdir build && cd build \
   && CFLAGS="-fPIC" CPPFLAGS=$CFLAGS CXXFLAGS=$CFLAGS ../configure --prefix=/usr/local --enable-mpi \
-  && make everything && make install
+  && make everything && make install \
+  && cd ../.. && rm -rfv Zoltan
 
 
 #Install MOAB
@@ -62,12 +64,14 @@ RUN cd moab \
   && autoreconf -fi \
   && echo $PWD && ls -lah \
   && ./configure --disable-debug --enable-optimize --enable-shared --disable-static --with-mpi CC=/usr/bin/mpicc CXX=/usr/bin/mpicxx FC=/usr/bin/mpif90 F77=/usr/bin/mpif77 --with-hdf5=/usr/lib/x86_64-linux-gnu/hdf5/openmpi/ \
-  && make && make install
+  && make && make install \
+  && cd .. && rm -rfv moab
 
 #Install Catch2
 RUN git clone --depth 1 --branch v2.13.6 https://github.com/catchorg/Catch2.git \
   && cd Catch2 \
-  && mkdir build && cd build && cmake .. && make all install
+  && mkdir build && cd build && cmake .. && make all install \
+  && cd ../.. && rm -rfv Catch2
 
 #Install Boost
 RUN curl -OL https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.bz2 \
@@ -75,21 +79,30 @@ RUN curl -OL https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/bo
   && cd boost_1_76_0 \
   && ./bootstrap.sh --prefix=/usr/local --with-libraries=math,filesystem \
   && ./b2 install \
-  && cd .. && rm -rfv boost_1_76_0.tar.bz2
+  && cd .. && rm -rfv boost_1_76_0.tar.bz2 && rm -rfv boost_1_76_0
+
+ENV ZOLTAN_PREFIX /usr/local
+ENV PETSC_DIR /usr/local/petsc
+ENV PETSC_ARCH linux-gnu-c-debug
+
+#allow the container to run mpi as root
+ENV OMPI_ALLOW_RUN_AS_ROOT=1
+ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
 
 
 #Install PETSC
 RUN git clone -b release https://gitlab.com/petsc/petsc.git usr/local/petsc \
   && cd /usr/local/petsc \
-  && ./configure --with-openmp --with-clanguage=CXX \ 
+  && ./configure --with-openmp --with-clanguage=CXX --with-fc=0 --prefix=/usr/local/petscII \ 
   && make all
 
-ENV ZOLTAN_PREFIX /usr/local
-ENV PETSC_DIR /usr/local/petsc
-ENV PETSC_ARCH arch-linux-cxx-debug
+RUN cd /usr/local/petsc && make install 
+
 
 #Install Hyperfox
 RUN git clone https://github.com/julienfausty/HyperFox.git \
   && cd HyperFox \
-  && mkdir build && cd build && cmake .. && make -j 4 && make install
+  && mkdir build && cd build && CXX=mpicxx cmake .. && make -j 4 && make install
+
+
 
