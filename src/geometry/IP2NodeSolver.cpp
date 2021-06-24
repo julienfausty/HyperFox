@@ -38,7 +38,7 @@ void IP2NodeSolver::solve(){
   if(myField == NULL){
     throw(ErrorHandle("IP2NodeSolver", "solve", "must set field before attempting a solve."));
   }
-  if((ipFuncCell == nullptr) and (ipFuncNodes == nullptr)){
+  if((ipFuncCell == nullptr) and (ipFuncNodes == nullptr) and (ipFuncJacs == nullptr)){
     throw(ErrorHandle("IP2NodeSolver", "solve", "must set function before attempting a solve."));
   }
   const Partitioner * part = myMesh->getPartitioner();

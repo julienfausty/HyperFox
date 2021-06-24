@@ -41,6 +41,7 @@ class Mesh{
      * @param dim the dimension of the mesh
      * @param order the FE order of the mesh
      * @param geom a string with the type of element
+     * @param dimPointSpace the dimension of the embedding space
      * @param point_candidate
      * @param connectivity_candidate a pointer to a vector of vectors holding the 
      * indexes of the points in the points vector.

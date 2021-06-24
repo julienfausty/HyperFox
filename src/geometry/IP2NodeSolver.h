@@ -22,7 +22,7 @@ class IP2NodeSolver : public GeometrySolver{
     /*!
      * \brief Constructor inheritance
      */
-    using GeometrySolver::GeometrySolver;
+    IP2NodeSolver(const Mesh * pmesh) : GeometrySolver(pmesh), myMass(pmesh->getReferenceElement()) {};
 
     /*!
      * \brief set the field to store the values on the nodes (! must be a Cell field)
