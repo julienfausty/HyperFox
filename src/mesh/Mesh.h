@@ -77,6 +77,10 @@ class Mesh{
      * \brief get the partitioner
      */
     Partitioner * getPartitioner(){return part;};
+    /*!
+     * \brief get the partitioner
+     */
+    const Partitioner * getPartitioner() const {return part;};
     /*! \brief A method for geting a const pointer to the nodes of the mesh.
      */
     const std::vector<double> * getPoints() const;
