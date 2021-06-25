@@ -132,8 +132,85 @@ void HDGEmbeddedModel::computeElementGeometry(){
       }
     }
   }
+  christoffelSymbols.resize(nIPsEl, std::vector<EMatrix>(refDim, EMatrix::Zero(refDim, refDim)));
+  std::vector<EMatrix> derivg(refDim, EMatrix::Zero(refDim, refDim));
+  EVector tempVec(leng);
+  EVector tVec(refDim);
   //Christoffel Symbols
+  for(int ip = 0; ip < nIPsEl; ip++){
+    for(int iD = 0; iD < refDim; iD++){
+      tempVec = derivMetricTensor[ip].row(iD);
+      derivg[iD] = EMap<EMatrix>(tempVec.data(), refDim, refDim);
+    }
+    for(int iD = 0; iD < refDim; iD++){
+      for(int jD = 0; jD < refDim; jD++){
+        for(int kD = 0; kD < refDim; kD++){
+          for(int lD = 0; lD < refDim; lD++){
+            tVec[lD] = derivg[lD](jD, kD);
+          }
+          christoffelSymbols[ip][iD](kD, jD) = 0.5*(inverseMetricTensor[ip].col(iD).dot(derivg[kD].col(jD) + derivg[jD].col(kD) - tVec));
+        }
+      }
+    }
+  }
   //normals
+  std::vector<EMatrix> refJacobians(nFaces*nIPsFc);
+  std::vector<EVector> refNormals(nFaces*nIPsFc, EVector::Zero(refDim));
+  int faceDim = refDim -1;
+  if(faceDim == 0){
+    throw(ErrorHandle("HDGEmbeddedModel", "computeElementGeometry", "cannot compute for 0 dimensional faces yet."));
+  } 
+  std::fill(refJacobians.begin(), refJacobians.end(), EMatrix::Zero(faceDim, refDim));
+  const std::vector< std::vector<double> > * refNodes = refEl->getNodes();
+  const std::vector< std::vector<int> > * faceIndexes = refEl->getFaceNodes();
+  const std::vector< std::vector< std::vector<double> > > * fcDerivShapes = fEl->getIPDerivShapeFunctions();
+  for(int iFace = 0; iFace < nFaces; iFace++){
+    for(int ip = 0; ip < nIPsFc; ip++){
+      const std::vector< std::vector<double> > * fcDerivShape = &(fcDerivShapes->at(ip));
+      for(int iN = 0; iN < nNodesFc; iN++){
+        refJacobians[iFace * nIPsFc + ip] += EMap<const EVector>(fcDerivShape->at(iN).data(), faceDim)*(EMap<const EVector>(refNodes->at(faceIndexes->at(iFace)[iN]).data(), refDim)).transpose();
+      }
+    }
+  }
+  for(int iFace = 0; iFace < nIPsFc; iFace++){
+    int outerNodeIndex = 0;
+    for(int iN = 0; iN < nNodesEl; iN++){
+      std::vector<int>::const_iterator itN = std::find(faceIndexes->at(iFace).begin(), faceIndexes->at(iFace).end(), iN);
+      if(itN == faceIndexes->at(iFace).end()){
+        outerNodeIndex = iN;
+        break;
+      }
+    }
+    EVector testVec = EMap<const EVector>(refNodes->at(outerNodeIndex).data(), refDim) - EMap<const EVector>(refNodes->at(faceIndexes->at(iFace)[0]).data(), refDim);
+    for(int ip = 0; ip < nIPsFc; ip++){
+      EMatrix temp = refJacobians[iFace*nIPsFc + ip].fullPivLu().kernel();
+      refNormals[iFace*nIPsFc + ip] = temp;
+      refNormals[iFace*nIPsFc + ip].normalize();
+      if(testVec.dot(refNormals[iFace*nIPsFc + ip]) > 0){
+        refNormals[iFace*nIPsFc + ip] *= -1.0;
+      }
+    }
+  }
+  //change definition of refJacobians
+  const std::vector< std::vector<double> > * fcShapes = fEl->getIPShapeFunctions();
+  std::fill(refJacobians.begin(), refJacobians.end(), EMatrix::Zero(refDim, embeddingDim));
+  //pushforward of normals
+  std::vector<EMatrix> refMetrics(nIPsFc*nFaces, EMatrix::Zero(refDim, refDim));
+  for(int iFace = 0; iFace < nFaces; iFace++){
+    for(int ip = 0; ip < nIPsFc; ip++){
+      const std::vector<double> * fcShape = &(fcShapes->at(ip));
+      for(int iN = 0; iN < nNodesFc; iN++){
+        refJacobians[iFace*nIPsFc + ip] += fcShape->at(iN)*EMap<const EMatrix>(fieldMap["Jacobian"]->data() + faceIndexes->at(iFace)[iN]*lenJac, refDim, embeddingDim);
+        refMetrics[iFace*nIPsFc + ip] += fcShape->at(iN)*EMap<const EMatrix>(fieldMap["Metric"]->data() + faceIndexes->at(iFace)[iN]*leng, refDim, refDim);
+      }
+    }
+  }
+  normals.resize(refJacobians.size(), EVector::Zero(embeddingDim));
+  for(int iFace = 0; iFace < nFaces; iFace++){
+    for(int ip = 0; ip < nIPsFc; ip++){
+      normals[iFace*nIPsFc + ip] = refJacobians[iFace*nIPsFc + ip].transpose()*refMetrics[iFace*nIPsFc + ip].inverse()*refNormals[iFace*nIPsFc + ip];
+    }
+  }
 };//computeElementGeometry
 
 
