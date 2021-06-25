@@ -35,7 +35,7 @@ class HDGEmbeddedModel : public FEModel{
      * \brief set the dimension of the embedding space
      */
     void setEmbeddingDimension(int dim);
-  private:
+  protected:
     /*!
      * \brief initialize all the operators for the class
      */
