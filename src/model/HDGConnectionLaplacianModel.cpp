@@ -93,20 +93,20 @@ void HDGConnectionLaplacianModel::computeLocalMatrix(){
   int nIPsFc = fEl->getNumIPs();
   const std::vector< std::vector<double> > * elShapes = refEl->getIPShapeFunctions();
   const std::vector< std::vector< std::vector<double> > > * elDerivShapes = refEl->getIPDerivShapeFunctions();
+  const std::vector< std::vector<int> > * faceIndexes = refEl->getFaceNodes();
   const std::vector< std::vector<double> > * fcShapes = fEl->getIPShapeFunctions();
-  const std::vector< std::vector< std::vector<double> > > * fcDerivShapes = fEl->getIPDerivShapeFunctions();
   int lenU = nDOFsPNode * nNodesEl;
   int lenQ = lenU * embeddingDim;
   int lenL = nDOFsPNode * nFaces * nNodesFc;
   EMatrix tempMat;
   EVector tempVec;
-  double tempVal, tempVal1;
+  double tempVal, tempVal1, tempVal2;
   //bulk integrals
   for(int ip = 0; ip < nIPsEl; ip++){
     const std::vector<double> * elShape = &(elShapes->at(ip));
     const std::vector< std::vector<double> > * elDerivShape = &(elDerivShapes->at(ip));
     //Diffusive part
-    //Squ
+    //Suq
     for(int iN = 0; iN < nNodesEl; iN++){
       for(int jN = 0; jN < nNodesEl; jN++){
         tempVec = dV[ip]*elShape->at(iN)*diffusionTensorVals[ip]*invJacobians[ip]*EMap<const EVector>(elDerivShape->at(jN).data(), refDim);
@@ -124,11 +124,32 @@ void HDGConnectionLaplacianModel::computeLocalMatrix(){
       for(int jN = 0; jN < nNodesEl; jN++){
         //Sqq
         localMatrix.block(lenU + jN*Qdim, lenU + iN*Qdim, Qdim, Qdim) = dV[ip]*elShape->at(iN)*elShape->at(jN)*EMatrix::Identity(Qdim, Qdim);
+        //Squ
         for(int iD = 0; iD < embeddingDim; iD++){
-          //here figure out the best assembly for curvature
-          //tempVal1 = tempVal*invJacobian[ip].col(iD).dot(EMap<const EVector>(elDerivShape->at(jN).data(), refDim)*(elShape->at(ip)));
+          for(int kD = 0; kD < refDim; kD++){
+            for(int lD = 0; lD < refDim; lD++){
+              tempVal1 = 0;
+              for(int rD = 0; rD < refDim; rD++){
+                tempVal1 += christoffelSymbols[ip][rD](kD, lD)*jacobians[ip](iD, rD);
+              }
+              tempVal2 = tempVal*inverseMetricTensor[ip](kD, lD)*(jacobians[ip](lD, iD)*(elDerivShape->at(jN)[kD]) + (hessians[ip][iD](kD, lD) - tempVal1)*(elShape->at(jN)));
+              for(int idof = 0; idof < nDOFsPNode; idof++){
+                localMatrix(lenU + jN*Qdim + iD*nDOFsPNode + idof, iN*nDOFsPNode + idof) += tempVal2;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  //face integrals
+  for(int iFace = 0; iFace < nFaces; iFace++){
+    const std::vector<int> * locFaceIndexes = &(faceIndexes->at(iFace));
+    for(int ip = 0; ip < nIPsFc; ip++){
+      const std::vector<double> * fcShape = &(fcShapes->at(ip));
+      for(int iN = 0; iN < nNodesFc; iN++){
+        for(int jN = 0; jN < nNodesFc; jN++){
           for(int idof = 0; idof < nDOFsPNode; idof++){
-            //localMatrix(lenU + jN*Qdim + iD*nDOFsPNode + idof, iN*nDOFsPNode + idof) -= tempVal;
           }
         }
       }
