@@ -53,6 +53,10 @@ class HDGEmbeddedModel : public FEModel{
      */
     void computeElementGeometry();
     /*!
+     * \brief parse the tau values on the faces
+     */
+    void parseTauValues();
+    /*!
      * \brief number of DOFs per node
      */
     int nDOFsPNode = 1;
@@ -84,6 +88,10 @@ class HDGEmbeddedModel : public FEModel{
      * \brief normals to the element faces at the integration points
      */
     std::vector<EVector> normals;
+    /*!
+     * \brief tau values at the element face integration points
+     */
+    std::vector<EMatrix> taus;
 
 };//HDGEmbeddedModel
 

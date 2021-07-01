@@ -74,8 +74,31 @@ void HDGEmbeddedModel::compute(){
   }
 };//compute
 
+void HDGEmbeddedModel::parseTauValues(){
+  int sizeTau = nDOFsPNode * nDOFsPNode;
+  int nFaces = refEl->getNumFaces();
+  const ReferenceElement * fEl = refEl->getFaceElement();
+  int nNodesFace = fEl->getNumNodes();
+  if(fieldMap["Tau"]->size() != sizeTau * nFaces * nNodesFace){
+    throw(ErrorHandle("HDGEmbeddedModel", "parseTauValues", "tau does not have the right dimensions, every node should have a nDOFs x nDOFs tensor"));
+  }
+  taus.resize(nFaces*(fEl->getNumIPs()),EMatrix::Zero(nDOFsPNode, nDOFsPNode));
+  const std::vector< std::vector<double> > * ipShapes = fEl->getIPShapeFunctions();
+  for(int i = 0; i < nFaces; i++){
+    EMap<const EMatrix> tau(fieldMap["Tau"]->data() + i*nNodesFace*sizeTau, sizeTau, nNodesFace);
+    for(int j = 0; j < fEl->getNumIPs(); j++){
+      EMap<const EVector> shape((ipShapes->at(j)).data(), (ipShapes->at(j)).size());
+      EMap<EMatrix>(taus[i*(fEl->getNumIPs()) + j].data(), sizeTau, 1) = tau * shape;
+    }
+  }
+};//parseTauValues
+
 void HDGEmbeddedModel::computeElementGeometry(){
   int refDim = refEl->getDimension();
+  int faceDim = refDim -1;
+  if(faceDim == 0){
+    throw(ErrorHandle("HDGEmbeddedModel", "computeElementGeometry", "cannot compute for 0 dimensional faces yet."));
+  } 
   const ReferenceElement * fEl = refEl->getFaceElement();
   int nNodesEl = refEl->getNumNodes();
   int nIPsEl = refEl->getNumIPs();
@@ -156,10 +179,6 @@ void HDGEmbeddedModel::computeElementGeometry(){
   //normals
   std::vector<EMatrix> refJacobians(nFaces*nIPsFc);
   std::vector<EVector> refNormals(nFaces*nIPsFc, EVector::Zero(refDim));
-  int faceDim = refDim -1;
-  if(faceDim == 0){
-    throw(ErrorHandle("HDGEmbeddedModel", "computeElementGeometry", "cannot compute for 0 dimensional faces yet."));
-  } 
   std::fill(refJacobians.begin(), refJacobians.end(), EMatrix::Zero(faceDim, refDim));
   const std::vector< std::vector<double> > * refNodes = refEl->getNodes();
   const std::vector< std::vector<int> > * faceIndexes = refEl->getFaceNodes();
