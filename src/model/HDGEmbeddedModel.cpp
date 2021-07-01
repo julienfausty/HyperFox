@@ -16,7 +16,6 @@ void HDGEmbeddedModel::setFieldMap(const std::map<std::string, std::vector<doubl
   } else {
     throw(ErrorHandle("HDGEmbeddedModel", "setFieldMap", "the Metric field must be present in the field map (computed using IP2NodesSolver)."));
   }
-  fieldSet = 1;
   itfm = fm->find("Jacobian");
   if(itfm != fm->end()){
     fieldMap["Jacobian"] = &(itfm->second);
@@ -148,7 +147,7 @@ void HDGEmbeddedModel::computeElementGeometry(){
   for(int ip = 0; ip < nIPsEl; ip++){
     const std::vector< std::vector<double> > * derivShape = &(derivShapes->at(ip));
     for(int iN = 0; iN < nNodesEl; iN++){
-      derivMetricTensor[ip] += EMap<const EVector>(derivShape->at(iN).data(), refDim)*(EMap<const EVector>(fieldMap["Metric"]->data() + iN*leng, leng));
+      derivMetricTensor[ip] += EMap<const EVector>(derivShape->at(iN).data(), refDim)*(EMap<const EMatrix>(fieldMap["Metric"]->data() + iN*leng, 1, leng));
       EMap<const EMatrix> jac(fieldMap["Jacobian"]->data() + iN*lenJac, refDim, embeddingDim);
       for(int iD = 0; iD < embeddingDim; iD++){
         hessians[ip][iD] += EMap<const EVector>(derivShape->at(iN).data(), refDim)*(jac.col(iD).transpose());
@@ -191,7 +190,7 @@ void HDGEmbeddedModel::computeElementGeometry(){
       }
     }
   }
-  for(int iFace = 0; iFace < nIPsFc; iFace++){
+  for(int iFace = 0; iFace < nFaces; iFace++){
     int outerNodeIndex = 0;
     for(int iN = 0; iN < nNodesEl; iN++){
       std::vector<int>::const_iterator itN = std::find(faceIndexes->at(iFace).begin(), faceIndexes->at(iFace).end(), iN);

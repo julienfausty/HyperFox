@@ -9,6 +9,9 @@ void HDGConnectionLaplacianModel::setFieldMap(const std::map<std::string, std::v
   if(itfm != fm->end()){
     fieldMap["DiffusionTensor"] = &(itfm->second);
   }
+  if(timeScheme != NULL){
+    timeScheme->setFieldMap(fm);
+  }
   HDGEmbeddedModel::setFieldMap(fm);
 };//setFieldMap
 
@@ -92,6 +95,12 @@ void HDGConnectionLaplacianModel::computeLocalMatrix(){
   const ReferenceElement * fEl = refEl->getFaceElement();
   int nNodesFc = fEl->getNumNodes();
   int nIPsFc = fEl->getNumIPs();
+  if(fieldMap.find("DiffusionTensor") != fieldMap.end()){
+    parseDiffusionVals();
+  } else {
+    diffusionTensorVals.resize(nIPsEl + nFaces*nIPsFc, EMatrix::Identity(embeddingDim, embeddingDim));
+    std::fill(diffusionTensorVals.begin(), diffusionTensorVals.end(), EMatrix::Identity(embeddingDim, embeddingDim));
+  }
   const std::vector< std::vector<double> > * elShapes = refEl->getIPShapeFunctions();
   const std::vector< std::vector< std::vector<double> > > * elDerivShapes = refEl->getIPDerivShapeFunctions();
   const std::vector< std::vector<int> > * faceIndexes = refEl->getFaceNodes();
@@ -114,7 +123,7 @@ void HDGConnectionLaplacianModel::computeLocalMatrix(){
         tempVec = dV[ip]*elShape->at(iN)*diffusionTensorVals[ip]*invJacobians[ip]*EMap<const EVector>(elDerivShape->at(jN).data(), refDim);
         for(int iD = 0; iD < embeddingDim; iD++){
           for(int idof = 0; idof < nDOFsPNode; idof++){
-            localMatrix(jN*nDOFsPNode + idof, lenU + (iN*embeddingDim + iD)*nDOFsPNode + idof) -= tempVec[iD];
+            localMatrix(jN*nDOFsPNode + idof, lenU + (iN*embeddingDim + iD)*nDOFsPNode + idof) += tempVec[iD];
           }
         }
       }
@@ -124,14 +133,14 @@ void HDGConnectionLaplacianModel::computeLocalMatrix(){
       tempVal = dV[ip]*elShape->at(iN);
       for(int jN = 0; jN < nNodesEl; jN++){
         //Sqq
-        localMatrix.block(lenU + jN*Qdim, lenU + iN*Qdim, Qdim, Qdim) = dV[ip]*elShape->at(iN)*elShape->at(jN)*EMatrix::Identity(Qdim, Qdim);
+        localMatrix.block(lenU + jN*Qdim, lenU + iN*Qdim, Qdim, Qdim) += tempVal*elShape->at(jN)*EMatrix::Identity(Qdim, Qdim);
         //Squ
         for(int iD = 0; iD < embeddingDim; iD++){
           for(int kD = 0; kD < refDim; kD++){
             for(int lD = 0; lD < refDim; lD++){
               tempVal1 = 0;
               for(int rD = 0; rD < refDim; rD++){
-                tempVal1 += christoffelSymbols[ip][rD](kD, lD)*jacobians[ip](iD, rD);
+                tempVal1 += christoffelSymbols[ip][rD](kD, lD)*jacobians[ip](rD, iD);
               }
               tempVal2 = tempVal*inverseMetricTensor[ip](kD, lD)*(jacobians[ip](lD, iD)*(elDerivShape->at(jN)[kD]) + (hessians[ip][iD](kD, lD) - tempVal1)*(elShape->at(jN)));
               for(int idof = 0; idof < nDOFsPNode; idof++){
@@ -157,7 +166,7 @@ void HDGConnectionLaplacianModel::computeLocalMatrix(){
             for(int jdof = 0; jdof < nDOFsPNode; jdof++){
               tempVal2 = taus[iFace*nIPsFc + ip](jdof, idof)*tempVal1;
               //Sll
-              localMatrix(lenU + lenQ + (iFace*nNodesFc + jN)*nDOFsPNode + jdof, lenU + lenQ + iN*nDOFsPNode + idof) -= tempVal2;
+              localMatrix(lenU + lenQ + (iFace*nNodesFc + jN)*nDOFsPNode + jdof, lenU + lenQ + (iFace*nNodesFc + iN)*nDOFsPNode + idof) -= tempVal2;
               //Slu
               localMatrix(lenU + lenQ + (iFace * nNodesFc + jN)*nDOFsPNode + jdof, (locFaceIndexes->at(iN))*nDOFsPNode + idof) += tempVal2;
               //Sul
@@ -172,11 +181,11 @@ void HDGConnectionLaplacianModel::computeLocalMatrix(){
             tempVal3 = tempVal1 * normals[iFace*nIPsFc + ip][iD];
             for(int idof = 0; idof < nDOFsPNode; idof++){
               //Slq
-              localMatrix(lenU + lenQ + (iFace * nNodesFc + jN)*nDOFsPNode + idof, lenU + Qdim*(locFaceIndexes->at(iN)) + iD*nDOFsPNode + idof) += tempVal2;
+              localMatrix(lenU + lenQ + (iFace * nNodesFc + jN)*nDOFsPNode + idof, lenU + Qdim*(locFaceIndexes->at(iN)) + iD*nDOFsPNode + idof) -= tempVal2;
               //Suq
-              localMatrix(locFaceIndexes->at(jN)*nDOFsPNode + idof, lenU + Qdim*(locFaceIndexes->at(iN)) + iD*nDOFsPNode + idof) += tempVal2;
+              localMatrix(locFaceIndexes->at(jN)*nDOFsPNode + idof, lenU + Qdim*(locFaceIndexes->at(iN)) + iD*nDOFsPNode + idof) -= tempVal2;
               //Sql
-              localMatrix(lenU + locFaceIndexes->at(jN)*nDOFsPNode + idof, lenU + lenQ + (iFace*nNodesFc + iN)*nDOFsPNode + idof) -= tempVal3;
+              localMatrix(lenU + locFaceIndexes->at(jN)*Qdim + iD*nDOFsPNode + idof, lenU + lenQ + (iFace*nNodesFc + iN)*nDOFsPNode + idof) -= tempVal3;
             }
           }
         }
