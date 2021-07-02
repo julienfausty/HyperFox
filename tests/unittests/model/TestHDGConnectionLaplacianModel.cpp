@@ -7,8 +7,8 @@ using namespace hfox;
 TEST_CASE("Testing the HDGConnectionLaplacianModel", "[unit][model][HDGEmbeddedModel][HDGConnectionLaplacianModel]"){
 
   double tol = 1e-12;
-  int maxDim = 2;
-  int maxOrd = 3;
+  int maxDim = 3;
+  int maxOrd = 5;
 
   for(int iD = 2; iD < maxDim+1; iD++){
     for(int iO = 1; iO < maxOrd+1; iO++){
@@ -77,10 +77,18 @@ TEST_CASE("Testing the HDGConnectionLaplacianModel", "[unit][model][HDGEmbeddedM
         CHECK_NOTHROW(embeddedMod.compute());
         CHECK_NOTHROW(lapMod.compute());
         EMatrix diffMat = *(embeddedMod.getLocalMatrix()) - *(lapMod.getLocalMatrix());
-        std::cout << "Difference" << std::endl;
-        std::cout << diffMat << std::endl;
         CHECK((diffMat*(diffMat.transpose())).trace() < tol);
       };
     }
+  }
+
+  maxOrd = 15;
+  for(int iO = 0; iO < maxOrd; iO++){
+    SECTION("Testing embedded x^3 surface (ord=" + std::to_string(iO) + ")"){
+      ReferenceElement refEl(2, iO, "simplex");
+      HDGConnectionLaplacianModel mod(&refEl);
+      mod.setEmbeddingDimension(3);
+      mod.allocate(1);
+    };
   }
 };

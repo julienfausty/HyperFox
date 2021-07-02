@@ -119,8 +119,9 @@ void HDGConnectionLaplacianModel::computeLocalMatrix(){
     //Diffusive part
     //Suq
     for(int iN = 0; iN < nNodesEl; iN++){
+      tempMat = dV[ip]*(elShape->at(iN))*diffusionTensorVals[ip]*invJacobians[ip];
       for(int jN = 0; jN < nNodesEl; jN++){
-        tempVec = dV[ip]*elShape->at(iN)*diffusionTensorVals[ip]*invJacobians[ip]*EMap<const EVector>(elDerivShape->at(jN).data(), refDim);
+        tempVec = tempMat*EMap<const EVector>(elDerivShape->at(jN).data(), refDim);
         for(int iD = 0; iD < embeddingDim; iD++){
           for(int idof = 0; idof < nDOFsPNode; idof++){
             localMatrix(jN*nDOFsPNode + idof, lenU + (iN*embeddingDim + iD)*nDOFsPNode + idof) += tempVec[iD];

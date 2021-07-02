@@ -7,7 +7,7 @@
 namespace hfox{
 
 /*!
- * \brief Implements a model for $\Delta_{\Gamma} u = \rho$ a connection laplacian Poisson problem.
+ * \brief Implements a model for $-\nabla_{\Gamma} D \nabla_{\Gamma} u = \rho$ a connection laplacian Poisson problem.
  */
 
 class HDGConnectionLaplacianModel : public HDGEmbeddedModel{

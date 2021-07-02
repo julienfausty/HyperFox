@@ -118,7 +118,7 @@ void HDGEmbeddedModel::computeElementGeometry(){
   const std::vector< std::vector<int> > * faceNodeMap = refEl->getFaceNodes();
   int offset = 0;
   for(int iFace = 0; iFace < nFaces; iFace++){
-    offset = nNodesEl + iFace*nIPsFc;
+    offset = nIPsEl + iFace*nIPsFc;
     for(int i = 0; i < nNodesFc; i++){
       faceNodes[i] = elementNodes->at(faceNodeMap->at(iFace)[i]);
     }
