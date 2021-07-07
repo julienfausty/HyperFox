@@ -84,7 +84,7 @@ TEST_CASE("Testing the HDGConnectionLaplacianModel", "[unit][model][HDGEmbeddedM
 
   maxOrd = 10;
 
-  for(int iO = 1; iO < 2; iO++){
+  for(int iO = 1; iO < maxOrd+1; iO++){
     SECTION("Testing embedded x surface (ord=" + std::to_string(iO) + ")"){
       int nVal = 1;
       int refDim = 2;
@@ -125,19 +125,15 @@ TEST_CASE("Testing the HDGConnectionLaplacianModel", "[unit][model][HDGEmbeddedM
         J[iN*eDim] = nodes[iN][0];
         psi[iN] = (std::pow(1.0 + std::pow(nVal*std::pow(nodes[iN][0], nVal-1), 2), 2));
       }
-      std::cout << *mod.getLocalMatrix() << std::endl;
       EMatrix Suq = mod.getLocalMatrix()->block(0, nNodesEl, nNodesEl, nNodesEl*eDim);
-      std::cout << Suq << std::endl;
-      double computedInt = (EMap<EVector>(psi.data(), nNodesEl) * Suq * EMap<EVector>(J.data(), nNodesEl*eDim))(0,0);
+      double computedInt = (EMap<EVector>(psi.data(), nNodesEl).transpose() * Suq * EMap<EVector>(J.data(), nNodesEl*eDim))(0,0);
       double anaInt = 0.0;
       for(int ip = 0; ip < refEl.getNumIPs(); ip++){
         double x = refEl.getIPCoords()->at(ip)[0];
-        anaInt -= std::pow(nVal, 2)*(nVal-1)*std::pow(x, 3*(nVal-1))*std::sqrt(1.0 + std::pow(nVal*std::pow(x, nVal-1), 2)) * (refEl.getIPWeights()->at(ip));
+        anaInt += std::pow(nVal, 2)*(nVal-1)*std::pow(x, 3*(nVal-1))*std::sqrt(1.0 + std::pow(nVal*std::pow(x, nVal-1), 2)) * (refEl.getIPWeights()->at(ip));
         anaInt -= (1 + std::pow(nVal * std::pow(x, nVal-1), 2))*std::sqrt(1.0 + std::pow(nVal*std::pow(x, nVal-1), 2)) * (refEl.getIPWeights()->at(ip));
       }
-      std::cout << "computedInt: " << computedInt << std::endl;
-      std::cout << "anaInt: " << anaInt << std::endl;
-      //CHECK(std::abs(computedInt - anaInt) < tol);
+      CHECK(std::abs(computedInt - anaInt) < tol);
     };
   }
 
@@ -179,18 +175,21 @@ TEST_CASE("Testing the HDGConnectionLaplacianModel", "[unit][model][HDGEmbeddedM
       std::vector<double> J(nNodesEl*eDim, 0.0);
       std::vector<double> psi(nNodesEl, 0.0);
       for(int iN = 0; iN < nNodesEl; iN++){
+        //J[iN*eDim] = nodes[iN][0];
+        //psi[iN] = std::pow(1.0 + std::pow(nVal*std::pow(nodes[iN][0], nVal-1), 2), 2);
         J[iN*eDim] = 1.0;
-        psi[iN] = nodes[iN][0]*(std::pow(1.0 + std::pow(nVal*std::pow(nodes[iN][0], nVal-1), 2), 2));
+        psi[iN] = nodes[iN][0] * std::pow(1.0 + std::pow(nVal*std::pow(nodes[iN][0], nVal-1), 2), 2);
       }
       EMatrix Suq = mod.getLocalMatrix()->block(0, nNodesEl, nNodesEl, nNodesEl*eDim);
-      double computedInt = (EMap<EVector>(psi.data(), nNodesEl) * Suq * EMap<EVector>(J.data(), nNodesEl*eDim))(0,0);
+      double computedInt = (EMap<EVector>(psi.data(), nNodesEl).transpose() * Suq * EMap<EVector>(J.data(), nNodesEl*eDim))(0,0);
       double anaInt = 0.0;
       for(int ip = 0; ip < refEl.getNumIPs(); ip++){
         double x = refEl.getIPCoords()->at(ip)[0];
-        anaInt -= std::pow(nVal, 2)*(nVal-1)*std::pow(x, 3*(nVal-1))*std::sqrt(1.0 + std::pow(nVal*std::pow(x, nVal-1), 2)) * (refEl.getIPWeights()->at(ip));
+        anaInt += std::pow(nVal, 2)*(nVal-1)*std::pow(x, 3*(nVal-1))*std::sqrt(1.0 + std::pow(nVal*std::pow(x, nVal-1), 2)) * (refEl.getIPWeights()->at(ip));
+        //anaInt -= (1 + std::pow(nVal * std::pow(x, nVal-1), 2))*std::sqrt(1.0 + std::pow(nVal*std::pow(x, nVal-1), 2)) * (refEl.getIPWeights()->at(ip));
       }
-      //std::cout << "computedInt: " << computedInt << std::endl;
-      //std::cout << "anaInt: " << anaInt << std::endl;
+      std::cout << "computedInt: " << computedInt << std::endl;
+      std::cout << "anaInt: " << anaInt << std::endl;
     };
   }
 };
