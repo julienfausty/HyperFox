@@ -226,9 +226,32 @@ void HDGEmbeddedModel::computeElementGeometry(){
   normals.resize(refJacobians.size(), EVector::Zero(embeddingDim));
   for(int iFace = 0; iFace < nFaces; iFace++){
     for(int ip = 0; ip < nIPsFc; ip++){
-      normals[iFace*nIPsFc + ip] = refJacobians[iFace*nIPsFc + ip].transpose()*refMetrics[iFace*nIPsFc + ip].inverse()*refNormals[iFace*nIPsFc + ip];
+      double norm = std::sqrt((refNormals[iFace*nIPsFc + ip].transpose() * refMetrics[iFace*nIPsFc + ip] * refNormals[iFace*nIPsFc + ip])(0,0));
+      normals[iFace*nIPsFc + ip] = refJacobians[iFace*nIPsFc + ip].transpose()*refNormals[iFace*nIPsFc + ip]/norm;
     }
   }
+  //for(int ip = 0; ip < nIPsEl; ip++){
+    //std::cout << "jacobian:" << std::endl;
+    //std::cout << jacobians[ip] << std::endl;
+    //std::cout << "metric:" << std::endl;
+    //std::cout << metricTensor[ip] << std::endl;
+    //std::cout << "derivMetric" << std::endl;
+    //std::cout << derivMetricTensor[ip] << std::endl;
+    //for(int iD = 0; iD < refDim; iD++){
+      //std::cout << "Christoffel Symbols " << iD << std::endl;
+      //std::cout << christoffelSymbols[ip][iD] << std::endl;
+    //}
+    //for(int iD = 0; iD < embeddingDim; iD++){
+      //std::cout << "Hessian " << iD << std::endl;
+      //std::cout << hessians[ip][iD] << std::endl;
+    //}
+  //}
+  //for(int iFace = 0; iFace < nFaces; iFace++){
+    //for(int ip = 0; ip < nIPsFc; ip++){
+      //std::cout << "normal " << ip << std::endl;
+      //std::cout << normals[nIPsFc*iFace + ip] << std::endl;
+    //}
+  //}
 };//computeElementGeometry
 
 
