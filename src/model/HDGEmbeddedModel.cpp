@@ -226,8 +226,6 @@ void HDGEmbeddedModel::computeElementGeometry(){
   normals.resize(refJacobians.size(), EVector::Zero(embeddingDim));
   for(int iFace = 0; iFace < nFaces; iFace++){
     for(int ip = 0; ip < nIPsFc; ip++){
-      //double norm = std::sqrt((refNormals[iFace*nIPsFc + ip].transpose() * refMetrics[iFace*nIPsFc + ip] * refNormals[iFace*nIPsFc + ip])(0,0));
-      //normals[iFace*nIPsFc + ip] = refJacobians[iFace*nIPsFc + ip].transpose()*refNormals[iFace*nIPsFc + ip]/norm;
       EMatrix invg = refMetrics[iFace * nIPsFc + ip].inverse();
       normals[iFace*nIPsFc + ip] = refJacobians[iFace*nIPsFc + ip].transpose()*invg*refNormals[iFace*nIPsFc + ip];
       normals[iFace*nIPsFc + ip].normalize();
