@@ -130,6 +130,12 @@ void HDGConnectionLaplacianModel::computeLocalMatrix(){
       }
     }
     //gradient part
+    tempVec = EVector::Zero(refDim);
+    for(int kD = 0; kD < refDim; kD++){
+      for(int rD = 0; rD < refDim; rD++){
+        tempVec[kD] += christoffelSymbols[ip][rD](kD, rD);
+      }
+    }
     for(int iN = 0; iN < nNodesEl; iN++){
       tempVal = dV[ip]*elShape->at(iN);
       for(int jN = 0; jN < nNodesEl; jN++){
@@ -137,17 +143,12 @@ void HDGConnectionLaplacianModel::computeLocalMatrix(){
         localMatrix.block(lenU + jN*Qdim, lenU + iN*Qdim, Qdim, Qdim) += tempVal*elShape->at(jN)*EMatrix::Identity(Qdim, Qdim);
         //Squ
         for(int iD = 0; iD < embeddingDim; iD++){
-          for(int kD = 0; kD < refDim; kD++){
-            for(int lD = 0; lD < refDim; lD++){
-              tempVal1 = 0;
-              for(int rD = 0; rD < refDim; rD++){
-                tempVal1 += christoffelSymbols[ip][rD](kD, lD)*jacobians[ip](rD, iD);
-              }
-              tempVal2 = tempVal*inverseMetricTensor[ip](kD, lD)*(jacobians[ip](lD, iD)*(elDerivShape->at(jN)[kD]) + (hessians[ip][iD](kD, lD) - tempVal1)*(elShape->at(jN)));
-              for(int idof = 0; idof < nDOFsPNode; idof++){
-                localMatrix(lenU + jN*Qdim + iD*nDOFsPNode + idof, iN*nDOFsPNode + idof) += tempVal2;
-              }
-            }
+          tempMat = hessians[ip][iD] - tempVec*(jacobians[ip].col(iD).transpose());
+          tempVal1 = EMap<EVector>(inverseMetricTensor[ip].data(), refDim*refDim).dot(EMap<EVector>(tempMat.data(), refDim*refDim)) * elShape->at(jN);
+          tempVal1 += (invJacobians[ip].row(iD)*EMap<const EVector>(elDerivShape->at(jN).data(), refDim))(0,0);
+          tempVal1 *= tempVal;
+          for(int idof = 0; idof < nDOFsPNode; idof++){
+            localMatrix(lenU + jN*Qdim + iD*nDOFsPNode + idof, iN*nDOFsPNode + idof) += tempVal1;
           }
         }
       }

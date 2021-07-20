@@ -134,6 +134,26 @@ TEST_CASE("Testing the HDGConnectionLaplacianModel", "[unit][model][HDGEmbeddedM
         anaInt -= (1 + std::pow(nVal * std::pow(x, nVal-1), 2))*std::sqrt(1.0 + std::pow(nVal*std::pow(x, nVal-1), 2)) * (refEl.getIPWeights()->at(ip));
       }
       CHECK(std::abs(computedInt - anaInt) < tol);
+      std::fill(J.begin(), J.end(), 0.0);
+      std::fill(psi.begin(), psi.end(), 0.0);
+      std::vector<double> lambda(nNodesFc*nFaces, 0.0);
+      for(int iN = 0; iN < nNodesEl; iN++){
+        double x = nodes[iN][0];
+        J[iN*eDim] = 1.0/(1.0 + std::pow(nVal, 2)*std::pow(x, 2*nVal-2));
+        J[iN*eDim + 2] = nVal*std::pow(x, nVal-1)*J[iN*eDim];
+        psi[iN] = x;
+      }
+      for(int iF = 0; iF < nFaces; iF++){
+        for(int iN = 0; iN < nNodesFc; iN++){
+          double x = nodes[refEl.getFaceNodes()->at(iF)[iN]][0];
+          lambda[iF*nNodesFc + iN] = x;
+        }
+      }
+      EMatrix Squ = mod.getLocalMatrix()->block(nNodesEl, 0, nNodesEl*eDim, nNodesEl);
+      EMatrix Sqq = mod.getLocalMatrix()->block(nNodesEl, nNodesEl, nNodesEl*eDim, nNodesEl*eDim);
+      EMatrix Sql = mod.getLocalMatrix()->block(nNodesEl, nNodesEl*(eDim+1), nNodesEl*eDim, nNodesFc*nFaces);
+      EVector Diff = Squ*EMap<EVector>(psi.data(), nNodesEl) + Sqq*EMap<EVector>(J.data(), nNodesEl*eDim) + Sql*EMap<EVector>(lambda.data(), nFaces*nNodesFc);
+      CHECK(Diff.norm() < tol);
     };
   }
 
@@ -186,6 +206,26 @@ TEST_CASE("Testing the HDGConnectionLaplacianModel", "[unit][model][HDGEmbeddedM
         anaInt += std::pow(nVal, 2)*(nVal-1.0)*std::pow(x, 2*nVal-3)*std::sqrt(1.0 + std::pow(nVal*std::pow(x, nVal-1), 2)) * (refEl.getIPWeights()->at(ip));
       }
       CHECK(std::abs(computedInt - anaInt) < 1e-2);
+      std::fill(J.begin(), J.end(), 0.0);
+      std::fill(psi.begin(), psi.end(), 0.0);
+      std::vector<double> lambda(nNodesFc*nFaces, 0.0);
+      for(int iN = 0; iN < nNodesEl; iN++){
+        double x = nodes[iN][0];
+        J[iN*eDim] = 1.0;
+        J[iN*eDim + 2] = nVal*std::pow(x, nVal-1);
+        psi[iN] = (x + (std::pow(nVal, 2)/(2*nVal-1))*std::pow(x, 2*nVal-1));
+      }
+      for(int iF = 0; iF < nFaces; iF++){
+        for(int iN = 0; iN < nNodesFc; iN++){
+          double x = nodes[refEl.getFaceNodes()->at(iF)[iN]][0];
+          lambda[iF*nNodesFc + iN] = (x + (std::pow(nVal, 2)/(2*nVal-1))*std::pow(x, 2*nVal-1));
+        }
+      }
+      EMatrix Squ = mod.getLocalMatrix()->block(nNodesEl, 0, nNodesEl*eDim, nNodesEl);
+      EMatrix Sqq = mod.getLocalMatrix()->block(nNodesEl, nNodesEl, nNodesEl*eDim, nNodesEl*eDim);
+      EMatrix Sql = mod.getLocalMatrix()->block(nNodesEl, nNodesEl*(eDim+1), nNodesEl*eDim, nNodesFc*nFaces);
+      EVector Diff = Squ*EMap<EVector>(psi.data(), nNodesEl) + Sqq*EMap<EVector>(J.data(), nNodesEl*eDim) + Sql*EMap<EVector>(lambda.data(), nFaces*nNodesFc);
+      CHECK(Diff.norm() < 2e-2);
     };
   }
 };
