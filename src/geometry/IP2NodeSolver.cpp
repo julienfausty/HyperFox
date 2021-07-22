@@ -102,7 +102,7 @@ void IP2NodeSolver::solve(){
         rhs.segment(iN*nDOFsField, nDOFsField) += measure[ip] * phiMat(iN, ip) * val;
       }
     }
-    EMap<EVector>(myField->getValues()->data(), iEl*nNodesEl*nDOFsField) = invMass.solve(rhs);
+    EMap<EVector>(myField->getValues()->data() + iEl*nNodesEl*nDOFsField, nNodesEl*nDOFsField) = invMass.solve(rhs);
   }
 };//solve
 
