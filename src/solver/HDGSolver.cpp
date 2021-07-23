@@ -497,17 +497,27 @@ void HDGSolver::applyBoundaryConditions(){
           locS0.segment(lenT*locFaceInEl, lenT) = EVector::Zero(lenT);
         }
         if(boundaryModel->getBoundaryModelType() == CGType){
-          locS.block(lenT*locFaceInEl, lenT*locFaceInEl, lenT, lenT) += *(boundaryModel->getLocalMatrix());
-          locS0.segment(lenT*locFaceInEl, lenT) += *(boundaryModel->getLocalRHS());
-        } else if(boundaryModel->getBoundaryModelType() == HDGType){
           EMatrix locUFc(lenT, lenL);
-          EMatrix locQFc(dim*lenT, lenL);
           EVector locU0Fc(lenT);
-          EVector locQ0Fc(lenT*dim);
           for(int iN = 0; iN < nNodesPFc; iN++){
             locUFc.block(iN*nDOFsPerNode, 0, nDOFsPerNode, lenL) = locU.block(cell2FaceMap[iN]*nDOFsPerNode, 0, nDOFsPerNode, lenL);
-            locQFc.block(iN*nDOFsPerNode*dim, 0, nDOFsPerNode*dim, lenL) = locQ.block(cell2FaceMap[iN]*nDOFsPerNode*dim, 0, nDOFsPerNode*dim, lenL);
             locU0Fc.segment(iN*nDOFsPerNode, nDOFsPerNode) = locU0.segment(cell2FaceMap[iN]*nDOFsPerNode, nDOFsPerNode);
+          }
+          //locS.block(lenT*locFaceInEl, lenT*locFaceInEl, lenT, lenT) += *(boundaryModel->getLocalMatrix());
+          //locS0.segment(lenT*locFaceInEl, lenT) += *(boundaryModel->getLocalRHS());
+          locS.block(lenT*locFaceInEl, 0, lenT, lenL) += (*(boundaryModel->getLocalMatrix()))*locUFc;
+          locS0.segment(lenT*locFaceInEl, lenT) += *(boundaryModel->getLocalRHS()) - (*(boundaryModel->getLocalMatrix()))*locU0Fc;
+        } else if(boundaryModel->getBoundaryModelType() == HDGType){
+          EMatrix locUFc(lenT, lenL);
+          EVector locU0Fc(lenT);
+          for(int iN = 0; iN < nNodesPFc; iN++){
+            locUFc.block(iN*nDOFsPerNode, 0, nDOFsPerNode, lenL) = locU.block(cell2FaceMap[iN]*nDOFsPerNode, 0, nDOFsPerNode, lenL);
+            locU0Fc.segment(iN*nDOFsPerNode, nDOFsPerNode) = locU0.segment(cell2FaceMap[iN]*nDOFsPerNode, nDOFsPerNode);
+          }
+          EMatrix locQFc(dim*lenT, lenL);
+          EVector locQ0Fc(lenT*dim);
+          for(int iN = 0; iN < nNodesPFc; iN++){
+            locQFc.block(iN*nDOFsPerNode*dim, 0, nDOFsPerNode*dim, lenL) = locQ.block(cell2FaceMap[iN]*nDOFsPerNode*dim, 0, nDOFsPerNode*dim, lenL);
             locQ0Fc.segment(iN*nDOFsPerNode*dim, nDOFsPerNode*dim) = locQ0.segment(cell2FaceMap[iN]*nDOFsPerNode*dim, nDOFsPerNode*dim);
           }
           locS.block(lenT*locFaceInEl, 0, lenT, lenL) += boundaryModel->getLocalMatrix()->block(0, 0, lenT, lenT) *locUFc  + 

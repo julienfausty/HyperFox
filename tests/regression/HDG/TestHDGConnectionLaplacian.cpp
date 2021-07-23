@@ -37,8 +37,8 @@ struct ConnectionLaplacianRun{
 
 void computeTorusAngles(const std::vector<double> & xyz, std::vector<double> * phitheta, ConnectionLaplacianRun * run){
   phitheta->resize(2, 0.0);
-  phitheta->at(1) = std::asin(xyz[2]/run->r);
-  phitheta->at(0) = std::asin(xyz[1]/(run->R + run->r*std::cos(phitheta->at(0))));
+  phitheta->at(1) = std::atan2(xyz[2]/run->r, std::sqrt(std::pow(xyz[0],2) + std::pow(xyz[1], 2)) - run->R);
+  phitheta->at(0) = std::atan2(xyz[1]/(run->R + run->r*std::cos(phitheta->at(1))), xyz[0]/(run->R + run->r*std::cos(phitheta->at(1))));
 };//computeTorusAngles
 
 double computeAnaSolTorus(const std::vector<double> & xyz, ConnectionLaplacianRun * run){
@@ -86,6 +86,7 @@ void runConnectionLaplacianTorus(ConnectionLaplacianRun * run){
   Field residual(&myMesh, Cell, nNodesEl, 1);
   Field partition(&myMesh, Node, 1, 1);
   Field dirichlet(&myMesh, Face, nNodesFc, 1);
+  Field dirichletFlag(&myMesh, Node, 1, 1);
   //create field map
   std::map<std::string, Field*> fieldMap;
   fieldMap["Solution"] = &sol;
@@ -123,6 +124,7 @@ void runConnectionLaplacianTorus(ConnectionLaplacianRun * run){
   hdfio.setField("Jacobian", &jacobian);
   hdfio.setField("Metric", &metric);
   hdfio.setField("Source", &source);
+  hdfio.setField("Dirichlet", &dirichletFlag);
   hdfio.setField("Analytical", &anaSol);
   hdfio.setField("Residual", &residual);
   hdfio.setField("Partition", &partition);
@@ -146,7 +148,8 @@ void runConnectionLaplacianTorus(ConnectionLaplacianRun * run){
   ip2n.setFunction(IP2NodeSolver::metricVals);
   ip2n.solve();
   //Boundary conditions
-  double tol = 1e-3;
+  //double tol = std::stod(run->h)/10.0;
+  double tol = 1e-4;
   std::vector<double> phiTheta(2, 0.0);
   if(zPart.getRank() == 0){
     for(int iF = 0; iF < myMesh.getNumberFaces(); iF++){
@@ -165,9 +168,13 @@ void runConnectionLaplacianTorus(ConnectionLaplacianRun * run){
           break;
         }
         dirichlet.getValues()->at(iF*nNodesFc + iN) = computeAnaSolTorus(node, run);
+        //dirichlet.getValues()->at(iF*nNodesFc + iN) = 0.0;
       }
       if(isPFace or isTFace){
         dfaces.insert(iF);
+        for(int iN = 0; iN < nNodesFc; iN++){
+          dirichletFlag.getValues()->at(cell[iN]) = 1.0;
+        }
       }
     }
   }
@@ -180,6 +187,7 @@ void runConnectionLaplacianTorus(ConnectionLaplacianRun * run){
   fieldList.push_back(&residual);
   fieldList.push_back(&partition);
   fieldList.push_back(&source);
+  fieldList.push_back(&dirichletFlag);
   //partition the mesh and fields
   zPart.setFields(fieldList);
   zPart.computePartition();
@@ -223,9 +231,9 @@ TEST_CASE("Testing regression cases for the HDGConnectionLaplacianModel", "[regr
   //Small radius
   double r = 1.0;
   //ThetaFreq
-  double nfreq = 3.0;
+  double nfreq = 1.0;
   //PhiFreq
-  double mfreq = 3.0;
+  double mfreq = 1.0;
   //Mesh sizes
   std::vector<std::string> hs = {"1e-0", "7e-1", "5e-1", "2e-1"};
   //Polynomial orders
