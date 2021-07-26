@@ -60,7 +60,7 @@ void runConnectionLaplacianTorus(ConnectionLaplacianRun * run){
   //Load mesh
   std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
   std::string inputDir = TestUtils::getRessourcePath() + "/meshes/regression/";
-  std::string meshName = "torus_h" + run->h + "_p" + run->o + ".h5";
+  std::string meshName = "correctedQuarterTorus_h" + run->h + "_p" + run->o + ".h5";
   Mesh myMesh(2, std::stoi(run->o), "simplex");
   HDF5Io hdfio(&myMesh);
   hdfio.load(inputDir + meshName);
@@ -115,10 +115,10 @@ void runConnectionLaplacianTorus(ConnectionLaplacianRun * run){
   mySolver.setFieldMap(&fieldMap);
   mySolver.setLinSystem(&petsciface);
   mySolver.setModel(&mod);
-  mySolver.setBoundaryCondition(&bMod, &dfaces);
-  //mySolver.setBoundaryModel(&bMod);
+  //mySolver.setBoundaryCondition(&bMod, &dfaces);
+  mySolver.setBoundaryModel(&bMod);
   //setup outputs
-  std::string output = "torus_h" + run->h + "_p" + run->o + "_sol.h5";
+  std::string output = "quarterTorus_h" + run->h + "_p" + run->o + "_sol.h5";
   hdfio.setField("Solution", &sol);
   hdfio.setField("Flux", &flux);
   hdfio.setField("Jacobian", &jacobian);
@@ -150,32 +150,12 @@ void runConnectionLaplacianTorus(ConnectionLaplacianRun * run){
   //Boundary conditions
   //double tol = std::stod(run->h)/10.0;
   double tol = 1e-4;
-  std::vector<double> phiTheta(2, 0.0);
-  if(zPart.getRank() == 0){
-    for(int iF = 0; iF < myMesh.getNumberFaces(); iF++){
-      myMesh.getFace(iF, &cell);
-      bool isPFace = true;
-      bool isTFace = true;
-      for(int iN = 0; iN < nNodesFc; iN++){
-        myMesh.getPoint(cell[iN], &node);
-        if((std::abs(node[1]) > tol) or (node[0] > 0.0)){
-          isPFace = false;
-        }
-        if(std::abs(node[2] - run->r) > tol){
-          isTFace = false;
-        }
-        if(not (isPFace or isTFace)){
-          break;
-        }
-        dirichlet.getValues()->at(iF*nNodesFc + iN) = computeAnaSolTorus(node, run);
-        //dirichlet.getValues()->at(iF*nNodesFc + iN) = 0.0;
-      }
-      if(isPFace or isTFace){
-        dfaces.insert(iF);
-        for(int iN = 0; iN < nNodesFc; iN++){
-          dirichletFlag.getValues()->at(cell[iN]) = 1.0;
-        }
-      }
+  std::set<int>::const_iterator it;
+  for(it = myMesh.getBoundaryFaces()->begin(); it != myMesh.getBoundaryFaces()->end(); it++){
+    myMesh.getFace(*it, &cell);
+    for(int iN = 0; iN < nNodesFc; iN++){
+      myMesh.getPoint(cell[iN], &node);
+      dirichlet.getValues()->at((*it)*nNodesFc + iN) = computeAnaSolTorus(node, run);
     }
   }
   //create field list
@@ -231,11 +211,11 @@ TEST_CASE("Testing regression cases for the HDGConnectionLaplacianModel", "[regr
   //Small radius
   double r = 1.0;
   //ThetaFreq
-  double nfreq = 1.0;
+  double nfreq = 3.0;
   //PhiFreq
-  double mfreq = 1.0;
+  double mfreq = 3.0;
   //Mesh sizes
-  std::vector<std::string> hs = {"1e-0", "7e-1", "5e-1", "2e-1"};
+  std::vector<std::string> hs = {"1e-0", "7e-1", "5e-1", "2e-1", "1e-1"};
   //Polynomial orders
   std::vector<std::string> orders = {"1", "2", "3", "4", "5"};
   //Output
